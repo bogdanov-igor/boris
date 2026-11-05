@@ -14,13 +14,15 @@ final class LaunchCoordinator {
 
     var agent: SMAppService { SMAppService.agent(plistName: Self.agentPlist) }
 
-    /// Returns false when this process should exit because another instance owns the work.
-    func claimInstance() -> Bool {
+    static func otherCopies() -> [NSRunningApplication] {
         let selfPid = ProcessInfo.processInfo.processIdentifier
         let bundleId = Bundle.main.bundleIdentifier ?? "app.boris.Boris"
-        let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
+        return NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
             .filter { $0.processIdentifier != selfPid }
+    }
 
+    /// Returns false when this process should exit because another instance owns the work.
+    func claimInstance(others: [NSRunningApplication] = LaunchCoordinator.otherCopies()) -> Bool {
         guard !others.isEmpty else { return true }
 
         #if DEBUG

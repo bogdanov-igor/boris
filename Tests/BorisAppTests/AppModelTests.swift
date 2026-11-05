@@ -1,3 +1,4 @@
+import AppKit
 import BorisCore
 import BorisData
 import Foundation
@@ -121,6 +122,29 @@ struct AppModelNavigationTests {
         #expect(model.projectsRoute == .session("s1"))
         model.choose(.projects)
         #expect(model.projectsRoute == .list)
+    }
+}
+
+@MainActor
+@Suite("Запуск рядом с настоящей копией", .serialized)
+struct LaunchCoordinatorTests {
+    @Test("Отладочная копия уходит сама и ничего не говорит настоящей")
+    func debugCopyLeavesTheRealOneAlone() {
+        final class Heard: @unchecked Sendable { var count = 0 }
+        let heard = Heard()
+        let center = DistributedNotificationCenter.default()
+        let observers = [LaunchCoordinator.openMenuNotification, LaunchCoordinator.handOverNotification].map { name in
+            center.addObserver(forName: name, object: nil, queue: .main) { _ in heard.count += 1 }
+        }
+        defer { observers.forEach(center.removeObserver) }
+        #expect(!LaunchCoordinator().claimInstance(others: [NSRunningApplication.current]))
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        #expect(heard.count == 0)
+    }
+
+    @Test("Когда других копий нет, отладочная работает")
+    func aloneItRuns() {
+        #expect(LaunchCoordinator().claimInstance(others: []))
     }
 }
 
