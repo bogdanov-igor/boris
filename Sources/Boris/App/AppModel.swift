@@ -182,7 +182,7 @@ final class AppModel {
         let date = Date()
         now = date
         hasAlarm = board.hasAlarm
-        mood = board.mood(runs: runs, sessions: world.sessions, formatBroken: !world.formatIssues.isEmpty, matrix: settings.matrix, now: date)
+        mood = board.mood(work: work, usage: world.usage, limitPercent: Double(settings.usageHigh), broken: loaded && connectionStatus.isBroken, matrix: settings.matrix, now: date)
         outfit = Wardrobe.outfit(at: date, settings: settings.wardrobe)
         onPresenceChange?()
     }

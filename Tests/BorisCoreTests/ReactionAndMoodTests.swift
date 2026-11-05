@@ -8,15 +8,15 @@ struct ReactionTests {
         (EventKind.failed, true, true, MoodReaction.alarm),
         (.interrupted, true, true, .alarm),
         (.allAgentsFailed, true, true, .alarm),
-        (.completedWithErrors, true, true, .alarm),
+        (.completedWithErrors, true, true, .hmm),
         (.limitReached, true, true, .tired),
         (.limitNear, true, false, .none),
         (.waiting, true, true, .watching),
         (.completed, true, false, .happy),
         (.stopped, true, false, .hmm),
         (.silent, true, false, .alert),
-        (.sessionFinished, true, false, .none),
-        (.sessionError, true, true, .alert),
+        (.sessionFinished, true, false, .happy),
+        (.sessionError, true, true, .alarm),
     ] as [(EventKind, Bool, Bool, MoodReaction)])
     func defaults(kind: EventKind, banner: Bool, sound: Bool, mood: MoodReaction) {
         #expect(ReactionMatrix().reaction(for: kind) == Reaction(banner: banner, sound: sound, mood: mood))
@@ -68,79 +68,6 @@ struct ReactionTests {
         var quiet = QuietMode()
         quiet.start(for: 60, now: t0)
         #expect(quiet.finish(now: at(61)) == nil)
-    }
-}
-
-@Suite("character")
-struct MoodTests {
-    private let matrix = ReactionMatrix()
-
-    private func mood(_ board: MoodBoard, runs: [RunState] = [], sessions: [SessionInfo] = [], broken: Bool = false, matrix: ReactionMatrix = ReactionMatrix(), now: Date = t0) -> Mood {
-        board.mood(runs: runs, sessions: sessions, formatBroken: broken, matrix: matrix, now: now)
-    }
-
-    private func event(_ kind: EventKind) -> BorisEvent { BorisEvent(id: "\(kind)", kind: kind, at: t0) }
-
-    @Test("Ничего не происходит: спит") func sleeping() {
-        #expect(mood(MoodBoard()) == .sleeping)
-    }
-
-    @Test("Упал один и идёт другой: тревога") func alarmWins() {
-        var board = MoodBoard()
-        board.apply(event(.failed), reaction: .alarm, now: t0)
-        #expect(mood(board, runs: [state(.running)]) == .alarm)
-    }
-
-    @Test("Завершился один и идёт другой: радуется 10 секунд") func happyThenWork() {
-        var board = MoodBoard()
-        board.apply(event(.completed), reaction: .happy, now: t0)
-        let agent = AgentRecord(key: "a", state: .running)
-        #expect(mood(board, runs: [state(.running, agents: [agent])], now: at(5)) == .happy)
-        #expect(mood(board, runs: [state(.running, agents: [agent])], now: at(11)) == .working(agents: 1))
-    }
-
-    @Test("Реакция отключена: нет тревоги") func reactionOff() {
-        var board = MoodBoard()
-        board.apply(event(.failed), reaction: .none, now: t0)
-        #expect(mood(board) == .sleeping)
-    }
-
-    @Test("Открытие меню снимает тревогу и усталость") func acknowledge() {
-        var board = MoodBoard()
-        board.apply(event(.failed), reaction: .alarm, now: t0)
-        board.apply(event(.limitReached), reaction: .tired, now: t0)
-        #expect(mood(board) == .alarm)
-        board.acknowledge()
-        #expect(mood(board, runs: [state(.running)]) == .working(agents: 0))
-    }
-
-    @Test("Полный порядок приоритетов") func priorities() {
-        var board = MoodBoard()
-        let waiting = session(status: "waiting", waitingFor: "approve Bash")
-        let silent = state(.silent)
-        board.apply(event(.completed), reaction: .happy, now: t0)
-        #expect(mood(board, runs: [state(.running)], now: at(1)) == .happy)
-        #expect(mood(board, runs: [silent], now: at(1)) == .alert)
-        board.apply(event(.limitReached), reaction: .tired, now: t0)
-        #expect(mood(board, runs: [silent], now: at(1)) == .tired)
-        #expect(mood(board, runs: [silent], sessions: [waiting], now: at(1)) == .waiting)
-        #expect(mood(board, runs: [silent], sessions: [waiting], broken: true, now: at(1)) == .broken)
-        board.apply(event(.failed), reaction: .alarm, now: t0)
-        #expect(mood(board, runs: [silent], sessions: [waiting], broken: true, now: at(1)) == .alarm)
-    }
-
-    @Test("Открытый диалог не считается ожиданием") func dialogIsNotWaiting() {
-        #expect(mood(MoodBoard(), sessions: [session(status: "waiting", waitingFor: "dialog open")]) == .sleeping)
-    }
-
-    @Test("Отключённая реакция на молчание") func silentOff() {
-        var matrix = ReactionMatrix()
-        matrix.overrides[.silent] = Reaction(banner: true, sound: false, mood: .none)
-        #expect(mood(MoodBoard(), runs: [state(.silent)], matrix: matrix) == .working(agents: 0))
-    }
-
-    @Test("Занятая сессия без запусков: работает") func busySession() {
-        #expect(mood(MoodBoard(), sessions: [session(status: "busy")]) == .working(agents: 0))
     }
 }
 

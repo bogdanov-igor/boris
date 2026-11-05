@@ -50,21 +50,28 @@ public struct MoodBoard: Sendable, Equatable {
 
     public var hasAlarm: Bool { !alarms.isEmpty }
 
-    public func mood(runs: [RunState], sessions: [SessionInfo], formatBroken: Bool, matrix: ReactionMatrix, now: Date) -> Mood {
+    /// The one mood to show, by the order in the spec: alarm, broken, waiting, tired, alert, happy or hmm, working, sleeping.
+    /// - Parameter limitPercent: from here on a limit counts as nearly spent.
+    public func mood(work: WorkModel, usage: UsageSnapshot? = nil, limitPercent: Double = 95, broken: Bool, matrix: ReactionMatrix, now: Date) -> Mood {
         if hasAlarm { return .alarm }
-        if formatBroken { return .broken }
-        let waiting = sessions.contains { $0.status == "waiting" && WaitingReason($0.waitingFor) != .dialog }
-        if waiting, matrix.reaction(for: .waiting).mood == .watching { return .waiting }
-        if let tiredSince, now.timeIntervalSince(tiredSince) < Self.tiredLimit { return .tired }
-        if runs.contains(where: { $0.status == .silent }), matrix.reaction(for: .silent).mood == .alert { return .alert }
+        if broken { return .broken }
+        if !work.waitingSessions.isEmpty, matrix.reaction(for: .waiting).mood == .watching { return .waiting }
+        if isTired(usage: usage, limitPercent: limitPercent, matrix: matrix, now: now) { return .tired }
+        let silent = work.sessions.contains { $0.root.flattened.contains { $0.state == .silent } }
+        if silent, matrix.reaction(for: .silent).mood == .alert { return .alert }
         if let transient, now < transient.until { return transient.mood }
-        let working = runs.filter(\.status.isActive)
-        if !working.isEmpty {
-            return .working(agents: working.reduce(0) { $0 + $1.running })
-        }
-        if sessions.contains(where: { $0.status == "busy" }) {
-            return .working(agents: 0)
+        if work.sessions.contains(where: { $0.state == .running || $0.state == .silent }) {
+            return .working(agents: work.workingAgents)
         }
         return .sleeping
+    }
+
+    /// A limit that ran out is an event, one that is nearly spent is a fact that lasts until the window resets. Spare money is not a limit.
+    private func isTired(usage: UsageSnapshot?, limitPercent: Double, matrix: ReactionMatrix, now: Date) -> Bool {
+        if let tiredSince, now.timeIntervalSince(tiredSince) < Self.tiredLimit { return true }
+        guard matrix.reaction(for: .limitReached).mood == .tired, let usage else { return false }
+        return usage.windows.contains { window in
+            window.kind != .extraSpend && window.percent >= limitPercent && (window.resetsAt.map { $0 > now } ?? true)
+        }
     }
 }

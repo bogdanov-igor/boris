@@ -142,6 +142,19 @@ struct ConnectionTests {
         #expect(status(.notConnected, world: unreadable).problems == [.filesUnreadable, .formatChanged])
     }
 
+    @Test("Морж считает сломанным то, что перестало работать само, а не выключено намеренно")
+    func brokenForTheWalrus() {
+        #expect(!status(sessions: [session()], lastEvent: 10).isBroken)
+        #expect(!status(.notConnected).isBroken)
+        #expect(!status(.disabledByPolicy).isBroken)
+        #expect(!status(.disabledInSettings).isBroken)
+        #expect(status(.damaged).isBroken)
+        #expect(status(.settingsUnreadable).isBroken)
+        #expect(status(sessions: [session()], lastEvent: nil).isBroken)
+        #expect(status(.notConnected, world: WorldSnapshot(takenAt: now, claudeFolderFound: false)).isBroken)
+        #expect(status(.notConnected, world: WorldSnapshot(takenAt: now, formatIssues: [.unknownJournalEvent("teleport")])).isBroken)
+    }
+
     @Test("Лимиты: нет данных, свежие, устаревшие с возрастом")
     func limits() {
         #expect(status(.notConnected).limits == .noData)
