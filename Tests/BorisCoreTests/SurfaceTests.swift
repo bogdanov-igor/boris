@@ -456,6 +456,18 @@ struct SurfaceWordsTests {
         #expect(SurfaceWords.sessionDetail(running, mode: .technical) == "Terminal · Edit a.swift")
     }
 
+    @Test("Пока логи читаются в первый раз, токенов не ноль, а нет данных")
+    func tokensNotKnownYet() {
+        let unknown = SurfaceNumbers(work: WorkModel(), requests: 0, today: nil, usage: nil)
+        #expect(unknown.tokensToday == nil)
+        #expect(SurfaceWords.numbersRow(unknown, now: now) == ["Today no data"])
+        // The closed notch has no room to say what has no data, so it says nothing about it.
+        #expect(SurfaceWords.closedLine(SurfaceNumbers(agents: 2, tokensToday: nil), mode: .technical, onNotch: true).main == "2 agents")
+        let known = SurfaceNumbers(work: WorkModel(), requests: 0, today: TokenUsage(), usage: nil)
+        #expect(known.tokensToday == 0)
+        #expect(SurfaceWords.numbersRow(known, now: now).isEmpty)
+    }
+
     @Test("Справа: сколько ждёт, а в техническом режиме и сколько потратила")
     func sessionTrailing() {
         let waiting = WorkSession(id: "a", state: .waiting, startedAt: now.addingTimeInterval(-3000), lastActivity: now.addingTimeInterval(-420), root: WorkNode(id: "a", kind: .main, state: .waiting))
