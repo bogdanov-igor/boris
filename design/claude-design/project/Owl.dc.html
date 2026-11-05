@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · заглушка персонажа</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div role="img" aria-label="Борис, {{variant}}, настроение: {{mood}}. Заглушка до вставки файла" style="position: relative; flex: none; width: {{sz}}px; height: {{sz}}px; box-sizing: border-box; border: 1.5px dashed var(--owl-ph, #8E8E94); border-radius: {{rad}}px; background: var(--owl-ph-bg, rgba(0,0,0,.05)); overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif; color: var(--tx-2, #55555A)">
+  <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%"><line x1="0" y1="0" x2="100" y2="100" style="stroke: var(--owl-ph, #8E8E94); stroke-opacity: .45; stroke-width: 1; vector-effect: non-scaling-stroke"></line><line x1="100" y1="0" x2="0" y2="100" style="stroke: var(--owl-ph, #8E8E94); stroke-opacity: .45; stroke-width: 1; vector-effect: non-scaling-stroke"></line></svg>
+  <sc-if value="{{showText}}" hint-placeholder-val="{{ true }}">
+    <span style="position: relative; font-size: {{fsSmall}}px; line-height: 1.15; background: var(--owl-label-bg, var(--pop, #F6F6F7)); padding: 0 3px; border-radius: 3px; white-space: nowrap">{{small}}</span>
+    <span style="position: relative; font-size: {{fs}}px; line-height: 1.15; font-weight: 600; color: var(--tx-1, #1D1D1F); background: var(--owl-label-bg, var(--pop, #F6F6F7)); padding: 0 3px; border-radius: 3px; text-align: center; white-space: nowrap">{{mood}}</span>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"mood":{"editor":"enum","options":["Дежурит","Работает","Радуется","Тревога","Спит","Ждёт","Устал","Сломалось","Настороже","Хм?"],"default":"Дежурит"},"size":{"editor":"int","default":120,"min":14,"max":240},"variant":{"editor":"enum","options":["full","simple","tray"],"default":"simple"},"$preview":{"width":200,"height":200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const sz = Number(this.props.size ?? 120);
+    const map = { 'тревога': 'Тревога', 'формат сломан': 'Сломалось', 'ждёт': 'Ждёт', 'устала': 'Устал', 'настороже': 'Настороже', 'радуется': 'Радуется', 'хм': 'Хм?', 'работает': 'Работает', 'спит': 'Спит', 'дежурит': 'Дежурит' };
+    const raw = this.props.mood ?? 'Дежурит';
+    const mood = map[String(raw).toLowerCase()] || raw;
+    const variant = this.props.variant ?? (sz >= 96 ? 'full' : sz <= 20 ? 'tray' : 'simple');
+    return {
+      sz, mood, variant,
+      small: sz >= 96 ? 'Борис · ' + variant : 'Борис',
+      showText: sz >= 56,
+      fs: sz >= 150 ? 15 : sz >= 96 ? 13 : 10,
+      fsSmall: sz >= 96 ? 11 : 9,
+      rad: sz >= 96 ? 20 : sz >= 40 ? 12 : 4
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · экраны «Проекты» и «Проект»</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--focus:#0A64D8;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--mono-bg:rgba(0,0,0,.05);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;--rb-done:#2B7D4E;--rb-run:#8CC7CB;--rb-fail:#E5383B;--rb-cancel:#A2A2A8;color:#1D1D1F}
+.td{--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--focus:#3D8BFF;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--mono-bg:rgba(255,255,255,.07);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;--rb-done:#3E9D66;--rb-run:#2F7479;--rb-fail:#E5383B;--rb-cancel:#6A6A70;color:#F2F2F4}
+</style>
+</helmet>
+<div style="width: 2520px; height: 1820px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{panes}}" as="p" hint-placeholder-count="4">
+    <div class="{{p.cls}}" style="background: var(--desk); padding: 20px 30px 40px; display: flex; flex-direction: column; gap: 10px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{p.label}}</span>
+      <div style="width: 1200px; height: 800px; border-radius: 10px; overflow: hidden; display: flex; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 18px 40px rgba(0,0,0,.28)">
+        <nav aria-label="Разделы" style="width: 210px; flex: none; background: var(--side); border-right: 1px solid var(--sep); display: flex; flex-direction: column; padding: 10px 10px 12px; box-sizing: border-box">
+          <div style="height: 22px; display: flex; gap: 8px; align-items: center; padding-left: 4px; margin-bottom: 16px"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span></div>
+          <sc-for list="{{p.nav}}" as="n" hint-placeholder-count="6">
+            <a href="#" aria-current="{{n.cur}}" style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: 6px; background: {{n.bg}}; color: var(--tx-1); text-decoration: none; font-size: 13px; font-weight: {{n.fw}}">
+              <span style="flex: 1">{{n.t}}</span>
+              <sc-if value="{{n.badge}}" hint-placeholder-val="{{ false }}"><span aria-label="{{n.badgeL}}" style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--st-wait); color: #FFFFFF; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums">{{n.badge}}</span></sc-if>
+            </a>
+          </sc-for>
+          <span style="flex: 1"></span>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0 10px">
+            <dc-import name="Owl" mood="{{p.owlMood}}" size="190" variant="full" hint-size="190px,190px"></dc-import>
+            <span style="font-size: 12px; line-height: 15px; color: var(--tx-2); text-align: center">{{p.owlText}}</span>
+          </div>
+          <div role="group" aria-label="Режим" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+            <button type="button" aria-pressed="{{p.sPressed}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.sBg}}; box-shadow: {{p.sSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Простой</button>
+            <button type="button" aria-pressed="{{p.tPressed}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.tBg}}; box-shadow: {{p.tSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Технический</button>
+          </div>
+        </nav>
+
+        <main style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden">
+          <sc-if value="{{p.list}}" hint-placeholder-val="{{ true }}">
+            <header style="flex: none; padding: 14px 24px 12px; border-bottom: 1px solid var(--sep); display: flex; align-items: center; gap: 12px">
+              <h1 style="margin: 0; font-size: 18px; line-height: 24px; font-weight: 600">Проекты</h1>
+              <span style="font-size: 12.5px; color: var(--tx-2)">5 · сначала те, что ждут вас или со сбоями</span>
+              <span style="flex: 1"></span>
+              <div role="group" aria-label="Период" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+                <sc-for list="{{periods}}" as="r" hint-placeholder-count="3"><button type="button" aria-pressed="{{r.on}}" style="height: 22px; padding: 0 10px; border: 0; border-radius: 4px; background: {{r.bg}}; box-shadow: {{r.sh}}; color: var(--tx-1); font: inherit; font-size: 12px">{{r.t}}</button></sc-for>
+              </div>
+              <select aria-label="Среда" style="height: 26px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12px; padding: 0 6px"><option>Все среды</option><option>Терминал</option><option>VS Code</option><option>Cursor</option><option>Claude Desktop</option><option>Cowork</option><option>Чат</option><option>Удалённые машины</option></select>
+            </header>
+            <div style="flex: 1; min-height: 0; overflow: auto; padding: 16px 24px 20px; display: flex; flex-direction: column; gap: 8px">
+              <div role="table" aria-label="Проекты" style="border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); overflow: hidden">
+                <div role="row" style="display: grid; grid-template-columns: {{cols}}; column-gap: 12px; padding: 7px 12px; background: var(--fill-1); font-size: 11px; font-weight: 600; color: var(--tx-2)">
+                  <sc-for list="{{head}}" as="h" hint-placeholder-count="9"><span role="columnheader" style="text-align: {{h.a}}">{{h.t}}</span></sc-for>
+                </div>
+                <sc-for list="{{projects}}" as="r" hint-placeholder-count="5">
+                  <div role="row" style="display: grid; grid-template-columns: {{cols}}; column-gap: 12px; align-items: center; min-height: 48px; padding: 6px 12px; box-sizing: border-box; border-top: 1px solid var(--sep); background: {{r.bg}}; font-size: 12.5px">
+                    <span role="cell" style="min-width: 0; font-family: {{r.ff}}; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.n}}</span>
+                    <span role="cell" style="display: flex; align-items: center; gap: 6px; min-width: 0; color: {{r.sc}}"><dc-import name="StatusIcon" kind="{{r.k}}" size="14" hint-size="14px,14px"></dc-import><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.s}}</span></span>
+                    <span role="cell" style="min-width: 0; font-size: 11.5px; color: var(--tx-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.env}}</span>
+                    <span role="cell" style="text-align: right; font-variant-numeric: tabular-nums">{{r.ses}}</span>
+                    <span role="cell" style="text-align: right; font-variant-numeric: tabular-nums">{{r.today}}</span>
+                    <span role="cell" style="text-align: right; font-variant-numeric: tabular-nums; font-weight: 600">{{r.week}}</span>
+                    <span role="cell" style="text-align: right; font-variant-numeric: tabular-nums; color: var(--tx-2)">{{r.usd}}</span>
+                    <span role="cell" style="text-align: right; font-variant-numeric: tabular-nums; color: {{r.fc}}; font-weight: {{r.fw}}">{{r.fail}}</span>
+                    <span role="cell" style="text-align: right; font-size: 11.5px; color: var(--tx-2); font-variant-numeric: tabular-nums">{{r.last}}</span>
+                  </div>
+                </sc-for>
+                <div role="row" style="display: grid; grid-template-columns: {{cols}}; column-gap: 12px; align-items: center; min-height: 32px; padding: 0 12px; border-top: 1px solid var(--sep); background: var(--fill-1); font-size: 12px; font-weight: 600">
+                  <span role="cell">Всего</span><span></span><span></span><span role="cell" style="text-align: right">27</span><span role="cell" style="text-align: right">1,84 млн</span><span role="cell" style="text-align: right">9,21 млн</span><span role="cell" style="text-align: right; color: var(--tx-2)">≈ 62,08 $</span><span role="cell" style="text-align: right; color: var(--st-red-tx)">13</span><span></span>
+                </div>
+              </div>
+              <span style="padding-left: 4px; font-size: 11px; line-height: 15px; color: var(--tx-3)">Токены: сегодня и за 7 дней. Оценка в долларах по ценам API, это не счёт. Чат и Cowork без папки проекта попадают в «Без проекта».</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{p.one}}" hint-placeholder-val="{{ false }}">
+            <header style="flex: none; padding: 12px 24px; border-bottom: 1px solid var(--sep); display: flex; flex-direction: column; gap: 6px">
+              <span style="font-size: 11.5px; color: var(--tx-2)">Проекты › shop-api</span>
+              <div style="display: flex; align-items: center; gap: 10px">
+                <h1 style="margin: 0; font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 18px; line-height: 24px; font-weight: 600">shop-api</h1>
+                <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--st-wait)"><dc-import name="StatusIcon" kind="waiting" size="14" hint-size="14px,14px"></dc-import>Ждёт вас · 42 мин</span>
+                <span style="flex: 1"></span>
+                <button type="button" style="height: 26px; padding: 0 12px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12.5px">Открыть в VS Code</button>
+              </div>
+              <span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: var(--tx-2)">~/dev/shop-api · ветка main</span>
+            </header>
+            <div style="flex: 1; min-height: 0; overflow: auto; padding: 14px 24px 20px; display: flex; flex-direction: column; gap: 16px">
+              <div style="display: flex; align-items: center; gap: 10px">
+                <div role="group" aria-label="Период" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+                  <sc-for list="{{periods}}" as="r" hint-placeholder-count="3"><button type="button" aria-pressed="{{r.on}}" style="height: 22px; padding: 0 10px; border: 0; border-radius: 4px; background: {{r.bg}}; box-shadow: {{r.sh}}; color: var(--tx-1); font: inherit; font-size: 12px">{{r.t}}</button></sc-for>
+                  <button type="button" style="height: 22px; padding: 0 10px; border: 0; border-radius: 4px; background: transparent; color: var(--tx-1); font: inherit; font-size: 12px">Даты…</button>
+                </div>
+                <select aria-label="Среда" style="height: 26px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12px; padding: 0 6px"><option>Все среды · 2</option><option>VS Code</option><option>Терминал</option></select>
+                <span style="flex: 1"></span>
+                <span style="font-size: 11.5px; color: var(--tx-3)">30 октября — сегодня</span>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 2.2fr; gap: 10px">
+                <sc-for list="{{stats}}" as="s" hint-placeholder-count="4">
+                  <div style="padding: 10px 12px; border-radius: 8px; background: var(--fill-1); display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: var(--tx-2)">{{s.l}}</span><span style="font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; color: {{s.c}}">{{s.v}}</span></div>
+                </sc-for>
+                <div style="padding: 8px 12px; border-radius: 8px; background: var(--fill-1); display: flex; flex-direction: column; gap: 4px">
+                  <span style="font-size: 11px; color: var(--tx-2)">Токены по дням, млн</span>
+                  <div style="flex: 1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; align-items: end">
+                    <sc-for list="{{pdays}}" as="d" hint-placeholder-count="7">
+                      <div style="display: flex; flex-direction: column; align-items: center; gap: 2px"><span style="font-size: 9.5px; color: var(--tx-2); font-variant-numeric: tabular-nums">{{d.v}}</span><span style="width: 100%; max-width: 22px; height: {{d.h}}px; border-radius: 2px 2px 0 0; background: var(--meter)"></span><span style="font-size: 9.5px; color: var(--tx-3)">{{d.l}}</span></div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+
+              <section aria-label="Идёт сейчас" style="display: flex; flex-direction: column; gap: 6px">
+                <h2 style="margin: 0 0 0 4px; font-size: 13px; font-weight: 600">Идёт сейчас · 1</h2>
+                <div style="padding: 10px 12px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--st-wait); background: var(--st-wait-soft); display: flex; flex-direction: column; gap: 6px">
+                  <div style="display: grid; grid-template-columns: 16px minmax(0, 1fr) repeat(4, max-content); column-gap: 14px; align-items: center; font-size: 12.5px">
+                    <dc-import name="StatusIcon" kind="waiting" size="16" hint-size="16px,16px"></dc-import>
+                    <span style="min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-weight: 600">Сегодня 15:10</span><span style="color: var(--tx-2)"> · VS Code · идёт 1 ч 11 мин</span></span>
+                    <span style="color: var(--tx-2); font-variant-numeric: tabular-nums">14 агентов</span>
+                    <span style="font-variant-numeric: tabular-nums; font-weight: 600">52K</span>
+                    <span style="color: var(--tx-2); font-variant-numeric: tabular-nums">≈ 0,35 $</span>
+                    <button type="button" style="height: 24px; padding: 0 10px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12px">Открыть сессию</button>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 3px; padding-left: 30px; font-size: 12px">
+                    <span style="color: var(--st-wait); font-weight: 500">Главный агент ждёт разрешения: <span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px">Bash</span> · команда</span>
+                    <span style="color: var(--st-red-tx)">Workflow «Миграция данных»: упали все 12 · лимит, сброс в 18:40</span>
+                    <span style="color: var(--st-red-tx)">Субагент «Миграции»: ошибка API, перегрузка</span>
+                  </div>
+                </div>
+              </section>
+
+              <section aria-label="Прошлые сессии" style="display: flex; flex-direction: column; gap: 6px">
+                <div style="display: flex; align-items: baseline; gap: 8px; padding-left: 4px"><h2 style="margin: 0; font-size: 13px; font-weight: 600">Прошлые сессии · 8</h2><span style="font-size: 11px; color: var(--tx-3)">[ПРИМЕР] даты, длительности и число агентов</span></div>
+                <div role="table" aria-label="Прошлые сессии" style="border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); overflow: hidden">
+                  <div role="row" style="display: grid; grid-template-columns: {{scols}}; column-gap: 12px; padding: 6px 12px; background: var(--fill-1); font-size: 11px; font-weight: 600; color: var(--tx-2)">
+                    <span role="columnheader">Начало</span><span role="columnheader">Среда</span><span role="columnheader" style="text-align: right">Длилась</span><span role="columnheader" style="text-align: right">Агенты</span><span role="columnheader" style="text-align: right">Токены</span><span role="columnheader" style="text-align: right">Оценка</span><span role="columnheader">Итог</span>
+                  </div>
+                  <sc-for list="{{past}}" as="r" hint-placeholder-count="8">
+                    <div role="row" style="display: grid; grid-template-columns: {{scols}}; column-gap: 12px; align-items: center; min-height: 28px; padding: 0 12px; border-top: 1px solid var(--sep); font-size: 12px; font-variant-numeric: tabular-nums">
+                      <span role="cell">{{r.t}}</span><span role="cell" style="color: var(--tx-2)">{{r.env}}</span><span role="cell" style="text-align: right; color: var(--tx-2)">{{r.dur}}</span><span role="cell" style="text-align: right; color: var(--tx-2)">{{r.ag}}</span><span role="cell" style="text-align: right; font-weight: 600">{{r.tok}}</span><span role="cell" style="text-align: right; color: var(--tx-2)">{{r.usd}}</span>
+                      <span role="cell" style="display: inline-flex; align-items: center; gap: 6px; color: {{r.c}}"><dc-import name="StatusIcon" kind="{{r.k}}" size="14" hint-size="14px,14px"></dc-import>{{r.res}}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </section>
+            </div>
+          </sc-if>
+        </main>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2520,"height":1820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+    const on = { bg: 'var(--btn)', sh: '0 0 0 0.5px var(--btn-bd)' }, off = { bg: 'transparent', sh: 'none' };
+    const R = 'var(--st-red-tx)', G = 'var(--st-done)', T1 = 'var(--tx-1)', T2 = 'var(--tx-2)', RUN = 'var(--st-run)', W = 'var(--st-wait)';
+    const nav = ['Сейчас', 'Проекты', 'Расход', 'Запросы', 'Активность', 'Потери', 'Морж', 'Настройки']
+      .map((t) => ({ t, cur: t === 'Проекты' ? 'page' : 'false', bg: t === 'Проекты' ? 'var(--fill-2)' : 'transparent', fw: t === 'Проекты' ? 500 : 400, badge: t === 'Запросы' ? '1' : '', badgeL: '1 ждёт ответа' }));
+    const pane = (cls, list, label) => ({ cls, list, one: !list, label, nav, owlMood: 'Ждёт', owlText: '1 ждёт вас',
+      sPressed: 'false', tPressed: 'true', sBg: off.bg, sSh: off.sh, tBg: on.bg, tSh: on.sh });
+    const periods = ['Сегодня', '7 дней', '30 дней'].map((t) => ({ t, on: t === '7 дней' ? 'true' : 'false', bg: t === '7 дней' ? on.bg : off.bg, sh: t === '7 дней' ? on.sh : off.sh }));
+    const P = (o) => Object.assign({ ff: mono, bg: 'transparent', fc: T2, fw: 400 }, o);
+    const raw = [ ['30.10', 0.04], ['31.10', 0.09], ['1.11', 0.50], ['2.11', 1.03], ['3.11', 0.14], ['4.11', 0.88], ['Сег.', 0.05] ];
+    const pdays = raw.map(([l, v]) => ({ l, v: v.toFixed(2).replace('.', ','), h: Math.max(2, Math.round(v / 1.03 * 34)) }));
+    const S = (t, env, dur, ag, tok, usd, k, res, c) => ({ t, env, dur, ag, tok, usd, k, res, c: c || T2 });
+    return {
+      panes: [ pane('td', true, 'Тёмная · Проекты'), pane('tl', true, 'Светлая · Проекты'), pane('td', false, 'Тёмная · Проект shop-api'), pane('tl', false, 'Светлая · Проект shop-api') ],
+      periods,
+      cols: 'minmax(0, 1.3fr) minmax(0, 1.5fr) minmax(0, 1.3fr) 56px 70px 70px 70px 48px 76px',
+      head: [ ['Проект', 'left'], ['Сейчас', 'left'], ['Среды', 'left'], ['Сессий', 'right'], ['Сегодня', 'right'], ['7 дней', 'right'], ['Оценка', 'right'], ['Сбои', 'right'], ['Последняя', 'right'] ].map(([t, a]) => ({ t, a })),
+      projects: [
+        P({ n: 'shop-api', k: 'waiting', s: 'Ждёт вас · 42 мин', sc: W, env: 'VS Code, Терминал', ses: '9', today: '52K', week: '2,73 млн', usd: '≈ 18,40 $', fail: '13', fc: R, fw: 600, last: '16:12', bg: 'var(--st-wait-soft)' }),
+        P({ n: 'boris', k: 'running', s: 'Работает · 3 агента', sc: RUN, env: 'Терминал', ses: '6', today: '1,75 млн', week: '4,86 млн', usd: '≈ 32,76 $', fail: '0', last: 'сейчас' }),
+        P({ n: 'deploy-tools', k: 'unknown', s: 'Нет связи с build-server', sc: T2, env: 'Удалённая · build-server', ses: '3', today: '0', week: '0,31 млн', usd: '≈ 2,09 $', fail: '0', last: 'вчера 22:40' }),
+        P({ n: 'landing', k: 'done', s: 'Завершена', sc: G, env: 'Claude Desktop', ses: '4', today: '24K', week: '1,12 млн', usd: '≈ 7,55 $', fail: '0', last: '15:47' }),
+        P({ n: 'Без проекта', ff: sans, k: 'running', s: 'Cowork работает · чат готов', sc: RUN, env: 'Cowork, Чат', ses: '5', today: '14K', week: '0,19 млн', usd: '≈ 1,28 $', fail: '0', last: 'сейчас' })
+      ],
+      stats: [ { l: 'Сессий', v: '9', c: T1 }, { l: 'Токены', v: '2,73 млн', c: T1 }, { l: 'Оценка', v: '≈ 18,40 $', c: T1 }, { l: 'Сбои', v: '13', c: R } ],
+      pdays,
+      scols: '110px 90px 80px 60px 80px 80px minmax(0, 1fr)',
+      past: [
+        S('4.11 · 11:05', 'Терминал', '1 ч 32 мин', '5', '0,88 млн', '≈ 5,93 $', 'done', 'Завершена', G),
+        S('3.11 · 17:40', 'VS Code', '22 мин', '1', '138K', '≈ 0,93 $', 'done', 'Завершена', G),
+        S('2.11 · 19:15', 'VS Code', '47 мин', '3', '0,61 млн', '≈ 4,11 $', 'done', 'Завершена', G),
+        S('2.11 · 10:30', 'Терминал', '58 мин', '4', '0,42 млн', '≈ 2,83 $', 'stopped', 'Остановлена вами'),
+        S('1.11 · 16:00', 'VS Code', '34 мин', '2', '0,29 млн', '≈ 1,95 $', 'done', 'Завершена', G),
+        S('1.11 · 09:50', 'VS Code', '25 мин', '1', '0,21 млн', '≈ 1,42 $', 'done', 'Завершена', G),
+        S('31.10 · 14:20', 'Терминал', '11 мин', '1', '90K', '≈ 0,61 $', 'done', 'Завершена', G),
+        S('30.10 · 12:00', 'VS Code', '6 мин', '1', '40K', '≈ 0,27 $', 'done', 'Завершена', G)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · особые состояния</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--focus:#0A64D8;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--mono-bg:rgba(0,0,0,.05);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;--rb-done:#2B7D4E;--rb-run:#8CC7CB;--rb-fail:#E5383B;--rb-cancel:#A2A2A8;color:#1D1D1F}
+.td{--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--focus:#3D8BFF;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--mono-bg:rgba(255,255,255,.07);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;--rb-done:#3E9D66;--rb-run:#2F7479;--rb-fail:#E5383B;--rb-cancel:#6A6A70;color:#F2F2F4}
+
+</style>
+</helmet>
+<div style="width: 2520px; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+    <div class="{{th.cls}}" style="background: var(--desk); padding: 22px 30px 30px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; color: var(--tx-1)">
+      <span style="grid-column: 1 / -1; font-size: 13px; font-weight: 600; color: var(--tx-2)">{{th.label}}</span>
+      <sc-for list="{{tiles}}" as="t" hint-placeholder-count="7">
+        <div style="display: flex; flex-direction: column; gap: 8px; min-width: 0">
+          <span style="font-size: 12.5px; font-weight: 600">{{t.name}}</span>
+          <div style="height: 380px; border-radius: 10px; overflow: hidden; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 10px 26px rgba(0,0,0,.22); display: flex; flex-direction: column">
+            <div style="flex: none; height: 34px; display: flex; align-items: center; gap: 7px; padding: 0 12px; background: var(--side); border-bottom: 1px solid var(--sep)"><span style="width: 11px; height: 11px; border-radius: 6px; background: #FF5F57"></span><span style="width: 11px; height: 11px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 11px; height: 11px; border-radius: 6px; background: #28C840"></span><span style="flex: 1; text-align: center; font-size: 12px; font-weight: 600">{{t.page}}</span><span style="width: 40px"></span></div>
+            <sc-if value="{{t.banner}}" hint-placeholder-val="{{ true }}">
+              <div role="status" style="flex: none; display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: {{t.bbg}}; border-bottom: 1px solid var(--sep)">
+                <dc-import name="StatusIcon" kind="{{t.icon}}" size="16" hint-size="16px,16px"></dc-import>
+                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12.5px; font-weight: 600; color: {{t.tc}}">{{t.title}}</span><span style="font-size: 12px; line-height: 17px; color: var(--tx-2)">{{t.text}}</span>
+                  <sc-if value="{{t.prog}}" hint-placeholder-val="{{ false }}"><span role="progressbar" aria-valuenow="64" aria-valuemin="0" aria-valuemax="100" style="margin-top: 6px; height: 4px; border-radius: 2px; background: var(--meter-track); overflow: hidden"><span style="display: block; width: 64%; height: 100%; background: var(--st-run)"></span></span></sc-if>
+                </div>
+                <sc-if value="{{t.btns}}" hint-placeholder-val="{{ false }}"><span style="display: flex; flex-direction: column; gap: 4px"><sc-for list="{{t.btns}}" as="b" hint-placeholder-count="2"><button type="button" style="height: 24px; padding: 0 10px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12px; white-space: nowrap">{{b.t}}</button></sc-for></span></sc-if>
+              </div>
+            </sc-if>
+            <sc-if value="{{t.empty}}" hint-placeholder-val="{{ false }}">
+              <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; text-align: center">
+                <dc-import name="Owl" mood="Сломалось" size="110" variant="full" hint-size="110px,110px"></dc-import>
+                <span style="font-size: 14px; font-weight: 700">Не нахожу папку Claude</span>
+                <span style="font-size: 12px; line-height: 17px; color: var(--tx-2)">Ищу в ~/.claude. Если Claude Code хранит данные в другом месте, укажите папку.</span>
+                <span style="display: flex; gap: 6px"><button type="button" style="height: 24px; padding: 0 10px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12px; white-space: nowrap">Скопировать диагностику</button><button type="button" style="height: 24px; padding: 0 12px; border-radius: 6px; border: 0; background: var(--focus); color: #FFFFFF; font: inherit; font-size: 12px">Выбрать папку…</button></span>
+              </div>
+            </sc-if>
+            <sc-if value="{{t.rows}}" hint-placeholder-val="{{ true }}">
+              <div style="flex: 1; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; opacity: {{t.op}}">
+                <sc-for list="{{t.rows}}" as="r" hint-placeholder-count="4">
+                  <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr) max-content; column-gap: 8px; align-items: center; min-height: 26px; font-size: 12px"><dc-import name="StatusIcon" kind="{{r.k}}" size="14" hint-size="14px,14px"></dc-import><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.t}}</span><span style="font-size: 11px; color: {{r.c}}; font-variant-numeric: tabular-nums">{{r.r}}</span></div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+          <span style="font-size: 11.5px; line-height: 16px; color: var(--tx-2)">{{t.note}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2520,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+
+    const ON = { bg: 'var(--btn)', sh: '0 0 0 0.5px var(--btn-bd)' }, OFF = { bg: 'transparent', sh: 'none' };
+    const navFor = (cur, badge) => ['Сейчас', 'Проекты', 'Расход', 'Запросы', 'Активность', 'Потери', 'Морж', 'Настройки']
+      .map((t) => ({ t, cur: t === cur ? 'page' : 'false', bg: t === cur ? 'var(--fill-2)' : 'transparent', fw: t === cur ? 500 : 400, badge: t === 'Запросы' ? (badge === undefined ? '1' : badge) : '', badgeL: '1 ждёт ответа' }));
+    const winPane = (cls, label, cur, o) => Object.assign({ cls, label, nav: navFor(cur), owlMood: 'Ждёт', owlText: '1 ждёт вас',
+      sPressed: 'false', tPressed: 'true', sBg: OFF.bg, sSh: OFF.sh, tBg: ON.bg, tSh: ON.sh }, o || {});
+
+    const T2 = 'var(--tx-2)', T3 = 'var(--tx-3)';
+    const base = [ { k: 'waiting', t: 'shop-api · VS Code · ждёт вас', r: '42 мин', c: 'var(--st-wait)' }, { k: 'running', t: 'boris · Терминал · 3 агента', r: '1 ч 06 мин', c: T2 }, { k: 'running', t: 'Отчёт за квартал · Cowork', r: '24 мин', c: T2 }, { k: 'done', t: 'landing · Claude Desktop · завершена', r: '15:47', c: T2 } ];
+    const Tl = (o) => Object.assign({ banner: true, empty: false, rows: base, op: 1, prog: false, btns: null, bbg: 'var(--fill-1)', tc: 'var(--tx-1)', icon: 'unknown', page: 'Сейчас' }, o);
+    return {
+      themes: [ { cls: 'td', label: 'Тёмная тема' }, { cls: 'tl', label: 'Светлая тема' } ],
+      tiles: [
+        Tl({ name: 'Статистика заполняется', page: 'Расход', icon: 'running', title: 'Собираю статистику', text: 'Читаю логи Claude за прошлые дни. Интерфейс работает, цифры за прошлое дополняются.', prog: true,
+             rows: [ { k: 'done', t: 'Сегодня · 1,84 млн', r: 'готово', c: T2 }, { k: 'done', t: 'Вчера · 1,27 млн', r: 'готово', c: T2 }, { k: 'running', t: '3 ноября', r: 'считаю…', c: T3 }, { k: 'unknown', t: '2 ноября', r: 'ещё нет', c: T3 } ], note: 'Индикатор в шапке страницы, остальное доступно.' }),
+        Tl({ name: 'Нет интернета', page: 'Мини-окно', icon: 'unknown', title: 'Нет интернета', text: 'Не работают Telegram, обновление лимитов и обновление приложения. Всё остальное работает.',
+             rows: [ { k: 'unknown', t: '5 часов · 62 %', r: 'обновлено 3 ч 12 мин назад', c: T3 }, { k: 'unknown', t: 'Неделя · 34 %', r: 'обновлено 3 ч 12 мин назад', c: T3 } ].concat(base.slice(0, 2)), note: 'Лимиты показаны с настоящим возрастом данных.' }),
+        Tl({ name: 'Подключённые хуки сломаны', icon: 'failed', bbg: 'var(--st-red-soft)', tc: 'var(--st-red-tx)', title: 'Ответы из Boris не работают', text: 'Хуки в настройках Claude повреждены. Данные продолжают обновляться.', btns: [{ t: 'Починить' }], note: 'Отвечать можно в самом Claude, пока хуки не починены.' }),
+        Tl({ name: 'Хуки запрещены политикой компании', icon: 'stopped', title: 'Хуки запрещены политикой компании', text: 'Нет мгновенных обновлений и ответов из Boris. Всё остальное работает.', note: 'Кнопки «Подключить ответы» нет: обойти политику Boris не предлагает.' }),
+        Tl({ name: 'Папка Claude не найдена', banner: false, empty: true, rows: null, note: 'Морж в позе «Сломалось», выбор папки и диагностика.' }),
+        Tl({ name: 'Формат данных изменился', icon: 'doneErr', title: 'Claude поменял формат данных', text: 'Часть данных может не отображаться. Скопируйте диагностику, чтобы мы обновили Boris.', btns: [{ t: 'Скопировать диагностику' }], op: .7, note: 'Видно всё, что удалось прочитать.' }),
+        Tl({ name: 'Есть новая версия', icon: 'done', bbg: 'var(--st-wait-soft)', title: 'Доступна версия [ПРИМЕР] 1.1', text: 'Сессии Claude обновление не затронет.', btns: [{ t: 'Обновить' }, { t: 'Что нового' }], note: 'Спокойная плашка, без всплывающих окон.' })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

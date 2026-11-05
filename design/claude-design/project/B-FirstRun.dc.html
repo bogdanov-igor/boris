@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · первый запуск</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--focus:#0A64D8;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--mono-bg:rgba(0,0,0,.05);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;--rb-done:#2B7D4E;--rb-run:#8CC7CB;--rb-fail:#E5383B;--rb-cancel:#A2A2A8;color:#1D1D1F}
+.td{--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--focus:#3D8BFF;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--mono-bg:rgba(255,255,255,.07);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;--rb-done:#3E9D66;--rb-run:#2F7479;--rb-fail:#E5383B;--rb-cancel:#6A6A70;color:#F2F2F4}
+
+</style>
+</helmet>
+<div style="width: 2520px; height: 3640px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{panes}}" as="p" hint-placeholder-count="4">
+    <div class="{{p.cls}}" style="background: var(--desk); padding: 20px 30px 40px; display: flex; flex-direction: column; gap: 10px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{p.label}}</span>
+      <div style="position: relative; width: 1200px; height: 800px; border-radius: 10px; overflow: hidden; display: flex; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 18px 40px rgba(0,0,0,.28)">
+        <nav aria-label="Разделы" style="width: 210px; flex: none; background: var(--side); border-right: 1px solid var(--sep); display: flex; flex-direction: column; padding: 10px 10px 12px; box-sizing: border-box">
+          <div style="height: 22px; display: flex; gap: 8px; align-items: center; padding-left: 4px; margin-bottom: 16px"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span></div>
+          <sc-for list="{{p.nav}}" as="n" hint-placeholder-count="6">
+            <a href="#" aria-current="{{n.cur}}" style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: 6px; background: {{n.bg}}; color: var(--tx-1); text-decoration: none; font-size: 13px; font-weight: {{n.fw}}">
+              <span style="flex: 1">{{n.t}}</span>
+              <sc-if value="{{n.badge}}" hint-placeholder-val="{{ false }}"><span aria-label="{{n.badgeL}}" style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--st-wait); color: #FFFFFF; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums">{{n.badge}}</span></sc-if>
+            </a>
+          </sc-for>
+          <span style="flex: 1"></span>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0 10px">
+            <dc-import name="Owl" mood="{{p.owlMood}}" size="190" variant="full" hint-size="190px,190px"></dc-import>
+            <span style="font-size: 12px; line-height: 15px; color: var(--tx-2); text-align: center">{{p.owlText}}</span>
+          </div>
+          <div role="group" aria-label="Режим" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+            <button type="button" aria-pressed="{{p.sPressed}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.sBg}}; box-shadow: {{p.sSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Простой</button>
+            <button type="button" aria-pressed="{{p.tPressed}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.tBg}}; box-shadow: {{p.tSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Технический</button>
+          </div>
+        </nav>
+
+        <main style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; position: relative">
+          <header style="flex: none; padding: 14px 24px 12px; display: flex; align-items: baseline; gap: 12px; border-bottom: 1px solid var(--sep)">
+            <h1 style="margin: 0; font-size: 18px; line-height: 24px; font-weight: 600">Сейчас</h1><span style="font-size: 12.5px; color: var(--tx-2)">Токены сегодня 1,84 млн · 5 часов 62 % · неделя 34 %</span>
+          </header>
+          <div style="flex: 1; padding: 14px 24px; display: flex; flex-direction: column; gap: 14px; opacity: {{p.dim}}">
+            <section style="display: flex; flex-direction: column; gap: 6px"><h2 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--st-wait)">Ждут вас · 1</h2>
+              <div style="display: grid; grid-template-columns: 16px minmax(0, 1fr) max-content; column-gap: 10px; align-items: center; padding: 10px 12px; border-radius: 8px; background: var(--st-wait-soft); font-size: 12.5px"><dc-import name="StatusIcon" kind="waiting" size="16" hint-size="16px,16px"></dc-import><span><span style="font-family: 'SF Mono', ui-monospace, Menlo, monospace; font-weight: 600">shop-api</span> <span style="color: var(--tx-2)">· VS Code · хочет выполнить команду</span></span><span style="color: var(--tx-2)">42 мин</span></div>
+            </section>
+            <section style="display: flex; flex-direction: column; gap: 2px"><h2 style="margin: 0 0 4px; font-size: 13px; font-weight: 600">Активные сессии · 4</h2>
+              <sc-for list="{{sess}}" as="s" hint-placeholder-count="4">
+                <div style="display: grid; grid-template-columns: 16px 170px minmax(0, 1fr) max-content; column-gap: 10px; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 6px; font-size: 12.5px"><dc-import name="StatusIcon" kind="{{s.k}}" size="16" hint-size="16px,16px"></dc-import><span style="font-family: {{s.ff}}; font-weight: 600">{{s.n}}</span><span style="color: var(--tx-2)">{{s.env}} · {{s.t}}</span><span style="color: var(--tx-2); font-size: 11.5px">{{s.d}}</span></div>
+              </sc-for>
+            </section>
+            <section style="display: flex; flex-direction: column; gap: 2px"><h2 style="margin: 0 0 4px; font-size: 13px; font-weight: 600">Свежие сбои · 2</h2>
+              <div style="display: grid; grid-template-columns: 16px minmax(0, 1fr) max-content; column-gap: 10px; align-items: center; min-height: 32px; padding: 0 12px; font-size: 12.5px"><dc-import name="StatusIcon" kind="allFailed" size="16" hint-size="16px,16px"></dc-import><span>Миграция данных <span style="color: var(--tx-2)">· shop-api · упали все 12 · лимит, сброс в 18:40</span></span><span style="font-size: 11.5px; color: var(--tx-2)">16:05</span></div>
+              <div style="display: grid; grid-template-columns: 16px minmax(0, 1fr) max-content; column-gap: 10px; align-items: center; min-height: 32px; padding: 0 12px; font-size: 12.5px"><dc-import name="StatusIcon" kind="failed" size="16" hint-size="16px,16px"></dc-import><span>Субагент «Миграции» <span style="color: var(--tx-2)">· shop-api · ошибка API: перегрузка</span></span><span style="font-size: 11.5px; color: var(--tx-2)">16:12</span></div>
+            </section>
+          </div>
+
+          <sc-if value="{{p.offer}}" hint-placeholder-val="{{ false }}">
+            <div role="dialog" aria-label="Предложение подключить ответы" style="position: absolute; right: 20px; bottom: 20px; width: 400px; padding: 14px 16px; box-sizing: border-box; border-radius: 12px; background: var(--pop); box-shadow: 0 0 0 0.5px var(--sep), 0 16px 40px rgba(0,0,0,.3); display: flex; flex-direction: column; gap: 10px">
+              <div style="display: flex; gap: 12px; align-items: flex-start">
+                <dc-import name="Owl" mood="Дежурит" size="64" variant="simple" hint-size="64px,64px"></dc-import>
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 14px; font-weight: 700">Подключить ответы на запросы?</span><span style="font-size: 12.5px; line-height: 18px; color: var(--tx-2)">Я уже вижу все сессии. С подключёнными ответами события придут мгновенно, а на запросы Claude можно отвечать прямо отсюда. Для этого я поменяю настройки Claude и покажу, что именно.</span></div>
+                <button type="button" aria-label="Закрыть" style="width: 20px; height: 20px; padding: 0; border: 0; border-radius: 10px; background: var(--fill-1); color: var(--tx-2); font: inherit; font-size: 12px">×</button>
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 8px; align-items: center"><span style="flex: 1; font-size: 11px; color: var(--tx-3)">Можно вернуться в «Подключениях»</span><button type="button" style="height: 26px; padding: 0 12px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12.5px">Не сейчас</button><button type="button" style="height: 26px; padding: 0 14px; border-radius: 6px; border: 0; background: var(--focus); color: #FFFFFF; font: inherit; font-size: 12.5px">Показать изменения</button></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{p.sheet}}" hint-placeholder-val="{{ false }}">
+            <div style="position: absolute; inset: 0; background: rgba(0,0,0,.28)"></div>
+            <div role="dialog" aria-label="{{p.sheetTitle}}" style="position: absolute; left: 50%; top: 0; transform: translateX(-50%); width: 520px; padding: 18px 20px 16px; box-sizing: border-box; border-radius: 0 0 12px 12px; background: var(--pop); box-shadow: 0 0 0 0.5px var(--sep), 0 18px 40px rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 12px">
+              <div style="display: flex; gap: 12px; align-items: center"><dc-import name="Owl" mood="{{p.sheetMood}}" size="48" variant="simple" hint-size="48px,48px"></dc-import><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 700">{{p.sheetTitle}}</span><span style="font-size: 12.5px; color: var(--tx-2)">{{p.sheetSub}}</span></div></div>
+              <sc-if value="{{p.diff}}" hint-placeholder-val="{{ false }}">
+                <div style="border-radius: 8px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--sep); background: var(--win); font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; line-height: 18px">
+                  <div style="display: flex; justify-content: space-between; padding: 5px 10px; border-bottom: 1px solid var(--sep); font-size: 11px"><span>~/.claude/settings.json</span><span style="color: var(--tx-3); font-family: -apple-system, BlinkMacSystemFont, sans-serif">[ПРИМЕР] состав хуков</span></div>
+                  <sc-for list="{{diff}}" as="d" hint-placeholder-count="7"><div style="display: grid; grid-template-columns: 14px minmax(0, 1fr); padding: 0 10px; background: {{d.bg}}; color: {{d.c}}"><span>{{d.s}}</span><span style="white-space: pre">{{d.t}}</span></div></sc-for>
+                </div>
+                <span style="font-size: 11.5px; line-height: 16px; color: var(--tx-2)">Старая версия файла сохранится рядом. Отключить можно в «Подключениях», тогда настройки вернутся как были.</span>
+              </sc-if>
+              <sc-if value="{{p.checks}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 8px; background: var(--fill-1); font-size: 12.5px">
+                  <sc-for list="{{p.checks}}" as="c" hint-placeholder-count="3"><div style="display: flex; align-items: center; gap: 8px"><dc-import name="StatusIcon" kind="{{c.k}}" size="14" hint-size="14px,14px"></dc-import><span style="flex: 1">{{c.t}}</span><span style="font-size: 11.5px; color: var(--tx-2)">{{c.r}}</span></div></sc-for>
+                </div>
+              </sc-if>
+              <div style="display: flex; justify-content: flex-end; gap: 8px"><sc-for list="{{p.btns}}" as="b" hint-placeholder-count="2"><button type="button" style="{{b.st}}">{{b.t}}</button></sc-for></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{p.notch}}" hint-placeholder-val="{{ false }}">
+            <div role="dialog" aria-label="Значок за чёлкой" style="position: absolute; right: 20px; bottom: 20px; width: 420px; padding: 14px 16px; box-sizing: border-box; border-radius: 12px; background: var(--pop); box-shadow: 0 0 0 0.5px var(--sep), 0 16px 40px rgba(0,0,0,.3); display: flex; flex-direction: column; gap: 10px">
+              <div style="display: flex; gap: 12px; align-items: flex-start">
+                <dc-import name="Owl" mood="Хм?" size="64" variant="simple" hint-size="64px,64px"></dc-import>
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 14px; font-weight: 700">Мой значок ушёл за чёлку</span><span style="font-size: 12.5px; line-height: 18px; color: var(--tx-2)">В строке меню не хватило места. Пока открывайте меня клавишей <b style="color: var(--tx-1)">⌥⌘O</b>. Чтобы вернуть значок, уберите лишние: зажмите ⌘ и перетащите их из строки меню.</span></div>
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 8px"><button type="button" style="height: 26px; padding: 0 12px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12.5px">Сменить клавишу</button><button type="button" style="height: 26px; padding: 0 14px; border-radius: 6px; border: 0; background: var(--focus); color: #FFFFFF; font: inherit; font-size: 12.5px">Понятно</button></div>
+            </div>
+          </sc-if>
+        </main>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2520,"height":3640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+
+    const ON = { bg: 'var(--btn)', sh: '0 0 0 0.5px var(--btn-bd)' }, OFF = { bg: 'transparent', sh: 'none' };
+    const navFor = (cur, badge) => ['Сейчас', 'Проекты', 'Расход', 'Запросы', 'Активность', 'Потери', 'Морж', 'Настройки']
+      .map((t) => ({ t, cur: t === cur ? 'page' : 'false', bg: t === cur ? 'var(--fill-2)' : 'transparent', fw: t === cur ? 500 : 400, badge: t === 'Запросы' ? (badge === undefined ? '1' : badge) : '', badgeL: '1 ждёт ответа' }));
+    const winPane = (cls, label, cur, o) => Object.assign({ cls, label, nav: navFor(cur), owlMood: 'Ждёт', owlText: '1 ждёт вас',
+      sPressed: 'false', tPressed: 'true', sBg: OFF.bg, sSh: OFF.sh, tBg: ON.bg, tSh: ON.sh }, o || {});
+
+    const BTN = "height: 26px; padding: 0 12px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12.5px", PRI = "height: 26px; padding: 0 14px; border-radius: 6px; border: 0; background: var(--focus); color: #FFFFFF; font: inherit; font-size: 12.5px";
+    const sess = [
+      { k: 'running', n: 'boris', ff: mono, env: 'Терминал', t: '3 агента и workflow «Аудит зависимостей»', d: '1 ч 06 мин' },
+      { k: 'running', n: 'Отчёт за квартал', ff: sans, env: 'Cowork', t: 'читает файлы', d: '24 мин' },
+      { k: 'done', n: 'landing', ff: mono, env: 'Claude Desktop', t: 'завершена', d: '15:47' },
+      { k: 'unknown', n: 'deploy-tools', ff: mono, env: 'build-server', t: 'нет связи', d: '' }
+    ];
+    const add = 'var(--ok-soft)', G = 'var(--st-done)';
+    const diff = [ ['', '{', 'transparent', 'var(--tx-2)'], ['', '  "model": "…",', 'transparent', 'var(--tx-2)'], ['+', '  "hooks": {', add, G], ['+', '    "PermissionRequest": [ … boris-hook … ],', add, G], ['+', '    "PreToolUse": [ … boris-hook … ],', add, G], ['+', '    "Stop": [ … boris-hook … ]', add, G], ['+', '  }', add, G], ['', '}', 'transparent', 'var(--tx-2)'] ]
+      .map(([s, t, bg, c]) => ({ s, t, bg, c }));
+    const P = (cls, label, o) => winPane(cls, label, 'Сейчас', Object.assign({ dim: 1, offer: false, sheet: false, notch: false, diff: false, checks: null, btns: [], sheetTitle: '', sheetSub: '', sheetMood: 'Дежурит' }, o));
+    return {
+      sess, diff,
+      panes: [
+        P('td', 'Тёмная · 1. Boris уже работает, сверху необязательное предложение', { offer: true }),
+        P('tl', 'Светлая · 1. Предложение', { offer: true }),
+        P('td', 'Тёмная · 2. Точные изменения настроек Claude', { sheet: true, diff: true, dim: .5, sheetTitle: 'Что изменится в настройках Claude', sheetSub: 'Добавятся хуки Boris. Остальное останется как было.', btns: [{ t: 'Отмена', st: BTN }, { t: 'Подключить', st: PRI }] }),
+        P('tl', 'Светлая · 3. Проверка: жду первое событие', { sheet: true, dim: .5, sheetMood: 'Настороже', sheetTitle: 'Жду первое событие', sheetSub: 'Сделайте что-нибудь в любой сессии Claude Code.',
+          checks: [ { k: 'done', t: 'Настройки записаны', r: '' }, { k: 'running', t: 'Первое событие от Claude', r: 'жду 0:21' } ], btns: [{ t: 'Отмена', st: BTN }] }),
+        P('td', 'Тёмная · 4. Успех', { sheet: true, dim: .5, sheetMood: 'Радуется', sheetTitle: 'Ответы подключены', sheetSub: 'Теперь на запросы можно отвечать в чёлке, мини-окне и на странице «Запросы».',
+          checks: [ { k: 'done', t: 'Настройки записаны', r: '' }, { k: 'done', t: 'Первое событие от Claude', r: 'boris · [ПРИМЕР] 16:22' } ], btns: [{ t: 'Готово', st: PRI }] }),
+        P('tl', 'Светлая · 4. Успех', { sheet: true, dim: .5, sheetMood: 'Радуется', sheetTitle: 'Ответы подключены', sheetSub: 'Теперь на запросы можно отвечать в чёлке, мини-окне и на странице «Запросы».',
+          checks: [ { k: 'done', t: 'Настройки записаны', r: '' }, { k: 'done', t: 'Первое событие от Claude', r: 'boris · [ПРИМЕР] 16:22' } ], btns: [{ t: 'Готово', st: PRI }] }),
+        P('td', 'Тёмная · значок ушёл за чёлку', { notch: true }),
+        P('tl', 'Светлая · значок ушёл за чёлку', { notch: true })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

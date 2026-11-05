@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Boris · request card (English)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<section aria-label="{{c.title}}" style="box-sizing: border-box; width: 100%; padding: 12px 14px; border-radius: 10px; background: var(--card, var(--pop, #F6F6F7)); box-shadow: 0 0 0 0.5px var(--sep, rgba(0,0,0,.11)); display: flex; flex-direction: column; gap: 9px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif; color: var(--tx-1, #1D1D1F)">
+  <div style="display: flex; align-items: center; gap: 8px">
+    <dc-import name="StatusIcon" kind="{{c.icon}}" size="16" hint-size="16px,16px"></dc-import>
+    <span style="flex: 1; min-width: 0; font-size: 13px; line-height: 17px; font-weight: 600">{{c.title}}</span>
+    <span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; color: {{c.timerC}}; font-variant-numeric: tabular-nums">{{c.timer}}</span>
+  </div>
+  <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; color: var(--tx-2, #55555A)">
+    <span style="font-family: {{c.projF}}; color: var(--tx-1, #1D1D1F)">{{c.proj}}</span><span>·</span><span>{{c.env}}</span><span>·</span><span>{{c.agent}}</span>
+    <sc-if value="{{c.techMeta}}" hint-placeholder-val="{{ false }}"><span>·</span><span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11px">{{c.techMeta}}</span></sc-if>
+  </div>
+
+  <sc-if value="{{c.cmd}}" hint-placeholder-val="{{ false }}">
+    <div style="border-radius: 6px; background: var(--win, #FFFFFF); box-shadow: inset 0 0 0 1px var(--sep, rgba(0,0,0,.11)); overflow: hidden">
+      <code style="display: block; padding: 7px 9px; font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 12px; line-height: 17px; white-space: pre-wrap; word-break: break-all; {{c.clamp}}">{{c.cmd}}</code>
+      <sc-if value="{{c.more}}" hint-placeholder-val="{{ false }}"><button type="button" aria-expanded="false" style="width: 100%; height: 22px; border: 0; border-top: 1px solid var(--sep, rgba(0,0,0,.11)); background: transparent; color: var(--st-wait, #1D66C9); font: inherit; font-size: 11.5px; text-align: left; padding: 0 9px">{{c.more}}</button></sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{c.diff}}" hint-placeholder-val="{{ false }}">
+    <div style="border-radius: 6px; overflow: hidden; background: var(--win, #FFFFFF); box-shadow: inset 0 0 0 1px var(--sep, rgba(0,0,0,.11)); font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; line-height: 18px">
+      <div style="display: flex; justify-content: space-between; padding: 4px 9px; border-bottom: 1px solid var(--sep, rgba(0,0,0,.11)); font-size: 11px"><span>src/auth.swift</span><span><span style="color: var(--st-done, #1A7340)">+12</span> <span style="color: var(--st-red-tx, #B4262A)">−3</span></span></div>
+      <sc-for list="{{c.diff}}" as="d" hint-placeholder-count="4">
+        <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr); padding: 0 9px; background: {{d.bg}}; color: {{d.c}}"><span style="font-weight: 700">{{d.sign}}</span><span style="white-space: pre; overflow: hidden; text-overflow: ellipsis">{{d.s}}</span></div>
+      </sc-for>
+      <div style="padding: 3px 9px; border-top: 1px solid var(--sep, rgba(0,0,0,.11)); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif; font-size: 11px; color: var(--st-wait, #1D66C9)">Show all 15 lines</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{c.questions}}" hint-placeholder-val="{{ false }}">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <sc-for list="{{c.questions}}" as="q" hint-placeholder-count="2">
+        <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 4px">
+          <legend style="padding: 0 0 4px; font-size: 13px; font-weight: 500">{{q.q}} <span style="font-size: 11px; font-weight: 400; color: var(--tx-3, #6A6A6F)">{{q.hint}}</span></legend>
+          <sc-for list="{{q.opts}}" as="o" hint-placeholder-count="2">
+            <label style="display: flex; align-items: center; gap: 8px; min-height: 26px; padding: 0 8px; border-radius: 6px; background: {{o.bg}}; font-size: 12.5px">
+              <input type="{{q.type}}" name="{{q.name}}" checked="{{o.on}}" style="margin: 0">{{o.t}}
+            </label>
+          </sc-for>
+        </fieldset>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{c.plan}}" hint-placeholder-val="{{ false }}">
+    <div tabindex="0" style="max-height: 118px; overflow-y: auto; padding: 8px 10px; border-radius: 6px; background: var(--win, #FFFFFF); box-shadow: inset 0 0 0 1px var(--sep, rgba(0,0,0,.11)); font-size: 12.5px; line-height: 18px">
+      <span style="font-size: 10.5px; color: var(--tx-3, #6A6A6F)">[SAMPLE PLAN]</span>
+      <ol style="margin: 4px 0 0; padding-left: 18px">
+        <li>Add the orders_archive table.</li>
+        <li>Move orders older than a year.</li>
+        <li>Check the counts before and after.</li>
+        <li>Delete the moved rows from orders.</li>
+      </ol>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{c.text}}" hint-placeholder-val="{{ false }}">
+    <p style="margin: 0; font-size: 12.5px; line-height: 18px; color: var(--tx-2, #55555A)">{{c.text}}</p>
+  </sc-if>
+
+  <sc-if value="{{c.reason}}" hint-placeholder-val="{{ false }}">
+    <label style="display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--tx-2, #55555A)">{{c.reason}}
+      <textarea rows="2" placeholder="For example: make a backup first" style="resize: none; padding: 6px 8px; border-radius: 6px; border: 0; box-shadow: inset 0 0 0 1px var(--sep, rgba(0,0,0,.11)); background: var(--win, #FFFFFF); color: var(--tx-1, #1D1D1F); font: inherit; font-size: 12.5px"></textarea>
+    </label>
+  </sc-if>
+
+  <div style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap">
+    <sc-for list="{{c.btns}}" as="b" hint-placeholder-count="2">
+      <button type="button" style="height: 26px; padding: 0 10px; border-radius: 6px; border: 0.5px solid var(--btn-bd, rgba(0,0,0,.16)); background: var(--btn, #FFFFFF); color: var(--tx-1, #1D1D1F); font: inherit; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap">{{b.t}}<sc-if value="{{b.k}}" hint-placeholder-val="{{ false }}"><kbd style="font-family: inherit; font-size: 11px; color: var(--tx-3, #6A6A6F)">{{b.k}}</kbd></sc-if></button>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"v":{"editor":"enum","options":["cmd","cmdLong","cmdDeny","edit","question","plan","cowork","nohooks","timeout"],"default":"cmd"},"mode":{"editor":"enum","options":["simple","tech"],"default":"simple"},"$preview":{"width":420,"height":260}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const v = this.props.v ?? 'cmd', T = (this.props.mode ?? 'simple') === 'tech';
+    const R = 'var(--st-red-tx, #B4262A)', G = 'var(--st-done, #1A7340)';
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+    const deny = { t: 'Deny', k: '⌥⌘N' }, allow = { t: 'Allow', k: '⌥⌘Y' };
+    const base = { icon: 'waiting', timer: '1:42 of 2:00', timerC: 'var(--tx-2, #55555A)', proj: 'shop-api', projF: mono, env: 'VS Code', agent: 'Main agent', techMeta: '', cmd: '', more: '', clamp: '', diff: null, questions: null, plan: false, text: '', reason: '', btns: [deny, allow] };
+    const cards = {
+      cmd: { title: T ? 'Permission · Bash' : 'Wants to run a command', cmd: 'npm run migrate', techMeta: T ? 'Bash · default mode' : '' },
+      cmdLong: { title: T ? 'Permission · Bash' : 'Wants to run a command', cmd: 'npm run migrate -- --env=staging --from=2026_10_01_000000 --to=latest --lock-timeout=120 && npm run seed:verify -- --strict --report=./tmp/seed-report.json', clamp: 'display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden', more: 'Show all', techMeta: T ? 'Bash · default mode' : '' },
+      cmdDeny: { title: T ? 'Deny · Bash' : 'Deny command', cmd: 'npm run migrate', reason: 'Reason for Claude, optional', btns: [{ t: 'Back', k: 'Esc' }, { t: 'Deny', k: '⌥⌘N' }], techMeta: T ? 'Bash · default mode' : '' },
+      edit: { title: T ? 'Permission · Edit' : 'Wants to edit a file', proj: 'boris', env: 'Terminal', techMeta: T ? 'Edit · acceptEdits mode off' : '',
+        diff: [
+          { sign: '−', s: 'if try verifySignature(token) {', bg: 'var(--st-red-soft, #FBEAEA)', c: R },
+          { sign: '−', s: '    guard !token.isExpired else { return .expired }', bg: 'var(--st-red-soft, #FBEAEA)', c: R },
+          { sign: '+', s: 'guard !token.isExpired else { return .expired }', bg: 'var(--ok-soft, #E6F3EA)', c: G },
+          { sign: '+', s: 'guard try verifySignature(token) else { return .invalid }', bg: 'var(--ok-soft, #E6F3EA)', c: G }
+        ] },
+      question: { title: T ? 'Question · AskUserQuestion' : 'Claude asks', techMeta: T ? 'AskUserQuestion' : '',
+        questions: [
+          { q: 'Which database should we use?', hint: 'pick one', type: 'radio', name: 'q1', opts: [ { t: 'PostgreSQL', on: true, bg: 'var(--fill-2, rgba(0,0,0,.085))' }, { t: 'SQLite', on: false, bg: 'var(--fill-1, rgba(0,0,0,.045))' } ] },
+          { q: '[SAMPLE] What should be set up right away?', hint: 'pick any', type: 'checkbox', name: 'q2', opts: [ { t: 'Migrations', on: true, bg: 'var(--fill-2, rgba(0,0,0,.085))' }, { t: 'Backups', on: false, bg: 'var(--fill-1, rgba(0,0,0,.045))' } ] }
+        ], btns: [{ t: 'Answer', k: '⌥⌘Y' }] },
+      plan: { title: T ? 'Plan · ExitPlanMode' : 'Proposes a plan', techMeta: T ? 'ExitPlanMode' : '', plan: true, reason: 'Comment, optional', btns: [{ t: 'Deny', k: '⌥⌘N' }, { t: 'Approve', k: '⌥⌘Y' }] },
+      cowork: { title: 'Waiting for an answer in Cowork', proj: 'Quarterly report', projF: sans, env: 'Cowork', agent: 'Cowork', timer: '', text: 'This request can’t be answered from Boris. Answer it in Claude Desktop.', btns: [{ t: 'Open Claude Desktop', k: '' }] },
+      nohooks: { title: 'Session is waiting for you', timer: '', text: 'Answering from Boris isn’t connected. Answer in the session, or connect answers in a couple of clicks.', btns: [{ t: 'Connect answers', k: '' }, { t: 'Open session', k: '' }] },
+      timeout: { title: 'Time to answer ran out', icon: 'stopped', timer: 'expired', timerC: 'var(--tx-3, #6A6A6F)', text: 'You can still answer in Claude.', btns: [{ t: 'Open session', k: '' }] }
+    };
+    return { c: Object.assign({}, base, cards[v] || cards.cmd) };
+  }
+}
+</script>
+</body>
+</html>

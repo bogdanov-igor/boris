@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · панель без чёлки</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--wall:#C9CCD3;--bar:rgba(242,242,244,.94);--bar-tx:#1D1D1F;--panel:#F6F6F7;--pop:#F6F6F7;--card:#FFFFFF;--win:#FFFFFF;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-done:#1A7340;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;color:#1D1D1F}
+.td{--wall:#2B2D33;--bar:rgba(30,30,32,.94);--bar-tx:#F2F2F4;--panel:#1C1C1E;--pop:#1C1C1E;--card:#2A2A2D;--win:#141416;--fill-1:rgba(255,255,255,.07);--fill-2:rgba(255,255,255,.12);--sep:rgba(255,255,255,.12);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.14);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.06);--st-run:#5CC0C6;--st-done:#4CC27E;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;color:#F2F2F4}
+</style>
+</helmet>
+<div style="width: 2000px; height: 760px; display: flex; gap: 40px; padding: 24px 32px; box-sizing: border-box; background: #101012; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{mons}}" as="m" hint-placeholder-count="3">
+    <div style="display: flex; flex-direction: column; gap: 10px; flex: 1 1 0px; min-width: 0">
+      <span style="font-size: 12px; font-weight: 600; color: #B0B0B6">{{m.l}}</span>
+      <div style="padding: 10px; border-radius: 14px; background: #2A2A2C; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08)">
+        <div class="{{m.cls}}" style="position: relative; height: 600px; border-radius: 4px; overflow: hidden; background: var(--wall); color: var(--tx-1)">
+          <div style="height: 24px; background: var(--bar); color: var(--bar-tx); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 13px"><span style="font-weight: 600">Finder</span><span style="font-variant-numeric: tabular-nums">16:21</span></div>
+
+          <sc-if value="{{m.closed}}" hint-placeholder-val="{{ false }}">
+            <div style="position: absolute; top: 30px; left: 50%; transform: translateX(-50%); height: 34px; padding: 0 14px 0 6px; border-radius: 17px; background: var(--panel); box-shadow: 0 0 0 0.5px var(--sep), 0 6px 18px rgba(0,0,0,.25); display: flex; align-items: center; gap: 8px; white-space: nowrap">
+              <dc-import name="Owl" mood="Работает" size="26" variant="simple" hint-size="26px,26px"></dc-import>
+              <span style="font-size: 12.5px">3 агента работают</span>
+              <span style="font-size: 12.5px; color: var(--st-wait); font-weight: 600">· 1 ждёт вас</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{m.open}}" hint-placeholder-val="{{ true }}">
+            <div style="position: absolute; top: 30px; left: 50%; transform: translateX(-50%); width: 460px; padding: 10px 12px 12px; box-sizing: border-box; border-radius: 16px; background: var(--panel); box-shadow: 0 0 0 0.5px var(--sep), 0 14px 40px rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 10px">
+              <div style="display: flex; align-items: center; gap: 8px"><dc-import name="Owl" mood="Ждёт" size="26" variant="simple" hint-size="26px,26px"></dc-import><span style="flex: 1; font-size: 12.5px">3 агента работают</span><span style="font-size: 12.5px; color: var(--st-wait); font-weight: 600">1 ждёт вас</span></div>
+              <dc-import name="B-Card" v="cmd" mode="simple" hint-size="436px,190px"></dc-import>
+              <div style="display: flex; flex-direction: column; gap: 2px">
+                <sc-for list="{{rows}}" as="s" hint-placeholder-count="3">
+                  <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr); column-gap: 8px; align-items: center; min-height: 26px; padding: 0 4px; font-size: 12.5px">
+                    <dc-import name="StatusIcon" kind="{{s.k}}" size="14" hint-size="14px,14px"></dc-import>
+                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: {{s.ff}}; font-weight: 600">{{s.n}}</span><span style="color: var(--tx-2)"> · {{s.line}}</span></span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2000,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+    return {
+      mons: [
+        { cls: 'td', closed: true, open: false, l: 'Внешний монитор · закрытая плашка у верхнего края' },
+        { cls: 'td', closed: false, open: true, l: 'Открыта по наведению · тёмная' },
+        { cls: 'tl', closed: false, open: true, l: 'Открыта · светлая' }
+      ],
+      rows: [
+        { k: 'running', n: 'boris', ff: mono, line: 'Терминал · запускает тесты' },
+        { k: 'running', n: 'Отчёт за квартал', ff: sans, line: 'Cowork · читает файлы' },
+        { k: 'allFailed', n: 'Миграция данных', ff: sans, line: 'Не получилось: кончился лимит, сброс в 18:40' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · настройки</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--focus:#0A64D8;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--mono-bg:rgba(0,0,0,.05);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;--rb-done:#2B7D4E;--rb-run:#8CC7CB;--rb-fail:#E5383B;--rb-cancel:#A2A2A8;color:#1D1D1F}
+.td{--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--focus:#3D8BFF;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--mono-bg:rgba(255,255,255,.07);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;--rb-done:#3E9D66;--rb-run:#2F7479;--rb-fail:#E5383B;--rb-cancel:#6A6A70;color:#F2F2F4}
+</style>
+</helmet>
+<div style="width: 1680px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{panes}}" as="p" hint-placeholder-count="10">
+    <div class="{{p.cls}}" style="background: var(--desk); padding: 20px 30px 30px; display: flex; flex-direction: column; gap: 10px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{p.label}}</span>
+      <div style="width: 760px; height: 720px; border-radius: 10px; overflow: hidden; display: flex; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 18px 40px rgba(0,0,0,.28)">
+        <nav aria-label="Разделы настроек" style="width: 190px; flex: none; background: var(--side); border-right: 1px solid var(--sep); display: flex; flex-direction: column; gap: 2px; padding: 10px; box-sizing: border-box">
+          <div style="height: 22px; display: flex; gap: 8px; align-items: center; padding-left: 4px; margin-bottom: 12px"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span></div>
+          <sc-for list="{{p.nav}}" as="n" hint-placeholder-count="6">
+            <div role="link" tabindex="0" aria-current="{{n.cur}}" style="display: flex; align-items: center; height: 28px; padding: 0 8px; border-radius: 6px; background: {{n.bg}}; font-size: 13px; font-weight: {{n.fw}}">{{n.t}}</div>
+          </sc-for>
+        </nav>
+        <main style="flex: 1; min-width: 0; overflow: hidden; padding: 16px 22px 18px; display: flex; flex-direction: column; gap: 14px">
+          <h1 style="margin: 0; font-size: 17px; line-height: 22px; font-weight: 700">{{p.title}}</h1>
+
+          <sc-if value="{{p.table}}" hint-placeholder-val="{{ false }}">
+            <div role="table" aria-label="{{p.table.aria}}" style="border-radius: 8px; background: var(--fill-1); overflow: hidden">
+              <div role="row" style="display: grid; grid-template-columns: {{p.table.cols}}; column-gap: 8px; align-items: end; padding: 7px 12px; font-size: 10.5px; line-height: 13px; font-weight: 600; color: var(--tx-2)">
+                <sc-for list="{{p.table.head}}" as="h" hint-placeholder-count="5"><span role="columnheader" style="text-align: {{h.a}}">{{h.t}}</span></sc-for>
+              </div>
+              <sc-for list="{{p.table.rows}}" as="r" hint-placeholder-count="8">
+                <div role="row" style="display: grid; grid-template-columns: {{p.table.cols}}; column-gap: 8px; align-items: center; min-height: {{r.h}}px; padding: 3px 12px; box-sizing: border-box; border-top: 1px solid var(--sep); background: {{r.bg}}">
+                  <span role="cell" style="min-width: 0; display: flex; flex-direction: column; padding-left: {{r.ind}}px"><span style="font-size: 12.5px; font-weight: {{r.fw}}; color: {{r.c}}">{{r.n}}</span><sc-if value="{{r.sub}}" hint-placeholder-val="{{ false }}"><span style="font-size: 10.5px; line-height: 13px; color: var(--tx-3)">{{r.sub}}</span></sc-if></span>
+                  <sc-for list="{{r.cells}}" as="x" hint-placeholder-count="4">
+                    <span role="cell" title="{{x.tip}}" style="display: flex; justify-content: center">
+                      <sc-if value="{{x.has}}" hint-placeholder-val="{{ true }}"><span role="switch" aria-checked="{{x.on}}" aria-disabled="{{x.dis}}" style="flex: none; position: relative; display: inline-block; width: 28px; height: 16px; border-radius: 8px; background: {{x.bg}}; opacity: {{x.op}}; box-shadow: inset 0 0 0 0.5px var(--sep)"><span style="position: absolute; top: 2px; left: {{x.kx}}px; width: 12px; height: 12px; border-radius: 6px; background: #FFFFFF; box-shadow: 0 0.5px 1.5px rgba(0,0,0,.35)"></span></span></sc-if>
+                    </span>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-for list="{{p.groups}}" as="g" hint-placeholder-count="3">
+            <section style="display: flex; flex-direction: column; gap: 5px">
+              <sc-if value="{{g.t}}" hint-placeholder-val="{{ false }}"><h2 style="margin: 0 0 0 4px; font-size: 11.5px; font-weight: 600; color: var(--tx-2)">{{g.t}}</h2></sc-if>
+              <div style="border-radius: 8px; background: var(--fill-1); display: flex; flex-direction: column">
+                <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="3">
+                  <div style="display: flex; flex-direction: column; gap: 4px; padding: 7px 12px; border-top: {{r.bt}}">
+                    <div style="display: flex; align-items: center; gap: 10px; min-height: 22px">
+                      <span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 12.5px">{{r.l}}</span><sc-if value="{{r.sub}}" hint-placeholder-val="{{ false }}"><span style="font-size: 11px; line-height: 15px; color: var(--tx-3)">{{r.sub}}</span></sc-if></span>
+                      <sc-if value="{{r.txt}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: {{r.tc}}; font-variant-numeric: tabular-nums; white-space: nowrap">{{r.txt}}</span></sc-if>
+                      <sc-if value="{{r.icon}}" hint-placeholder-val="{{ false }}"><dc-import name="StatusIcon" kind="{{r.icon}}" size="14" hint-size="14px,14px"></dc-import></sc-if>
+                      <sc-if value="{{r.key}}" hint-placeholder-val="{{ false }}"><span style="height: 22px; padding: 0 10px; display: inline-flex; align-items: center; border-radius: 6px; background: var(--btn); box-shadow: 0 0 0 {{r.keyW}}px {{r.keyC}}; font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 12px">{{r.key}}</span></sc-if>
+                      <sc-if value="{{r.sel}}" hint-placeholder-val="{{ false }}"><span style="height: 22px; padding: 0 8px; display: inline-flex; align-items: center; gap: 6px; border-radius: 5px; border: 0.5px solid var(--btn-bd); background: var(--btn); font-size: 12px; white-space: nowrap">{{r.sel}} <span style="font-size: 9px; color: var(--tx-2)">▾</span></span></sc-if>
+                      <sc-if value="{{r.seg}}" hint-placeholder-val="{{ false }}">
+                        <span role="group" aria-label="{{r.l}}" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)"><sc-for list="{{r.seg}}" as="o" hint-placeholder-count="3"><button type="button" aria-pressed="{{o.on}}" style="height: 20px; padding: 0 9px; border: 0; border-radius: 4px; background: {{o.bg}}; box-shadow: {{o.sh}}; color: var(--tx-1); font: inherit; font-size: 11.5px; white-space: nowrap">{{o.t}}</button></sc-for></span>
+                      </sc-if>
+                      <sc-if value="{{r.btns}}" hint-placeholder-val="{{ false }}"><span style="display: flex; gap: 6px"><sc-for list="{{r.btns}}" as="b" hint-placeholder-count="2"><button type="button" style="height: 22px; padding: 0 10px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: {{b.bg}}; color: {{b.c}}; font: inherit; font-size: 12px; white-space: nowrap">{{b.t}}</button></sc-for></span></sc-if>
+                      <sc-if value="{{r.sw}}" hint-placeholder-val="{{ false }}"><span role="switch" aria-checked="{{r.sw.on}}" aria-disabled="{{r.sw.dis}}" style="flex: none; position: relative; display: inline-block; width: 28px; height: 16px; border-radius: 8px; background: {{r.sw.bg}}; opacity: {{r.sw.op}}; box-shadow: inset 0 0 0 0.5px var(--sep)"><span style="position: absolute; top: 2px; left: {{r.sw.kx}}px; width: 12px; height: 12px; border-radius: 6px; background: #FFFFFF; box-shadow: 0 0.5px 1.5px rgba(0,0,0,.35)"></span></span></sc-if>
+                    </div>
+                    <sc-if value="{{r.warn}}" hint-placeholder-val="{{ false }}"><span style="font-size: 11.5px; line-height: 16px; color: {{r.wc}}">{{r.warn}}</span></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{g.foot}}" hint-placeholder-val="{{ false }}"><span style="padding: 0 4px; font-size: 11px; line-height: 15px; color: var(--tx-3)">{{g.foot}}</span></sc-if>
+            </section>
+          </sc-for>
+        </main>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1680,"height":3800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const ON = { bg: 'var(--btn)', sh: '0 0 0 0.5px var(--btn-bd)' }, OFF = { bg: 'transparent', sh: 'none' };
+    const S = (on, dis, tip) => ({ has: true, on: on ? 'true' : 'false', dis: dis ? 'true' : 'false', bg: on ? 'var(--focus)' : 'var(--fill-2)', kx: on ? 14 : 2, op: dis ? .4 : 1, tip: tip || '' });
+    const NONE = { has: false, tip: '' };
+    const seg = (opts, cur) => opts.map((t) => ({ t, on: t === cur ? 'true' : 'false', bg: (t === cur ? ON : OFF).bg, sh: (t === cur ? ON : OFF).sh }));
+    const R = (o) => Object.assign({ sub: '', txt: '', tc: 'var(--tx-2)', icon: '', key: '', keyW: .5, keyC: 'var(--btn-bd)', sel: '', seg: null, btns: null, sw: null, warn: '', wc: 'var(--tx-2)', bt: '1px solid var(--sep)' }, o);
+    const G = (t, rows, foot) => { rows[0].bt = 'none'; return { t, rows, foot: foot || '' }; };
+    const B = (t, primary) => ({ t, bg: primary ? 'var(--focus)' : 'var(--btn)', c: primary ? '#FFFFFF' : 'var(--tx-1)' });
+    const secs = ['Общие', 'Источники', 'Поверхности', 'Уведомления', 'Подключения', 'О Boris'];
+    const nav = (cur) => secs.map((t) => ({ t, cur: t === cur ? 'page' : 'false', bg: t === cur ? 'var(--fill-2)' : 'transparent', fw: t === cur ? 500 : 400 }));
+
+    const general = (conflict, en) => [
+      G('', [
+        R({ l: en ? 'View' : 'Режим', seg: seg(en ? ['Simple', 'Technical'] : ['Простой', 'Технический'], en ? 'Technical' : 'Технический'), sub: en ? 'Also switchable from the menu.' : 'Переключается и из меню.' }),
+        R({ l: en ? 'Language' : 'Язык', seg: seg(['Русский', 'English'], en ? 'English' : 'Русский') }),
+        R({ l: en ? 'Appearance' : 'Тема', seg: seg(en ? ['Light', 'Dark', 'System'] : ['Светлая', 'Тёмная', 'Как в системе'], en ? 'System' : 'Как в системе') })
+      ]),
+      G('', [
+        R({ l: en ? 'Open at login' : 'Запускать при входе', sw: S(true) }),
+        R({ l: en ? 'Mini window hotkey' : 'Горячая клавиша мини-окна', key: '⌥⌘O', keyW: conflict ? 1.5 : .5, keyC: conflict ? 'var(--st-red)' : 'var(--btn-bd)',
+            warn: conflict ? '⌥⌘O уже занято в другом приложении. Выберите другое сочетание, иначе клавиша может не сработать.' : '', wc: 'var(--st-red-tx)' }),
+        R({ l: en ? 'Keep Mac awake while work is running' : 'Не давать Mac уснуть, пока идёт работа', sw: S(true),
+            sub: en ? 'With the lid closed, the Mac sleeps anyway unless it is on power with an external display.' : 'С закрытой крышкой Mac всё равно уснёт, если он не на зарядке с внешним монитором.' })
+      ]),
+      G(en ? 'Updates' : 'Обновления', [
+        R({ l: en ? 'Check automatically' : 'Проверять автоматически', sw: S(true) }),
+        R({ l: en ? 'Version 1.0' : 'Версия 1.0', txt: en ? 'Up to date' : 'Последняя версия', btns: [B(en ? 'Check now' : 'Проверить')] })
+      ])
+    ];
+
+    const T = (n, sub, cells, o) => Object.assign({ n, sub: sub || '', cells, h: 34, ind: 0, fw: 400, c: 'var(--tx-1)', bg: 'transparent' }, o || {});
+    const P = (n, on) => T(n, '', [S(on), NONE, NONE, NONE], { fw: 600, bg: 'var(--fill-1)', h: 30 });
+    const sources = {
+      aria: 'Источники', cols: 'minmax(0, 1fr) 64px 64px 64px 64px',
+      head: [ ['Источник', 'left'], ['Считывать', 'center'], ['Уведомлять', 'center'], ['Отвечать на запросы', 'center'], ['Снимки экрана', 'center'] ].map(([t, a]) => ({ t, a })),
+      rows: [
+        P('Claude Code', true),
+        T('Терминал', '', [S(true), S(true), S(true), S(true)], { ind: 12 }),
+        T('VS Code', '', [S(true), S(true), S(true), S(false)], { ind: 12 }),
+        T('Cursor', '', [S(true), S(true), S(true), S(true)], { ind: 12 }),
+        T('Вкладка Code в Claude Desktop', '', [S(true), S(true), S(true), S(true)], { ind: 12 }),
+        T('Удалённые машины', 'по SSH, см. «Подключения»', [S(true), S(true), S(true), S(true)], { ind: 12 }),
+        T('Программы на Agent SDK', '', [S(true), S(true), S(true), S(true)], { ind: 12 }),
+        P('Cowork', true),
+        T('Cowork', 'Отвечают в Claude Desktop', [S(true), S(true), S(false, true, 'На запросы Cowork отвечают в Claude Desktop'), S(true)], { ind: 12 }),
+        P('Чат Claude', false),
+        T('Чат Claude', 'Нужно разрешение Accessibility, чтобы видеть, что ответ готов', [S(false, true), S(false, true), S(false, true, 'В чате нет запросов'), S(false, true)], { ind: 12, c: 'var(--tx-2)' })
+      ]
+    };
+
+    const surfaces = [
+      G('', [ R({ l: 'Значок в трее', sw: S(true) }), R({ l: 'Чёлка', sub: 'На Mac без чёлки и на внешнем мониторе её заменяет панель у верхнего края.', sw: S(true) }), R({ l: 'Мини-окно', sw: S(true) }) ]),
+      G('', [ R({ l: 'Экран', sel: 'Следовать за курсором' }) ], 'Варианты: основной экран, конкретный монитор или следовать за курсором.')
+    ];
+
+    const ev = (n, mac, snd, tg) => T(n, '', [S(mac), S(snd), S(tg), NONE], { h: 28 });
+    const notifTable = {
+      aria: 'События и каналы', cols: 'minmax(0, 1fr) 64px 64px 64px 0px',
+      head: [ ['Событие', 'left'], ['Mac', 'center'], ['Звук', 'center'], ['Telegram', 'center'], ['', 'center'] ].map(([t, a]) => ({ t, a })),
+      rows: [ ev('Запрос разрешения', true, true, true), ev('Вопрос', true, true, true), ev('План', true, false, false), ev('Завершение', true, false, false),
+              ev('Сбой', true, true, true), ev('Прервано', true, false, true), ev('Молчит', true, false, false), ev('Лимит близко', true, true, true) ]
+    };
+    const notif = (dnd) => [
+      G('', [
+        R({ l: 'Порог лимита', sub: 'Когда предупреждать «Лимит близко»', sel: '[ПРИМЕР] 90 %' }),
+        R({ l: 'Порог молчания', sub: 'Через сколько тишины сессия считается молчащей', sel: '[ПРИМЕР] 10 мин' }),
+        R(dnd ? { l: 'Не беспокоить', txt: 'включено до 17:21', tc: 'var(--st-wait)', btns: [B('Выключить')] } : { l: 'Не беспокоить', btns: [B('На час'), B('На 4 часа'), B('До выключения')] }),
+        R({ l: 'Голос моржа', sw: S(true), sub: 'Громкость [ПРИМЕР] 60 %' })
+      ]),
+      G('Telegram', [ R({ l: 'Бот', txt: dnd ? 'не подключён' : 'подключён', tc: dnd ? 'var(--tx-3)' : 'var(--st-done)', btns: dnd ? [B('Подключить бота')] : [B('Проверочное сообщение'), B('Отключить')] }) ],
+        'В уведомлениях и в Telegram только проект и событие, без команд и кода.')
+    ];
+
+    const checks = (broken) => [ ['Папка Claude', 'done'], ['Чтение файлов', 'done'], ['Формат данных', 'done'], ['Хуки', broken ? 'failed' : 'done'], ['Последнее событие', 'done'], ['Возраст лимитов', 'done'] ]
+      .map(([l, k], i) => R({ l, icon: k, txt: k === 'failed' ? 'сломаны' : (l === 'Последнее событие' ? '14 с назад' : l === 'Возраст лимитов' ? '12 мин' : 'в порядке'), tc: k === 'failed' ? 'var(--st-red-tx)' : 'var(--tx-2)' }));
+    const conn = (broken) => [
+      G('Ответы на запросы (хуки)', [
+        R(broken ? { l: 'Хуки', icon: 'failed', txt: 'сломаны', tc: 'var(--st-red-tx)', btns: [B('Починить', true)], warn: 'Данные продолжают обновляться, но ответить из Boris сейчас нельзя.', wc: 'var(--st-red-tx)' }
+                 : { l: 'Хуки', icon: 'done', txt: 'подключены', tc: 'var(--st-done)', btns: [B('Изменения настроек'), B('Отключить')] }),
+        R({ l: 'Время ожидания ответа', sub: 'Потом отвечать нужно в Claude', sel: '2 минуты' })
+      ]),
+      G('Лимиты', [ R({ l: 'Обновлять лимиты', sw: S(true), sub: 'Каждые 15 минут · обновлено 12 мин назад', btns: [B('Обновить сейчас')] }) ]),
+      G('Удалённые машины по SSH', [ R({ l: 'build-server', icon: 'unknown', txt: 'нет связи', tc: 'var(--tx-2)', btns: [B('Проверить')] }), R({ l: 'Добавить машину…', btns: [B('Добавить')] }) ]),
+      G('Диагностика', checks(broken).concat([ R({ l: '', btns: [B('Починить'), B('Скопировать диагностику')] }) ]))
+    ];
+
+    const pane = (cls, sec, label, o) => Object.assign({ cls, label, title: sec, nav: nav(sec), table: null, groups: [] }, o);
+    return {
+      panes: [
+        pane('td', 'Общие', 'Тёмная · Общие', { groups: general(false, false) }),
+        pane('tl', 'Общие', 'Светлая · Общие · горячая клавиша занята', { groups: general(true, false) }),
+        pane('td', 'Источники', 'Тёмная · Источники', { table: sources, groups: [ G('', [ R({ l: 'Снимки экрана', sub: 'Даже при запрете некоторые способы захвата экрана могут обойти этот запрет.' }) ], 'Если часть источников выключена, на странице «Расход» написано, что учтены не все.') ] }),
+        pane('tl', 'Источники', 'Светлая · Источники', { table: sources, groups: [ G('', [ R({ l: 'Снимки экрана', sub: 'Даже при запрете некоторые способы захвата экрана могут обойти этот запрет.' }) ], 'Если часть источников выключена, на странице «Расход» написано, что учтены не все.') ] }),
+        pane('td', 'Поверхности', 'Тёмная · Поверхности', { groups: surfaces }),
+        pane('tl', 'Поверхности', 'Светлая · Поверхности', { groups: surfaces }),
+        pane('td', 'Уведомления', 'Тёмная · Уведомления', { table: notifTable, groups: notif(false) }),
+        pane('tl', 'Уведомления', 'Светлая · Уведомления · «не беспокоить» включён, бот не подключён', { table: notifTable, groups: notif(true) }),
+        pane('td', 'Подключения', 'Тёмная · Подключения', { groups: conn(false) }),
+        pane('tl', 'Подключения', 'Светлая · Подключения · хуки сломаны', { groups: conn(true) }),
+        pane('td', 'Общие', 'Тёмная · Общие · English', { title: 'General', groups: general(false, true), nav: ['General', 'Sources', 'Surfaces', 'Notifications', 'Connections', 'About Boris'].map((t) => ({ t, cur: t === 'General' ? 'page' : 'false', bg: t === 'General' ? 'var(--fill-2)' : 'transparent', fw: t === 'General' ? 500 : 400 })) })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

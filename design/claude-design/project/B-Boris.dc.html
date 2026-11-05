@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · морж в поверхностях</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--desk:#E4E4E9;--wall:#C9CCD3;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-red:#E5383B;--st-wait:#1D66C9;--bar:#F2F2F4;--bar-tx:#1D1D1F;--bub:#FFFFFF;--bub-bd:rgba(0,0,0,.12);--brand-red:#9E2A2B;--brand-gold:#B8902E;color:#1D1D1F}
+.td{--desk:#141416;--wall:#2B2D33;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-red:#E5383B;--st-wait:#62A6FF;--bar:#1E1E20;--bar-tx:#F2F2F4;--bub:#3A3A3E;--bub-bd:rgba(255,255,255,.14);--brand-red:#C0393A;--brand-gold:#D4A940;color:#F2F2F4}
+.np{--tx-1:#F2F2F4;--tx-2:#B0B0B6;--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.06);--owl-label-bg:#000000}
+</style>
+</helmet>
+<div style="width: 2200px; min-height: 1900px; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+    <div class="{{th.cls}}" style="background: var(--desk); padding: 24px 32px 32px; display: flex; flex-direction: column; gap: 14px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{th.label}}</span>
+      <div style="display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap">
+
+        <div style="display: flex; flex-direction: column; gap: 8px; width: 420px">
+          <span style="font-size: 12px; font-weight: 600">Трей · одноцветный, 18 pt</span>
+          <sc-for list="{{tray}}" as="t" hint-placeholder-count="4">
+            <div style="display: flex; align-items: center; gap: 12px">
+              <div style="width: 200px; height: 24px; border-radius: 6px; background: var(--bar); color: var(--bar-tx); display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 0 10px; font-size: 13px">
+                <span style="display: inline-flex; align-items: center; gap: 3px">
+                  <span style="position: relative; display: inline-flex; width: 18px; height: 18px">
+                    <svg viewBox="0 0 18 18" width="18" height="18" role="img" aria-label="Борис, значок трея"><rect x="2" y="2" width="14" height="14" rx="4" style="fill: none; stroke: currentColor; stroke-width: 1.4; stroke-dasharray: 2.2 1.6"></rect><path d="M5 5l8 8M13 5l-8 8" style="stroke: currentColor; stroke-width: 1; stroke-opacity: .55"></path></svg>
+                    <sc-if value="{{t.dot}}" hint-placeholder-val="{{ false }}"><span style="position: absolute; top: -1px; right: -2px; width: 7px; height: 7px; border-radius: 4px; background: var(--st-red); box-shadow: 0 0 0 1.5px var(--bar)"></span></sc-if>
+                  </span>
+                  <sc-if value="{{t.n}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums">{{t.n}}</span></sc-if>
+                </span>
+                <span style="font-variant-numeric: tabular-nums">16:21</span>
+              </div>
+              <span style="font-size: 11.5px; color: var(--tx-2)">{{t.note}}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; width: 460px">
+          <span style="font-size: 12px; font-weight: 600">Чёлка · упрощённый</span>
+          <div style="position: relative; height: 120px; border-radius: 8px; overflow: hidden; background: var(--wall)">
+            <div class="np" style="position: absolute; top: 0; left: 50%; margin-left: -190px; width: 380px; height: 37px; background: #000000; border-radius: 0 0 12px 12px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px 0 8px; box-sizing: border-box">
+              <span style="display: inline-flex; align-items: center; gap: 6px"><dc-import name="Owl" mood="Работает" size="28" variant="simple" hint-size="28px,28px"></dc-import></span>
+              <span style="font-size: 12px; color: #F2F2F4; font-variant-numeric: tabular-nums">3 агента работают</span>
+            </div>
+          </div>
+          <span style="font-size: 11.5px; line-height: 16px; color: var(--tx-2)">Закрытая чёлка: морж слева от выреза, текст справа. Тёмный контур моржа на чёрном проверю, когда придут листы.</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; width: 360px">
+          <span style="font-size: 12px; font-weight: 600">Мини-окно · 360</span>
+          <div style="background: var(--pop); border-radius: 10px; box-shadow: 0 0 0 0.5px var(--sep), 0 8px 24px rgba(0,0,0,.2); padding: 12px 14px; display: flex; gap: 10px; align-items: center">
+            <dc-import name="Owl" mood="Ждёт" size="40" variant="simple" hint-size="40px,40px"></dc-import>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; font-weight: 600">1 ждёт вас</span><span style="font-size: 11.5px; color: var(--tx-2)">3 сессии работают</span></div>
+          </div>
+          <span style="font-size: 11.5px; line-height: 16px; color: var(--tx-2)">40 pt в шапке, рядом сводка. Данные начинаются сразу ниже.</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; width: 240px">
+          <span style="font-size: 12px; font-weight: 600">Главное окно · низ боковой панели, на всю ширину</span>
+          <div style="background: var(--side); border-radius: 10px; box-shadow: 0 0 0 0.5px var(--sep); padding: 12px; display: flex; flex-direction: column; gap: 10px">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><dc-import name="Owl" mood="Работает" size="190" variant="full" hint-size="190px,190px"></dc-import><span style="font-size: 12px; line-height: 15px; color: var(--tx-2); text-align: center">3 агента работают</span></div>
+            <div role="group" aria-label="Режим" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+              <button type="button" aria-pressed="true" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: var(--btn); box-shadow: 0 0 0 0.5px var(--btn-bd); color: var(--tx-1); font: inherit; font-size: 11.5px">Простой</button>
+              <button type="button" aria-pressed="false" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: transparent; color: var(--tx-1); font: inherit; font-size: 11.5px">Технический</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; width: 420px">
+          <span style="font-size: 12px; font-weight: 600">Пустое «Сейчас» · полный, 120</span>
+          <div style="height: 250px; background: var(--win); border-radius: 10px; box-shadow: 0 0 0 0.5px var(--sep); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center">
+            <dc-import name="Owl" mood="Спит" size="120" variant="full" hint-size="120px,120px"></dc-import>
+            <span style="font-size: 15px; font-weight: 600">Ничего не идёт</span>
+            <span style="font-size: 12px; color: var(--tx-2)">Борис скажет, когда что-то начнётся.</span>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; width: 520px">
+          <span style="font-size: 12px; font-weight: 600">Облачко реплики · цепочка сообщений</span>
+          <div style="position: relative; height: 220px; background: var(--win); border-radius: 10px; box-shadow: 0 0 0 0.5px var(--sep); overflow: hidden">
+            <div style="position: absolute; left: 20px; bottom: 20px"><dc-import name="Owl" mood="Тревога" size="96" variant="full" hint-size="96px,96px"></dc-import></div>
+            <div role="log" aria-live="polite" style="position: absolute; left: 106px; top: 22px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px">
+              <sc-for list="{{bubbles}}" as="b" hint-placeholder-count="3">
+                <span style="padding: 6px 10px; border-radius: {{b.r}}; background: var(--bub); box-shadow: 0 0 0 0.5px var(--bub-bd), inset 3px 0 0 0 {{b.mark}}, 0 6px 18px rgba(0,0,0,.22); font-size: 12.5px; line-height: 16px; white-space: nowrap">{{b.t}}</span>
+              </sc-for>
+            </div>
+          </div>
+          <span style="font-size: 11.5px; line-height: 16px; color: var(--tx-2)">Поверх интерфейса, сбоку от моржа, вёрстку не двигает. Ремарка Бориса отмечена тонкой линией бренда у первого сообщения.</span>
+        </div>
+      </div>
+    </div>
+  </sc-for>
+
+  <div class="td" style="background: var(--win); padding: 32px 40px 48px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; color: var(--tx-1)">
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 17px; font-weight: 600">Поза → состояние</h2>
+      <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px">
+        <sc-for list="{{poses}}" as="p" hint-placeholder-count="10">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center">
+            <dc-import name="Owl" mood="{{p.m}}" size="72" variant="simple" hint-size="72px,72px"></dc-import>
+            <span style="font-size: 11.5px; line-height: 15px; color: var(--tx-2)">{{p.w}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 17px; font-weight: 600">Где какой стиль</h2>
+      <ul style="margin: 0; padding-left: 18px; font-size: 13px; line-height: 21px">
+        <li><b>Одноцветный</b>: только трей, 18 pt, шаблонное изображение под тему строки меню. Счётчик ожидающих справа, красная точка тревоги отдельным слоем.</li>
+        <li><b>Упрощённый</b>: чёлка 28, мини-окно 40, позы на витрине 72.</li>
+        <li><b>Полный</b>: низ боковой панели на всю ширину (190 при панели 210), пустые состояния 120, «Морж» и «О Boris» 160 и больше, первый запуск.</li>
+        <li>В рабочих экранах морж живёт только в боковой панели и не занимает место данных. На низком окне (меньше 700 pt) он уменьшается до 96, чтобы не вытеснить пункты.</li>
+        <li>Наряд сохраняется в любой позе и реакции. Со спины видна шапка, если она надета.</li>
+        <li>Анимация «Работает» ускоряется с числом агентов. «Уменьшение движения»: статичные кадры.</li>
+        <li>В обоих режимах выглядит и говорит одинаково.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2200,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const stack = (arr) => arr.map((t, i) => ({ t, r: (i === 0 ? '12px' : '4px') + ' 12px 12px ' + (i === arr.length - 1 ? '12px' : '4px'), mark: i === 0 ? 'var(--brand-gold)' : 'transparent' }));
+    return {
+      themes: [ { cls: 'td', label: 'Тёмная · все места моржа, кроме страницы «Морж»' }, { cls: 'tl', label: 'Светлая' } ],
+      tray: [
+        { n: '', dot: false, note: 'Спит: ничего не идёт' },
+        { n: '', dot: false, note: 'Работает: счётчика нет, запросов нет' },
+        { n: '2', dot: false, note: 'Ждёт: 2 запроса' },
+        { n: '1', dot: true, note: 'Тревога + 1 запрос' }
+      ],
+      bubbles: stack(['Агент упал в shop-api.', 'Это не конец.', 'Это даже не начало конца.']),
+      poses: [
+        { m: 'Работает', w: 'Идёт работа' }, { m: 'Ждёт', w: 'Нужен ответ' }, { m: 'Радуется', w: 'Готово' },
+        { m: 'Хм?', w: 'Готово с ошибками или остановлено' }, { m: 'Настороже', w: 'Давно без новостей' },
+        { m: 'Устал', w: 'Лимит близко или кончился' }, { m: 'Тревога', w: 'Упало или оборвалось' },
+        { m: 'Сломалось', w: 'Boris не читает данные' }, { m: 'Спит', w: 'Ничего не идёт' }, { m: 'Дежурит', w: 'Витрина, «О Boris»' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · Потери</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--desk:#E4E4E9;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-limit:#4A4FBF;color:#1D1D1F}
+.td{--desk:#141416;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-limit:#9A9DFF;color:#F2F2F4}
+</style>
+</helmet>
+<div style="width: 2520px; height: 900px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{panes}}" as="p" hint-placeholder-count="2">
+    <div class="{{p.cls}}" style="background: var(--desk); padding: 20px 30px 40px; display: flex; flex-direction: column; gap: 10px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{p.label}}</span>
+      <div style="width: 1200px; height: 800px; border-radius: 10px; overflow: hidden; display: flex; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 18px 40px rgba(0,0,0,.28)">
+        <nav aria-label="Разделы" style="width: 210px; flex: none; background: var(--side); border-right: 1px solid var(--sep); display: flex; flex-direction: column; padding: 10px 10px 12px; box-sizing: border-box">
+          <div style="height: 22px; display: flex; gap: 8px; align-items: center; padding-left: 4px; margin-bottom: 16px"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span></div>
+          <sc-for list="{{nav}}" as="n" hint-placeholder-count="8">
+            <a href="#" aria-current="{{n.cur}}" style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: 6px; background: {{n.bg}}; color: var(--tx-1); text-decoration: none; font-size: 13px; font-weight: {{n.fw}}"><span style="flex: 1">{{n.t}}</span><sc-if value="{{n.badge}}" hint-placeholder-val="{{ false }}"><span style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--st-wait); color: #FFFFFF; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center">{{n.badge}}</span></sc-if></a>
+          </sc-for>
+          <span style="flex: 1"></span>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0 10px"><dc-import name="Owl" mood="Тревога" size="190" variant="full" hint-size="190px,190px"></dc-import><span style="font-size: 12px; color: var(--tx-2)">3 агента работают</span></div>
+          <div role="group" aria-label="Режим" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+            <button type="button" aria-pressed="false" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: transparent; color: var(--tx-1); font: inherit; font-size: 11.5px">Простой</button>
+            <button type="button" aria-pressed="true" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: var(--btn); box-shadow: 0 0 0 0.5px var(--btn-bd); color: var(--tx-1); font: inherit; font-size: 11.5px">Технический</button>
+          </div>
+        </nav>
+
+        <main style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden">
+          <header style="flex: none; padding: 12px 24px; border-bottom: 1px solid var(--sep); display: flex; align-items: center; gap: 12px">
+            <h1 style="margin: 0; font-size: 18px; font-weight: 600">Потери</h1>
+            <span style="flex: 1"></span>
+            <div role="group" aria-label="Период" style="display: inline-flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+              <button type="button" style="height: 22px; padding: 0 10px; border: 0; border-radius: 4px; background: transparent; color: var(--tx-1); font: inherit; font-size: 12px">7 дней</button>
+              <button type="button" aria-pressed="true" style="height: 22px; padding: 0 10px; border: 0; border-radius: 4px; background: var(--btn); box-shadow: 0 0 0 0.5px var(--btn-bd); color: var(--tx-1); font: inherit; font-size: 12px">30 дней</button>
+              <button type="button" style="height: 22px; padding: 0 10px; border: 0; border-radius: 4px; background: transparent; color: var(--tx-1); font: inherit; font-size: 12px">Всё время</button>
+            </div>
+          </header>
+          <div style="flex: 1; min-height: 0; overflow: auto; padding: 16px 24px 24px; display: flex; flex-direction: column; gap: 16px">
+            <div style="display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 0.9fr); gap: 14px">
+              <section style="padding: 12px 14px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); display: flex; flex-direction: column; gap: 8px">
+                <div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 12.5px; font-weight: 600; flex: 1">Упавшие агенты по причинам</span><span style="font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums">646</span></div>
+                <sc-for list="{{reasons}}" as="r" hint-placeholder-count="7">
+                  <div style="display: grid; grid-template-columns: 104px minmax(0, 1fr) 40px; column-gap: 8px; align-items: center; font-size: 12px">
+                    <span style="color: var(--tx-2)">{{r.n}}</span>
+                    <span style="height: 6px; border-radius: 3px; background: var(--meter-track); overflow: hidden"><span style="display: block; width: {{r.w}}%; height: 100%; background: {{r.c}}"></span></span>
+                    <span style="text-align: right; font-weight: 600; font-variant-numeric: tabular-nums">{{r.v}}</span>
+                  </div>
+                </sc-for>
+              </section>
+              <section style="padding: 12px 14px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); display: flex; flex-direction: column; gap: 6px">
+                <span style="font-size: 12.5px; font-weight: 600">Сбои по типам</span>
+                <sc-for list="{{types}}" as="t" hint-placeholder-count="6">
+                  <div style="display: flex; justify-content: space-between; font-size: 12px; min-height: 20px; align-items: center"><span style="color: var(--tx-2)">{{t.n}}</span><span style="font-weight: 600; font-variant-numeric: tabular-nums">{{t.v}}</span></div>
+                </sc-for>
+              </section>
+              <section style="display: flex; flex-direction: column; gap: 10px">
+                <div style="padding: 12px 14px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); display: flex; flex-direction: column; gap: 2px">
+                  <span style="font-size: 12px; color: var(--tx-2)">Потерянные токены</span>
+                  <span style="font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums">≈ 3,9 млн</span>
+                  <span style="font-size: 11px; color: var(--tx-3)">оценка: токены упавших агентов</span>
+                </div>
+                <div style="padding: 10px 14px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); display: grid; grid-template-columns: minmax(0, 1fr) max-content; row-gap: 3px; column-gap: 8px; font-size: 12px">
+                  <span style="font-weight: 600">Вызовы скиллов</span><span style="font-weight: 600; font-variant-numeric: tabular-nums">214</span>
+                  <sc-for list="{{skills}}" as="k" hint-placeholder-count="4"><span style="padding-left: 10px; color: var(--tx-2); font-family: 'SF Mono', ui-monospace, Menlo, monospace; font-size: 11.5px">{{k.n}}</span><span style="font-variant-numeric: tabular-nums; color: var(--tx-2)">{{k.v}}</span></sc-for>
+                  <span style="color: var(--tx-2)">Токены на скиллы</span><span style="font-variant-numeric: tabular-nums">≈ 0,62 млн <span style="font-size: 10.5px; color: var(--tx-3)">оценка</span></span>
+                  <span style="font-weight: 600; margin-top: 4px">Интернет</span><span></span>
+                  <span style="padding-left: 10px; color: var(--tx-2)">Поиски</span><span style="font-variant-numeric: tabular-nums; color: var(--tx-2)">58</span>
+                  <span style="padding-left: 10px; color: var(--tx-2)">Загрузки страниц</span><span style="font-variant-numeric: tabular-nums; color: var(--tx-2)">131</span>
+                  <span style="color: var(--tx-2)">Токены на интернет</span><span style="font-variant-numeric: tabular-nums">≈ 0,38 млн <span style="font-size: 10.5px; color: var(--tx-3)">оценка</span></span>
+                  <span style="grid-column: 1 / -1; font-size: 10.5px; color: var(--tx-3)">[ПРИМЕР] имена скиллов и оценки токенов</span>
+                </div>
+              </section>
+            </div>
+
+            <section style="display: flex; flex-direction: column; gap: 8px">
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap">
+                <span style="font-size: 13px; font-weight: 600; margin-right: 6px">Сбои</span>
+                <sc-for list="{{chips}}" as="c" hint-placeholder-count="7">
+                  <button type="button" aria-pressed="{{c.on}}" style="height: 22px; padding: 0 9px; border-radius: 11px; border: 0; background: {{c.bg}}; box-shadow: inset 0 0 0 0.5px var(--btn-bd); color: var(--tx-1); font: inherit; font-size: 12px">{{c.t}}</button>
+                </sc-for>
+                <span style="flex: 1"></span>
+                <select aria-label="Проект" style="height: 22px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12px"><option>Все проекты</option></select>
+                <select aria-label="Среда" style="height: 22px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12px"><option>Все среды</option></select>
+              </div>
+              <div role="table" aria-label="Список сбоев" style="display: flex; flex-direction: column; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); overflow: hidden">
+                <sc-for list="{{fails}}" as="f" hint-placeholder-count="6">
+                  <a href="#" role="row" style="display: grid; grid-template-columns: 16px 74px 130px 110px minmax(0, 1fr) 46px 14px; column-gap: 10px; align-items: center; min-height: 34px; padding: 0 12px; border-bottom: 1px solid var(--sep); color: var(--tx-1); text-decoration: none; font-size: 12px">
+                    <dc-import name="StatusIcon" kind="{{f.k}}" size="14" hint-size="14px,14px"></dc-import>
+                    <span role="cell" style="color: var(--tx-2); font-variant-numeric: tabular-nums">{{f.time}}</span>
+                    <span role="cell" style="color: {{f.tc}}; font-weight: 500">{{f.type}}</span>
+                    <span role="cell" style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.proj}}</span>
+                    <span role="cell" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span>{{f.agent}}</span><span style="color: var(--tx-2)"> · {{f.t}}</span></span>
+                    <span role="cell" style="color: var(--tx-3); font-size: 11px; font-variant-numeric: tabular-nums">{{f.n}}</span>
+                    <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M6 4l4 4-4 4" style="fill: none; stroke: var(--tx-2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"></path></svg>
+                  </a>
+                </sc-for>
+              </div>
+              <span style="font-size: 11.5px; color: var(--tx-3)">Нажатие ведёт к месту сбоя в ленте сессии.</span>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2520,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const nav = ['Сейчас', 'Проекты', 'Расход', 'Запросы', 'Активность', 'Потери', 'Морж', 'Настройки'].map((t) => ({ t, cur: t === 'Потери' ? 'page' : 'false', bg: t === 'Потери' ? 'var(--fill-2)' : 'transparent', fw: t === 'Потери' ? 500 : 400, badge: t === 'Запросы' ? '1' : '' }));
+    const r = (n, v, c) => ({ n, v, w: Math.max(1, Math.round(v / 606 * 100)), c: c || 'var(--meter)' });
+    const R = 'var(--st-red-tx)', T1 = 'var(--tx-1)';
+    const chips = ['Все', 'Падение', 'Ошибка API', 'Ошибка инструмента', 'Повтор', 'Обрыв', 'Отказ'].map((t) => ({ t, on: t === 'Все' ? 'true' : 'false', bg: t === 'Все' ? 'var(--fill-2)' : 'transparent' }));
+    return {
+      panes: [ { cls: 'td', label: 'Тёмная · технический (страница есть только в нём)' }, { cls: 'tl', label: 'Светлая' } ],
+      nav, chips,
+      reasons: [ r('Лимит', 606, 'var(--st-limit)'), r('Сеть', 16), r('Зависание', 9), r('Ошибка API', 7), r('Сон Mac', 4), r('Ошибка скрипта', 3), r('Неизвестно', 1) ],
+      skills: [ { n: 'swift-testing', v: 96 }, { n: 'pdf', v: 58 }, { n: 'xlsx', v: 37 }, { n: 'docx', v: 23 } ],
+      types: [ { n: 'Падение агента', v: 646 }, { n: 'Ошибка API', v: 41 }, { n: 'Ошибка инструмента', v: 73 }, { n: 'Повтор', v: 128 }, { n: 'Обрыв', v: 6 }, { n: 'Отказ в разрешении', v: 11 } ],
+      fails: [
+        { k: 'allFailed', time: '16:05', type: 'Падение', tc: R, proj: 'shop-api', agent: 'Миграция данных', t: 'упали все 12 · лимит, сброс в 18:40', n: '×12' },
+        { k: 'failed', time: '16:12', type: 'Ошибка API', tc: R, proj: 'shop-api', agent: 'Миграции', t: 'перегрузка', n: '' },
+        { k: 'unknown', time: '15:48', type: 'Обрыв', tc: T1, proj: 'deploy-tools', agent: 'build-server', t: 'нет связи с удалённой машиной', n: '' },
+        { k: 'failed', time: '14:20', type: 'Ошибка инструмента', tc: R, proj: 'boris', agent: 'Проверка кода', t: 'Read: файл не найден', n: '' },
+        { k: 'silent', time: '13:02', type: 'Повтор', tc: T1, proj: 'shop-api', agent: 'Миграции', t: 'повтор после перегрузки, удачно', n: '' },
+        { k: 'stopped', time: '11:37', type: 'Отказ', tc: T1, proj: 'boris', agent: 'Главный агент', t: 'вы отклонили команду', n: '' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · реплики моржа на местах</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--wall:#C9CCD3;--bub:#FFFFFF;--bub-bd:rgba(0,0,0,.12);--brand-gold:#B8902E;--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--focus:#0A64D8;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--mono-bg:rgba(0,0,0,.05);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;--rb-done:#2B7D4E;--rb-run:#8CC7CB;--rb-fail:#E5383B;--rb-cancel:#A2A2A8;color:#1D1D1F}
+.td{--wall:#2B2D33;--bub:#3A3A3E;--bub-bd:rgba(255,255,255,.14);--brand-gold:#D4A940;--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--focus:#3D8BFF;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--mono-bg:rgba(255,255,255,.07);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;--rb-done:#3E9D66;--rb-run:#2F7479;--rb-fail:#E5383B;--rb-cancel:#6A6A70;color:#F2F2F4}
+</style>
+</helmet>
+<div style="width: 2520px; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+    <div class="{{th.cls}}" style="background: var(--desk); padding: 22px 32px 30px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px 20px; color: var(--tx-1)">
+      <span style="grid-column: 1 / -1; font-size: 13px; font-weight: 600; color: var(--tx-2)">{{th.label}}</span>
+      <sc-for list="{{scenes}}" as="s" hint-placeholder-count="8">
+        <div style="display: flex; flex-direction: column; gap: 8px; min-width: 0">
+          <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap"><span style="font-size: 12.5px; font-weight: 600">{{s.where}}</span><span style="padding: 1px 7px; border-radius: 5px; background: var(--fill-2); font-size: 11px; color: var(--tx-2)">{{s.trig}}</span></div>
+          <div style="position: relative; height: 400px; border-radius: 8px; overflow: hidden; background: var(--wall)">
+            <div style="height: 24px; background: var(--bar, rgba(30,30,32,.6)); display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 0 10px; font-size: 12px; color: var(--tx-1)"><span style="font-variant-numeric: tabular-nums">16:21</span></div>
+
+            <sc-if value="{{s.notch}}" hint-placeholder-val="{{ false }}">
+              <div style="position: absolute; top: 0; left: 50%; margin-left: -140px; width: 280px; height: 34px; background: #000000; border-radius: 0 0 14px 14px; display: flex; align-items: center; gap: 8px; padding: 0 12px; box-sizing: border-box">
+                <dc-import name="Owl" mood="{{s.mood}}" size="24" variant="simple" hint-size="24px,24px"></dc-import>
+                <span style="flex: 1"></span>
+                <span style="font-size: 11.5px; color: {{s.nc}}; font-weight: 600">{{s.ntext}}</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{s.open}}" hint-placeholder-val="{{ false }}">
+              <div style="position: absolute; top: 0; right: 14px; width: 380px; padding: 10px 12px 12px; box-sizing: border-box; border-radius: 0 0 18px 18px; background: #000000; display: flex; flex-direction: column; gap: 10px" class="td">
+                <div style="display: flex; align-items: center; gap: 8px"><dc-import name="Owl" mood="Ждёт" size="32" variant="simple" hint-size="32px,32px"></dc-import><span style="flex: 1; font-size: 12.5px; color: #F2F2F4">3 агента работают</span><span style="font-size: 12.5px; color: #62A6FF; font-weight: 600">1 ждёт вас</span></div>
+                <dc-import name="B-Card" v="cmd" mode="simple" hint-size="356px,190px"></dc-import>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{s.plaque}}" hint-placeholder-val="{{ false }}">
+              <div style="position: absolute; top: 32px; left: 50%; transform: translateX(-50%); height: 34px; padding: 0 14px 0 6px; border-radius: 17px; background: var(--pop); box-shadow: 0 0 0 0.5px var(--sep), 0 6px 18px rgba(0,0,0,.25); display: flex; align-items: center; gap: 8px; white-space: nowrap">
+                <dc-import name="Owl" mood="Радуется" size="26" variant="simple" hint-size="26px,26px"></dc-import>
+                <span style="font-size: 12.5px">landing · готово</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{s.mini}}" hint-placeholder-val="{{ false }}">
+              <div style="position: absolute; top: 34px; right: 14px; width: 300px; background: var(--pop); border-radius: 10px; box-shadow: 0 0 0 0.5px var(--sep), 0 12px 32px rgba(0,0,0,.24); overflow: hidden">
+                <div style="padding: 12px 14px 10px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid var(--sep)">
+                  <dc-import name="Owl" mood="{{s.mood}}" size="40" variant="simple" hint-size="40px,40px"></dc-import>
+                  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 600; color: {{s.nc}}">{{s.ntext}}</span><span style="font-size: 11.5px; color: var(--tx-2)">3 сессии работают</span></div>
+                </div>
+                <div style="padding: 10px 14px; display: grid; grid-template-columns: max-content minmax(40px, 1fr) max-content; column-gap: 8px; row-gap: 6px; align-items: center; font-size: 11.5px">
+                  <span style="color: var(--tx-2)">5 часов</span><span style="height: 4px; border-radius: 2px; background: var(--meter-track); overflow: hidden"><span style="display: block; width: {{s.lim}}%; height: 100%; background: var(--meter)"></span></span><span style="font-weight: 600; font-variant-numeric: tabular-nums">{{s.lim}} %</span>
+                  <span style="color: var(--tx-2)">Неделя</span><span style="height: 4px; border-radius: 2px; background: var(--meter-track); overflow: hidden"><span style="display: block; width: 34%; height: 100%; background: var(--meter)"></span></span><span style="font-weight: 600; font-variant-numeric: tabular-nums">34 %</span>
+                </div>
+                <div aria-hidden="true" style="height: 150px; border-top: 1px solid var(--sep); background: linear-gradient(var(--fill-1), transparent)"></div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{s.side}}" hint-placeholder-val="{{ false }}">
+              <div style="position: absolute; top: 34px; left: 14px; right: 14px; bottom: 0; border-radius: 10px 10px 0 0; overflow: hidden; display: flex; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 12px 32px rgba(0,0,0,.24)">
+                <div style="width: 210px; flex: none; background: var(--side); border-right: 1px solid var(--sep); padding: 10px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px">
+                  <span style="height: 26px; padding: 0 8px; display: flex; align-items: center; font-size: 12.5px; border-radius: 6px; background: var(--fill-2)">Сейчас</span>
+                  <span style="height: 26px; padding: 0 8px; display: flex; align-items: center; font-size: 12.5px">Проекты</span>
+                  <span style="height: 26px; padding: 0 8px; display: flex; align-items: center; font-size: 12.5px">Расход</span>
+                  <span style="flex: 1"></span>
+                  <div style="display: flex; justify-content: center"><dc-import name="Owl" mood="{{s.mood}}" size="150" variant="full" hint-size="150px,150px"></dc-import></div>
+                </div>
+                <div aria-hidden="true" style="flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 8px"><span style="height: 14px; width: 40%; border-radius: 4px; background: var(--fill-2)"></span><span style="height: 40px; border-radius: 6px; background: var(--fill-1)"></span><span style="height: 40px; border-radius: 6px; background: var(--fill-1)"></span><span style="height: 40px; border-radius: 6px; background: var(--fill-1)"></span></div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{s.tray}}" hint-placeholder-val="{{ false }}">
+              <div style="position: absolute; top: 0; right: 60px; height: 24px; display: flex; align-items: center"><span style="width: 18px; height: 16px; border-radius: 3px; border: 1.5px dashed var(--tx-2); box-sizing: border-box"></span></div>
+              <div style="position: absolute; top: 120px; left: 24px; right: 24px; text-align: center; font-size: 12.5px; line-height: 18px; color: var(--tx-2)">В трее облачка нет. Значок только меняет состояние, реплика выходит на поверхности, которая сейчас видна: в чёлке, на панели или в мини-окне.</div>
+            </sc-if>
+
+            <sc-if value="{{s.text}}" hint-placeholder-val="{{ true }}">
+              <div role="status" aria-live="polite" aria-label="Реплика Бориса" style="position: absolute; {{s.bpos}}; max-width: {{s.bw}}px; padding: 7px 11px 8px; box-sizing: border-box; border-radius: 10px; background: var(--bub); box-shadow: 0 0 0 0.5px var(--bub-bd), 0 8px 22px rgba(0,0,0,.26); border-left: 2px solid var(--brand-gold); font-size: 12.5px; line-height: 17px; color: var(--tx-1); z-index: 3">
+              <span aria-hidden="true" style="position: absolute; {{s.tail}}; width: 10px; height: 10px; background: var(--bub); transform: rotate(45deg); box-shadow: {{s.tailSh}}"></span>
+              <span style="position: relative">{{s.text}}</span>
+              <sc-if value="{{s.count}}" hint-placeholder-val="{{ false }}"><span style="position: relative; display: inline-flex; margin-left: 6px; padding: 0 6px; height: 16px; align-items: center; border-radius: 8px; background: var(--fill-2); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; vertical-align: 1px">{{s.count}}</span></sc-if>
+            </div>
+            </sc-if>
+          </div>
+          <span style="font-size: 11.5px; line-height: 16px; color: var(--tx-2)">{{s.note}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2520,"height":2000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const up = 'left: 18px; top: -5px', upMid = 'left: 50%; margin-left: -5px; top: -5px', right = 'right: -5px; top: 16px', left = 'left: -5px; top: 18px';
+    const shUp = '-0.5px -0.5px 0 0 var(--bub-bd)', shRight = '0.5px -0.5px 0 0 var(--bub-bd)', shLeft = '-0.5px 0.5px 0 0 var(--bub-bd)';
+    const S = (o) => Object.assign({ notch: false, open: false, plaque: false, mini: false, side: false, tray: false, count: '', mood: 'Дежурит', nc: 'var(--tx-1)', ntext: '', lim: 62, tailSh: shUp }, o);
+    const W = 'var(--st-wait)';
+    return {
+      themes: [ { cls: 'td', label: 'Тёмная тема' }, { cls: 'tl', label: 'Светлая тема' } ],
+      scenes: [
+        S({ where: 'Чёлка закрытая', trig: 'событие: запрос', notch: true, mood: 'Ждёт', ntext: '1 ждёт вас', nc: '#62A6FF',
+            text: 'Тебя ждут. Решения, как и сигары, не терпят сырости.', bw: 250, bpos: 'top: 44px; left: calc(50% - 132px)', tail: up,
+            note: 'Облачко свисает из-под чёлки отдельным слоем над рабочим столом. Чёлка не раскрывается и не меняет размер.' }),
+        S({ where: 'Чёлка закрытая', trig: 'серия: 12 одинаковых сбоев', notch: true, mood: 'Тревога', ntext: 'Сбой', nc: 'var(--st-red-tx)',
+            text: 'Агенты упали в shop-api. Это не конец. Это даже не начало конца.', count: '×12', bw: 270, bpos: 'top: 44px; left: calc(50% - 132px)', tail: up,
+            note: 'На серию одинаковых событий одна реплика со счётчиком, а не двенадцать облачков подряд.' }),
+        S({ where: 'Чёлка открытая', trig: 'по нажатию на моржа · длинная', open: true,
+            text: 'Мы будем отвечать в чёлке, мы будем отвечать в трее. Мы никогда не сдадимся.', bw: 180, bpos: "top: 12px; right: 404px", tail: right, tailSh: shRight,
+            note: 'Длинная реплика переносится на строки по ширине облачка. Облачко слева от открытой чёлки на уровне головы, карточка запроса не сдвигается.' }),
+        S({ where: 'Панель без чёлки', trig: 'событие: завершение', plaque: true,
+            text: 'Никогда ещё столь многие токены не тратились столь немногими агентами.', bw: 260, bpos: 'top: 78px; left: calc(50% - 130px)', tail: upMid,
+            note: 'На внешнем мониторе облачко выходит под плашкой у верхнего края.' }),
+        S({ where: 'Мини-окно', trig: 'событие: лимит близко', mini: true, mood: 'Настороже', ntext: 'Лимит 5 часов: 91 %', nc: 'var(--tx-1)', lim: 91,
+            text: 'Лимит близко. Мне нечего предложить, кроме токенов, пота и слёз.', bw: 200, bpos: 'top: 40px; right: 324px', tail: right, tailSh: shRight,
+            note: 'Слева от окна на уровне моржа. Если слева нет места, облачко ложится поверх окна под шапкой.' }),
+        S({ where: 'Мини-окно', trig: 'событие: запрос · короткая', mini: true, mood: 'Ждёт', ntext: '1 ждёт вас', nc: W,
+            text: 'Тебя ждут.', bw: 200, bpos: 'top: 46px; right: 324px', tail: right, tailSh: shRight,
+            note: 'Короткая реплика: облачко по размеру текста.' }),
+        S({ where: 'Главное окно · боковая панель', trig: 'событие: сбой', side: true, mood: 'Тревога',
+            text: 'Агент упал в shop-api. Это не конец. Это даже не начало конца.', bw: 230, bpos: 'bottom: 120px; left: 232px', tail: left, tailSh: shLeft,
+            note: 'Облачко справа от моржа поверх содержимого страницы. Вёрстка страницы не двигается.' }),
+        S({ where: 'Трей', trig: 'облачка нет', tray: true, text: '',
+            note: 'Реплики в трее не показываются ни по событию, ни по нажатию.' })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

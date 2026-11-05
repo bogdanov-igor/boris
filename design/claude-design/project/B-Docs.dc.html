@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · документация</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--focus:#0A64D8;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--mono-bg:rgba(0,0,0,.05);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;--rb-done:#2B7D4E;--rb-run:#8CC7CB;--rb-fail:#E5383B;--rb-cancel:#A2A2A8;color:#1D1D1F}
+.td{--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--focus:#3D8BFF;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--mono-bg:rgba(255,255,255,.07);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;--rb-done:#3E9D66;--rb-run:#2F7479;--rb-fail:#E5383B;--rb-cancel:#6A6A70;color:#F2F2F4}
+.doc p{margin:0;font-size:13px;line-height:20px;color:var(--tx-2)}
+.doc h2{margin:6px 0 0;font-size:15px;line-height:20px;font-weight:600;color:var(--tx-1)}
+.doc code{font-family:'SF Mono',ui-monospace,'JetBrains Mono',Menlo,monospace;font-size:11.5px;padding:1px 4px;border-radius:4px;background:var(--mono-bg);color:var(--tx-1)}
+</style>
+</helmet>
+<div style="width: 2340px; height: 840px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{panes}}" as="p" hint-placeholder-count="2">
+    <div class="{{p.cls}}" style="background: var(--desk); padding: 20px 30px 30px; display: flex; flex-direction: column; gap: 10px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{p.label}}</span>
+      <div style="width: 1100px; height: 740px; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 18px 40px rgba(0,0,0,.28)">
+        <div style="flex: none; height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--sep); background: var(--side)">
+          <span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span>
+          <span style="flex: 1; text-align: center; font-size: 13px; font-weight: 600">Как устроен Boris</span>
+          <span style="width: 52px"></span>
+        </div>
+        <div style="flex: 1; min-height: 0; display: flex">
+          <nav aria-label="Оглавление" style="width: 230px; flex: none; border-right: 1px solid var(--sep); background: var(--side); padding: 12px 10px; box-sizing: border-box; display: flex; flex-direction: column; gap: 1px">
+            <sc-for list="{{p.toc}}" as="t" hint-placeholder-count="10">
+              <div role="link" tabindex="0" aria-current="{{t.cur}}" style="display: flex; align-items: center; gap: 8px; min-height: 26px; padding: 0 8px; border-radius: 6px; background: {{t.bg}}; font-size: 12.5px; font-weight: {{t.fw}}"><span style="width: 16px; font-size: 11px; color: var(--tx-3); font-variant-numeric: tabular-nums">{{t.n}}</span>{{t.t}}</div>
+            </sc-for>
+            <span style="flex: 1"></span>
+            <span style="padding: 0 8px; font-size: 11px; line-height: 15px; color: var(--tx-3)">Одинаково в простом и техническом режимах. Версия 1.0.</span>
+          </nav>
+
+          <article class="doc" style="flex: 1; min-width: 0; overflow: hidden; padding: 20px 32px; display: flex; flex-direction: column; gap: 10px">
+            <sc-if value="{{p.data}}" hint-placeholder-val="{{ true }}">
+              <h1 style="margin: 0; font-size: 20px; line-height: 26px; font-weight: 700">1. Откуда берутся данные</h1>
+              <p>Boris работает сразу после установки. Он читает файлы, которые Claude и так пишет на диск, и ничего в них не меняет. Аккаунт не нужен, интернет нужен только для Telegram, обновления приложения и обновления лимитов.</p>
+              <div role="img" aria-label="Схема: источники пишут файлы, Boris их читает и показывает на поверхностях; хуки по желанию дают мгновенные события и ответы" style="display: grid; grid-template-columns: 1.15fr 24px 1fr 24px 1fr; align-items: center; margin: 6px 0; font-size: 12px">
+                <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: 8px; background: var(--fill-1)">
+                  <span style="font-size: 11px; font-weight: 600; color: var(--tx-2)">Источники</span>
+                  <span>Claude Code: терминал, VS Code, Cursor, вкладка Code</span><span>Удалённые машины по SSH</span><span>Программы на Agent SDK</span><span>Cowork</span><span>Чат Claude, по желанию</span>
+                </div>
+                <span style="text-align: center; color: var(--tx-3)">→</span>
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <div style="padding: 10px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep)"><span style="display: block; font-size: 11px; font-weight: 600; color: var(--tx-2)">Файлы Claude</span>журналы, транскрипты, настройки · только чтение</div>
+                  <div style="padding: 10px; border-radius: 8px; border: 1px dashed var(--st-wait)"><span style="display: block; font-size: 11px; font-weight: 600; color: var(--st-wait)">Хуки, по желанию</span>мгновенные события и ответы на запросы</div>
+                </div>
+                <span style="text-align: center; color: var(--tx-3)">→</span>
+                <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: 8px; background: var(--fill-1)">
+                  <span style="font-size: 11px; font-weight: 600; color: var(--tx-2)">Boris на вашем Mac</span>
+                  <span>Трей, чёлка, мини-окно</span><span>Главное окно</span><span>Уведомления Mac и Telegram</span>
+                </div>
+              </div>
+              <h2>Что видно без хуков</h2>
+              <p>Всё: сессии, агенты, текущий шаг, токены, сбои и лимиты. Обновления приходят с небольшой задержкой, а ответить на запрос Claude можно только в самом Claude.</p>
+              <h2>Что дают хуки</h2>
+              <p>События приходят мгновенно, и на запросы можно отвечать прямо из Boris. Перед подключением Boris показывает точные изменения настроек Claude, отключить их можно в «Подключениях». Если хуки сломались, данные продолжают обновляться, а Boris предлагает их починить.</p>
+              <h2>Чат и Cowork</h2>
+              <p>Для чата известно только, что ответ готов, и для этого нужно разрешение Accessibility. Для Cowork данных намного больше, но на его запросы отвечают в Claude Desktop.</p>
+            </sc-if>
+
+            <sc-if value="{{p.status}}" hint-placeholder-val="{{ false }}">
+              <h1 style="margin: 0; font-size: 20px; line-height: 26px; font-weight: 700">4. Агенты, статусы и сбои</h1>
+              <p>Сессия держит главного агента, он может звать субагентов, а workflow запускает целую группу агентов по фазам. Фазы берутся из журнала (<code>started.phase</code>) и из <code>meta.phases</code> скрипта. Число агентов заранее неизвестно и растёт по ходу, поэтому шкала прогресса может откатиться назад.</p>
+              <div role="table" aria-label="Состояния агента" style="border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); overflow: hidden; font-size: 12.5px">
+                <sc-for list="{{states}}" as="r" hint-placeholder-count="4">
+                  <div role="row" style="display: grid; grid-template-columns: 22px 110px minmax(0, 1fr); column-gap: 10px; align-items: center; min-height: 30px; padding: 4px 12px; box-sizing: border-box; border-top: {{r.bt}}">
+                    <dc-import name="StatusIcon" kind="{{r.k}}" size="14" hint-size="14px,14px"></dc-import>
+                    <code style="justify-self: start">{{r.c}}</code><span style="color: var(--tx-2)">{{r.t}}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <h2>Причины сбоев</h2>
+              <p>Boris называет причину своими словами, а сырой текст ошибки показывает только в деталях. Он берётся из последней записи транскрипта агента, а если её нет, из поля <code>reason</code> в журнале.</p>
+              <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                <sc-for list="{{reasons}}" as="r" hint-placeholder-count="6"><span style="display: inline-flex; gap: 6px; align-items: baseline; padding: 4px 8px; border-radius: 6px; background: var(--fill-1); font-size: 12px"><code>{{r.c}}</code>{{r.t}}</span></sc-for>
+              </div>
+              <p>Зависшего агента Claude Code перезапускает сам, до 6 попыток, и номер попытки виден в деталях.</p>
+            </sc-if>
+          </article>
+        </div>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2340,"height":840}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const titles = ['Откуда берутся данные', 'Хуки и ответы на запросы', 'Сессии, проекты, среды', 'Агенты, статусы и сбои', 'Токены и оценка в долларах', 'Лимиты', 'Нагрузка на Mac', 'Удалённые машины', 'Уведомления', 'Приватность', 'Без интернета', 'Диагностика'];
+    const toc = (cur) => titles.map((t, i) => ({ t, n: String(i + 1), cur: i === cur ? 'page' : 'false', bg: i === cur ? 'var(--fill-2)' : 'transparent', fw: i === cur ? 500 : 400 }));
+    return {
+      panes: [
+        { cls: 'td', label: 'Тёмная · открывается из «О Boris» отдельным окном · раздел 1', toc: toc(0), data: true, status: false },
+        { cls: 'tl', label: 'Светлая · раздел 4', toc: toc(3), data: false, status: true }
+      ],
+      states: [
+        { k: 'running', c: 'running', t: 'Агент работает.', bt: 'none' },
+        { k: 'done', c: 'done', t: 'Агент закончил.', bt: '1px solid var(--sep)' },
+        { k: 'failed', c: 'failed', t: 'Агент упал, причина ниже.', bt: '1px solid var(--sep)' },
+        { k: 'stopped', c: 'cancelled', t: 'Запуск закончился раньше агента. Очереди как состояния нет.', bt: '1px solid var(--sep)' }
+      ],
+      reasons: [ ['limit', 'кончился лимит, в тексте вид и время сброса'], ['network', 'нет связи'], ['sleep', 'Mac уснул'], ['stall', 'агент завис'], ['api', 'ошибка Claude'], ['unknown', 'причина неизвестна'] ].map(([c, t]) => ({ c, t }))
+    };
+  }
+}
+</script>
+</body>
+</html>

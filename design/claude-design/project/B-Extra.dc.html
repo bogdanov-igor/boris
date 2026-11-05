@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · дополнения: лента, сессия, простой режим</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--focus:#0A64D8;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--mono-bg:rgba(0,0,0,.05);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;--rb-done:#2B7D4E;--rb-run:#8CC7CB;--rb-fail:#E5383B;--rb-cancel:#A2A2A8;color:#1D1D1F}
+.td{--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--focus:#3D8BFF;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--mono-bg:rgba(255,255,255,.07);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;--rb-done:#3E9D66;--rb-run:#2F7479;--rb-fail:#E5383B;--rb-cancel:#6A6A70;color:#F2F2F4}
+
+</style>
+</helmet>
+<div style="width: 2520px; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+    <div class="{{th.cls}}" style="background: var(--desk); padding: 22px 30px 30px; display: grid; grid-template-columns: 600px minmax(0, 1fr) 560px; gap: 24px; align-items: start; color: var(--tx-1)">
+      <span style="grid-column: 1 / -1; font-size: 13px; font-weight: 600; color: var(--tx-2)">{{th.label}}</span>
+      <div style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">Живая лента · технический режим</span>
+        <section aria-label="Живая лента" style="position: relative; height: 760px; border-radius: 10px; overflow: hidden; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 10px 26px rgba(0,0,0,.22); display: flex; flex-direction: column">
+          <div style="flex: none; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--sep); font-size: 12.5px"><span style="font-weight: 600; flex: 1">Лента</span><span style="font-size: 11.5px; color: var(--tx-2)">Токены шага</span><button type="button" style="height: 22px; padding: 0 9px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 11.5px; white-space: nowrap">Скопировать всё</button></div>
+          <div style="flex: 1; overflow: hidden; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px">
+            <div style="padding: 8px 10px; border-radius: 8px; background: var(--fill-1); display: flex; flex-direction: column; gap: 4px">
+              <div style="display: flex; align-items: center; gap: 8px"><span style="flex: 1; font-size: 11.5px; font-weight: 600; color: var(--tx-2)">Вы · 14:02</span><button type="button" aria-label="Скопировать событие" title="Скопировать событие" style="width: 22px; height: 20px; padding: 0; border: 0; border-radius: 4px; background: var(--fill-2); color: var(--tx-2); display: inline-flex; align-items: center; justify-content: center"><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M5.5 5.5h7v7h-7z M3.5 10.5v-7h7" style="fill: none; stroke: currentColor; stroke-width: 1.3"></path></svg></button></div>
+              <span style="display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; line-height: 18px">[ЗАПРОС ЧЕЛОВЕКА] Проверь авторизацию и почини проверку срока токена. Сейчас просроченный токен проходит, если подпись верная, а должен отклоняться сразу. Добавь тест на просроченный токен и на неверную подпись, прогони все тесты модуля и напиши, что поменял и почему, отдельно отметь места, где поведение изменилось для клиентов API.</span>
+              <button type="button" aria-expanded="false" style="align-self: flex-start; padding: 0; border: 0; background: transparent; color: var(--st-wait); font: inherit; font-size: 11.5px">Показать целиком · 412 символов</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 14px 12px minmax(0, 1fr) max-content max-content 40px 22px; column-gap: 8px; align-items: center; min-height: 28px; padding: 0 6px; border-radius: 6px; background: var(--fill-1)">
+              <dc-import name="StatusIcon" kind="done" size="14" hint-size="14px,14px"></dc-import><span style="color: var(--tx-3)">›</span>
+              <span style="min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><b style="font-weight: 600">Read</b> <span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px">src/auth.swift</span></span>
+              <span style="font-size: 11px; color: var(--tx-2); font-variant-numeric: tabular-nums">1,4K ток.</span><span style="font-size: 11px; color: var(--tx-2)">1,2 с</span><span style="font-size: 11px; color: var(--tx-3)">14:02</span><button type="button" aria-label="Скопировать событие" title="Скопировать событие" style="width: 22px; height: 20px; padding: 0; border: 0; border-radius: 4px; background: var(--fill-2); color: var(--tx-2); display: inline-flex; align-items: center; justify-content: center"><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M5.5 5.5h7v7h-7z M3.5 10.5v-7h7" style="fill: none; stroke: currentColor; stroke-width: 1.3"></path></svg></button>
+            </div>
+            <span style="padding-left: 6px; font-size: 10.5px; color: var(--tx-3)">наведение на строку: кнопка «Скопировать событие»</span>
+            <div style="padding: 8px 10px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); display: flex; flex-direction: column; gap: 6px; line-height: 18px">
+              <div style="display: flex; align-items: center; gap: 8px"><span style="flex: 1; font-size: 11.5px; font-weight: 600; color: var(--tx-2)">Заметка Claude · 14:03</span><span style="font-size: 11px; color: var(--tx-2)">0,9K ток.</span></div>
+              <b style="font-size: 13px">Что не так</b>
+              <ul style="margin: 0; padding-left: 18px"><li>срок проверяется после подписи;</li><li>теста на просроченный токен нет.</li></ul>
+              <pre style="margin: 0; padding: 6px 8px; border-radius: 6px; background: var(--mono-bg); font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; line-height: 16px; white-space: pre">guard !token.isExpired else { return .expired }</pre>
+            </div>
+            <div style="border-radius: 8px; box-shadow: inset 0 0 0 1px var(--st-red); overflow: hidden">
+              <div style="display: grid; grid-template-columns: 14px 12px minmax(0, 1fr) max-content max-content 40px; column-gap: 8px; align-items: center; min-height: 30px; padding: 0 6px; background: var(--st-red-soft)">
+                <dc-import name="StatusIcon" kind="failed" size="14" hint-size="14px,14px"></dc-import><span style="color: var(--tx-2)">⌄</span>
+                <span style="min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><b style="font-weight: 600">Bash</b> <span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px">swift test --filter AuthTests</span></span>
+                <span style="font-size: 11px; color: var(--tx-2)">2,3K ток.</span><span style="font-size: 11px; color: var(--st-red-tx); font-weight: 600">ошибка · 4,8 с</span><span style="font-size: 11px; color: var(--tx-3)">14:06</span>
+              </div>
+              <pre style="margin: 0; padding: 8px 10px; font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11px; line-height: 16px; white-space: pre-wrap; color: var(--tx-2)"><span style="color: var(--tx-3)">[ПРИМЕР ВЫВОДА]</span>
+Test Case testExpiredToken passed (0.003 s)
+<span style="color: var(--st-red-tx)">Test Case testInvalidSignature failed (0.011 s)
+AuthTests.swift:48: XCTAssertEqual failed: (".valid") is not equal to (".invalid")</span>
+Executed 2 tests, with 1 failure</pre>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; padding: 4px 6px; color: var(--tx-2); font-size: 12px"><dc-import name="StatusIcon" kind="running" size="14" hint-size="14px,14px"></dc-import>Думает…</div>
+          </div>
+          <button type="button" style="position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); height: 28px; padding: 0 14px; border-radius: 14px; border: 0.5px solid var(--btn-bd); background: var(--pop); color: var(--tx-1); box-shadow: 0 6px 18px rgba(0,0,0,.25); font: inherit; font-size: 12.5px">↓ К последнему</button>
+        </section>
+      </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-content: start">
+          <sc-for list="{{heads}}" as="h" hint-placeholder-count="3">
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{h.cap}}</span>
+              <div style="padding: 12px 16px; border-radius: 10px; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 8px 22px rgba(0,0,0,.18); display: flex; flex-direction: column; gap: 6px">
+                <span style="font-size: 11.5px; color: var(--tx-2)">Проекты › {{h.p}}</span>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+                  <span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 16px; font-weight: 600">{{h.p}}</span>
+                  <span style="height: 20px; padding: 0 7px; display: inline-flex; align-items: center; border-radius: 5px; background: var(--fill-1); font-size: 11px">{{h.env}}</span>
+                  <sc-if value="{{h.fork}}" hint-placeholder-val="{{ false }}"><span title="{{h.fork}}" style="height: 20px; padding: 0 7px; display: inline-flex; align-items: center; gap: 4px; border-radius: 5px; background: var(--fill-2); font-size: 11px"><svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M4 2.5v4c0 2 2 3 4 3s4 1 4 3v1M4 6.5v7" style="fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round"></path></svg>Форк</span></sc-if>
+                  <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: {{h.sc}}"><dc-import name="StatusIcon" kind="{{h.k}}" size="14" hint-size="14px,14px"></dc-import>{{h.s}}</span>
+                  <span style="font-size: 11.5px; color: var(--tx-2)">{{h.d}}</span>
+                </div>
+                <span style="font-size: 12px; line-height: 17px; color: {{h.rc}}">{{h.r}}</span>
+                <sc-if value="{{h.btn}}" hint-placeholder-val="{{ false }}"><button type="button" style="align-self: flex-start; height: 22px; padding: 0 9px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 11.5px; white-space: nowrap">{{h.btn}}</button></sc-if>
+              </div>
+            </div>
+          </sc-for>
+
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">Занята без workflow · выбран агент</span>
+            <div style="padding: 10px; border-radius: 10px; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 8px 22px rgba(0,0,0,.18); display: flex; flex-direction: column; gap: 4px">
+              <span style="padding: 0 6px 4px; font-size: 11.5px; font-weight: 600; color: var(--tx-2)">Агенты · 3</span>
+              <sc-for list="{{tree}}" as="a" hint-placeholder-count="3">
+                <div aria-selected="{{a.sel}}" style="display: grid; grid-template-columns: 14px minmax(0, 1fr) max-content; column-gap: 8px; align-items: center; padding: 5px 6px 5px {{a.ind}}px; border-radius: 6px; background: {{a.bg}}; box-shadow: {{a.sh}}; font-size: 12.5px">
+                  <dc-import name="StatusIcon" kind="running" size="14" hint-size="14px,14px"></dc-import><span style="font-weight: {{a.fw}}">{{a.n}} <span style="font-weight: 400; font-size: 11.5px; color: var(--tx-2)">· {{a.act}}</span></span><span style="font-size: 11px; color: var(--tx-2)">{{a.tok}}</span>
+                </div>
+              </sc-for>
+              <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 6px; border-top: 1px solid var(--sep); font-size: 11.5px; color: var(--tx-2)">Лента показывает только <span style="height: 20px; padding: 0 4px 0 8px; display: inline-flex; align-items: center; gap: 4px; border-radius: 10px; background: var(--fill-2); color: var(--tx-1)">Проверка кода <button type="button" aria-label="Показать всех" style="width: 16px; height: 16px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--tx-2); font: inherit">×</button></span></div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">Workflow · раскрытая фаза и токены</span>
+            <div style="padding: 10px 12px; border-radius: 10px; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 8px 22px rgba(0,0,0,.18); display: flex; flex-direction: column; gap: 6px; font-size: 12.5px">
+              <div style="display: flex; align-items: center; gap: 8px"><dc-import name="StatusIcon" kind="running" size="14" hint-size="14px,14px"></dc-import><b style="flex: 1">Аудит зависимостей</b><span style="font-size: 11.5px; color: var(--tx-2)">12 агентов</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 4px 8px; border-radius: 6px; background: var(--fill-1); font-size: 11.5px"><span>Токены workflow</span><span><b>0,41 млн</b> <span style="color: var(--tx-3)">· ≈ 2,76 $ оценка</span></span></div>
+              <div style="display: flex; align-items: center; gap: 6px; color: var(--tx-2)"><span>›</span>Поиск <span style="margin-left: auto; font-size: 11.5px; color: var(--st-done)">8 из 8 · готово</span></div>
+              <div style="display: flex; align-items: center; gap: 6px"><span>⌄</span><b>Проверка</b> <span style="margin-left: auto; font-size: 11.5px; color: var(--st-run)">1 из 4 · идёт</span></div>
+              <sc-for list="{{phaseAgents}}" as="a" hint-placeholder-count="4">
+                <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr) max-content; column-gap: 8px; align-items: center; padding: 3px 0 3px 18px; font-size: 12px">
+                  <dc-import name="StatusIcon" kind="{{a.k}}" size="14" hint-size="14px,14px"></dc-import>
+                  <span style="min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: {{a.f}}">{{a.n}}</span> <span style="color: var(--tx-2); font-size: 11px">· {{a.act}}</span></span>
+                  <span style="font-size: 11px; color: var(--tx-2); font-variant-numeric: tabular-nums">{{a.tok}}</span>
+                </div>
+              </sc-for>
+              <span style="font-size: 10.5px; color: var(--tx-3)">[ПРИМЕР] подписи агентов и токены; без подписи показывается ID агента</span>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">Простой режим · все причины дословно</span>
+          <div style="padding: 6px; border-radius: 10px; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 8px 22px rgba(0,0,0,.18); display: flex; flex-direction: column">
+            <sc-for list="{{reasons}}" as="r" hint-placeholder-count="8">
+              <div style="display: grid; grid-template-columns: 16px minmax(0, 1fr) max-content; column-gap: 10px; align-items: center; min-height: 44px; padding: 4px 8px; border-top: {{r.bt}}">
+                <dc-import name="StatusIcon" kind="{{r.k}}" size="16" hint-size="16px,16px"></dc-import>
+                <span style="min-width: 0; display: flex; flex-direction: column; line-height: 17px"><span style="font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.n}}</span><span style="font-size: 12px; color: var(--tx-2)">{{r.t}}</span></span>
+                <button type="button" style="height: 22px; padding: 0 9px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 11.5px; white-space: nowrap">Открыть сессию</button>
+              </div>
+            </sc-for>
+          </div>
+          <span style="font-size: 12px; font-weight: 600; color: var(--tx-2); margin-top: 6px">Вариант «Что-то пошло не так»</span>
+          <div style="padding: 14px 16px; border-radius: 10px; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 8px 22px rgba(0,0,0,.18); display: flex; gap: 12px; align-items: center">
+            <dc-import name="Owl" mood="Хм?" size="56" variant="simple" hint-size="56px,56px"></dc-import>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13.5px; font-weight: 700">Что-то пошло не так</span><span style="font-size: 12px; line-height: 17px; color: var(--tx-2)">Задача остановилась, а причину Boris не понял. Подробности в самой сессии.</span></div>
+            <button type="button" style="height: 22px; padding: 0 9px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 11.5px; white-space: nowrap">Открыть сессию</button>
+          </div>
+        </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2520,"height":1700}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+
+    const ON = { bg: 'var(--btn)', sh: '0 0 0 0.5px var(--btn-bd)' }, OFF = { bg: 'transparent', sh: 'none' };
+    const navFor = (cur, badge) => ['Сейчас', 'Проекты', 'Расход', 'Запросы', 'Активность', 'Потери', 'Морж', 'Настройки']
+      .map((t) => ({ t, cur: t === cur ? 'page' : 'false', bg: t === cur ? 'var(--fill-2)' : 'transparent', fw: t === cur ? 500 : 400, badge: t === 'Запросы' ? (badge === undefined ? '1' : badge) : '', badgeL: '1 ждёт ответа' }));
+    const winPane = (cls, label, cur, o) => Object.assign({ cls, label, nav: navFor(cur), owlMood: 'Ждёт', owlText: '1 ждёт вас',
+      sPressed: 'false', tPressed: 'true', sBg: OFF.bg, sSh: OFF.sh, tBg: ON.bg, tSh: ON.sh }, o || {});
+
+    const R = 'var(--st-red-tx)', T2 = 'var(--tx-2)';
+    const rs = [ ['allFailed', 'Миграция данных', 'Кончился лимит, сброс в 18:40'], ['unknown', '[ПРИМЕР] Сборка сайта', 'Нет связи с Claude'], ['stopped', '[ПРИМЕР] Перевод документации', 'Mac уснул'],
+                 ['silent', '[ПРИМЕР] Обновление зависимостей', 'Задача зависла'], ['failed', 'Помощник «Миграции»', 'Ошибка Claude'], ['failed', '[ПРИМЕР] Отчёт по тестам', 'Ошибка в задаче'],
+                 ['interrupted', '[ПРИМЕР] api-docs', 'Claude Code закрылся'], ['unknown', '[ПРИМЕР] Разбор логов', 'Причина неизвестна'] ];
+    return {
+      themes: [ { cls: 'td', label: 'Тёмная тема · дополнения к ленте, сессии и простому режиму' }, { cls: 'tl', label: 'Светлая тема' } ],
+      heads: [
+        { cap: 'Сессия · сбой', p: '[ПРИМЕР] api-docs', env: 'Терминал', fork: '', k: 'failed', s: 'Упала', sc: R, d: '38 мин', r: 'Ошибка API: перегрузка. Сырой текст ошибки в деталях шага.', rc: T2, btn: 'Открыть терминал' },
+        { cap: 'Сессия · прервана', p: '[ПРИМЕР] api-docs', env: 'Терминал', fork: '', k: 'interrupted', s: 'Прервана', sc: T2, d: '12 мин', r: 'Процесс Claude Code закрылся без итога. Последнее действие: Bash в 15:31.', rc: T2, btn: 'Открыть терминал' },
+        { cap: 'Сессия · форк', p: 'boris', env: 'Терминал', fork: 'Ответвлена от сессии 5c1e0a7d в 14:02', k: 'running', s: 'Идёт', sc: 'var(--st-run)', d: '9 мин', r: 'Ответвлена от сессии 5c1e0a7d… в 14:02. [ПРИМЕР] время и ID', rc: T2, btn: 'Открыть исходную сессию' }
+      ],
+      tree: [
+        { n: 'Главный агент', act: 'Bash · идёт', tok: '84,2K', ind: 6, fw: 600, sel: 'false', bg: 'transparent', sh: 'none' },
+        { n: 'Проверка кода', act: 'Read src/session.swift', tok: '21,7K', ind: 24, fw: 500, sel: 'true', bg: 'var(--fill-2)', sh: 'inset 0 0 0 1px var(--focus)' },
+        { n: 'Проверка находки', act: 'Думает…', tok: '6,3K', ind: 42, fw: 500, sel: 'false', bg: 'transparent', sh: 'none' }
+      ],
+      phaseAgents: [
+        { k: 'done', n: '[ПРИМЕР] Проверка swift-crypto', f: sans, act: 'готов', tok: '31K' },
+        { k: 'running', n: 'a07390df23b102d77', f: mono, act: 'Read Package.resolved', tok: '18K' },
+        { k: 'running', n: '[ПРИМЕР] Проверка находки по лицензиям', f: sans, act: 'WebSearch', tok: '12K' },
+        { k: 'running', n: '[ПРИМЕР] Проверка alamofire', f: sans, act: 'шага сейчас нет', tok: '9K' }
+      ],
+      reasons: rs.map(([k, n, t], i) => ({ k, n, t, bt: i ? '1px solid var(--sep)' : 'none' }))
+    };
+  }
+}
+</script>
+</body>
+</html>

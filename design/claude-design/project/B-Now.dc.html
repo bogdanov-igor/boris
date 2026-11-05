@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · экран «Сейчас»</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--desk:#E4E4E9;--pop:#F6F6F7;--card:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;color:#1D1D1F}
+.td{--desk:#141416;--pop:#2A2A2D;--card:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;color:#F2F2F4}
+</style>
+</helmet>
+<div style="width: 2520px; height: 2700px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 900px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{panes}}" as="p" hint-placeholder-count="5">
+    <div class="{{p.cls}}" style="background: var(--desk); padding: 20px 30px 40px; display: flex; flex-direction: column; gap: 10px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{p.label}}</span>
+      <div style="width: 1200px; height: 800px; border-radius: 10px; overflow: hidden; display: flex; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 18px 40px rgba(0,0,0,.28)">
+
+        <nav aria-label="Разделы" style="width: 210px; flex: none; background: var(--side); border-right: 1px solid var(--sep); display: flex; flex-direction: column; padding: 10px 10px 12px; box-sizing: border-box">
+          <div style="height: 22px; display: flex; gap: 8px; align-items: center; padding-left: 4px; margin-bottom: 16px"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span></div>
+          <sc-for list="{{p.nav}}" as="n" hint-placeholder-count="6">
+            <a href="#" aria-current="{{n.cur}}" style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: 6px; background: {{n.bg}}; color: var(--tx-1); text-decoration: none; font-size: 13px; font-weight: {{n.fw}}">
+              <span style="flex: 1">{{n.t}}</span>
+              <sc-if value="{{n.badge}}" hint-placeholder-val="{{ false }}"><span style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--st-wait); color: #FFFFFF; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center">{{n.badge}}</span></sc-if>
+            </a>
+          </sc-for>
+          <span style="flex: 1"></span>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0 10px">
+            <dc-import name="Owl" mood="{{p.mood}}" size="190" variant="full" hint-size="190px,190px"></dc-import>
+            <span style="font-size: 12px; line-height: 15px; color: var(--tx-2); text-align: center">{{p.owlLine}}</span>
+          </div>
+          <div role="group" aria-label="Режим" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+            <button type="button" aria-pressed="{{p.sP}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.sBg}}; box-shadow: {{p.sSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Простой</button>
+            <button type="button" aria-pressed="{{p.tP}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.tBg}}; box-shadow: {{p.tSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Технический</button>
+          </div>
+        </nav>
+
+        <main style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden">
+          <header style="flex: none; height: 52px; padding: 0 24px; border-bottom: 1px solid var(--sep); display: flex; align-items: center; gap: 10px">
+            <h1 style="margin: 0; font-size: 18px; font-weight: 600">Сейчас</h1>
+            <span style="font-size: 12px; color: var(--tx-2)">четверг, 5 ноября · 16:21</span>
+          </header>
+
+          <sc-if value="{{p.busy}}" hint-placeholder-val="{{ true }}">
+            <div style="flex: 1; min-height: 0; overflow: auto; padding: 18px 24px 24px; display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 24px; align-content: start">
+              <div style="display: flex; flex-direction: column; gap: 20px">
+                <section style="display: flex; flex-direction: column; gap: 8px">
+                  <h2 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--st-wait)">Ждут вас · 1</h2>
+                  <dc-import name="B-Card" v="cmd" mode="{{p.mode}}" hint-size="100%,190px"></dc-import>
+                </section>
+                <section style="display: flex; flex-direction: column; gap: 2px">
+                  <h2 style="margin: 0 0 6px; font-size: 13px; font-weight: 600">Активные сессии · 4</h2>
+                  <sc-for list="{{p.sessions}}" as="s" hint-placeholder-count="5">
+                    <div style="display: grid; grid-template-columns: 16px minmax(0, 1fr) max-content max-content; column-gap: 10px; align-items: center; min-height: 40px; padding: 4px 8px; border-radius: 6px; border-bottom: 1px solid var(--sep)">
+                      <dc-import name="StatusIcon" kind="{{s.k}}" size="16" hint-size="16px,16px"></dc-import>
+                      <div style="min-width: 0; display: flex; flex-direction: column; gap: 1px">
+                        <span style="display: flex; gap: 6px; align-items: baseline; min-width: 0"><span style="font-family: {{s.ff}}; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{s.n}}</span><span style="font-size: 11.5px; color: var(--tx-2); white-space: nowrap">{{s.env}}</span></span>
+                        <span style="font-size: 12px; color: {{s.c}}; font-family: {{s.lf}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{s.line}}</span>
+                      </div>
+                      <span style="font-size: 11.5px; color: var(--tx-2); font-variant-numeric: tabular-nums">{{s.r}}</span>
+                      <span style="font-size: 11.5px; color: var(--tx-3); font-variant-numeric: tabular-nums">{{s.d}}</span>
+                    </div>
+                  </sc-for>
+                </section>
+                <section style="display: flex; flex-direction: column; gap: 6px">
+                  <h2 style="margin: 0 0 2px; font-size: 13px; font-weight: 600">Свежие сбои · 2</h2>
+                  <sc-for list="{{p.fails}}" as="f" hint-placeholder-count="2">
+                    <a href="#" style="display: grid; grid-template-columns: 16px minmax(0, 1fr) max-content; column-gap: 10px; align-items: start; padding: 9px 10px; border-radius: 8px; background: var(--st-red-soft); color: var(--tx-1); text-decoration: none">
+                      <dc-import name="StatusIcon" kind="{{f.k}}" size="16" hint-size="16px,16px"></dc-import>
+                      <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 12.5px; line-height: 17px"><span><span style="font-weight: 600">{{f.n}}</span><span style="color: var(--tx-2)"> · {{f.where}}</span></span><span style="color: var(--st-red-tx)">{{f.t}}</span></span>
+                      <span style="font-size: 11.5px; color: var(--tx-2); font-variant-numeric: tabular-nums">{{f.time}}</span>
+                    </a>
+                  </sc-for>
+                </section>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 16px">
+                <section style="padding: 12px 14px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); display: flex; flex-direction: column; gap: 4px">
+                  <span style="font-size: 12px; color: var(--tx-2)">Токены сегодня</span>
+                  <span style="font-size: 24px; line-height: 30px; font-weight: 600; font-variant-numeric: tabular-nums">1,84 млн</span>
+                  <span style="font-size: 12px; color: var(--tx-2); font-variant-numeric: tabular-nums">≈ 12,40 $ по ценам API · оценка</span>
+                  <sc-if value="{{p.tech}}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top: 6px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; font-size: 11.5px; font-variant-numeric: tabular-nums">
+                      <span style="color: var(--tx-3)">Вход</span><span>0,52 млн</span><span style="color: var(--tx-3)">Выход</span><span>0,06 млн</span><span style="color: var(--tx-3)">Кэш, чтение</span><span>1,17 млн</span><span style="color: var(--tx-3)">Кэш, запись</span><span>0,09 млн</span>
+                    </div>
+                  </sc-if>
+                </section>
+                <section style="padding: 12px 14px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); display: flex; flex-direction: column; gap: 8px">
+                  <span style="font-size: 12px; color: var(--tx-2)">Лимиты</span>
+                  <div style="display: grid; grid-template-columns: max-content minmax(50px, 1fr) max-content; column-gap: 10px; row-gap: 3px; align-items: center; font-size: 12px">
+                    <span style="color: var(--tx-2)">5 часов</span><span style="height: 5px; border-radius: 3px; background: var(--meter-track); overflow: hidden"><span style="display: block; width: 62%; height: 100%; background: var(--meter)"></span></span><span style="font-weight: 600; font-variant-numeric: tabular-nums">62 %</span>
+                    <span></span><span style="font-size: 11px; color: var(--tx-3)">сброс в 18:40</span><span></span>
+                    <span style="color: var(--tx-2); padding-top: 4px">Неделя</span><span style="height: 5px; border-radius: 3px; background: var(--meter-track); overflow: hidden"><span style="display: block; width: 34%; height: 100%; background: var(--meter)"></span></span><span style="font-weight: 600; font-variant-numeric: tabular-nums">34 %</span>
+                    <span></span><span style="font-size: 11px; color: var(--tx-3)">сброс в понедельник</span><span></span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--tx-3)"><span>обновлено 12 мин назад</span><button type="button" style="height: 20px; padding: 0 8px; border: 0; border-radius: 4px; background: var(--fill-1); color: var(--tx-2); font: inherit; font-size: 11px">Обновить</button></div>
+                </section>
+                <section style="padding: 12px 14px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); display: flex; flex-direction: column; gap: 6px">
+                  <span style="font-size: 12px; color: var(--tx-2)">Недавно завершены</span>
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px"><dc-import name="StatusIcon" kind="done" size="14" hint-size="14px,14px"></dc-import><span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-weight: 600">landing</span><span style="color: var(--tx-2); font-size: 11.5px">Claude Desktop</span><span style="flex: 1"></span><span style="color: var(--st-done); font-size: 12px; font-weight: 600">{{p.doneWord}}</span></div>
+                </section>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{p.idle}}" hint-placeholder-val="{{ false }}">
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px">
+              <dc-import name="Owl" mood="Спит" size="120" variant="full" hint-size="120px,120px"></dc-import>
+              <span style="font-size: 17px; font-weight: 600">Ничего не идёт</span>
+              <span style="font-size: 13px; color: var(--tx-2); max-width: 380px">Никто не ждёт ответа, сбоев нет. Борис скажет, когда что-то начнётся.</span>
+              <span style="font-size: 12px; color: var(--tx-3); font-variant-numeric: tabular-nums">Сегодня 1,84 млн токенов · 5 часов 62 %, сброс в 18:40</span>
+            </div>
+          </sc-if>
+        </main>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2520,"height":2700}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+    const T2 = 'var(--tx-2)';
+    const on = { bg: 'var(--btn)', sh: '0 0 0 0.5px var(--btn-bd)' }, off = { bg: 'transparent', sh: 'none' };
+    const navFor = (tech) => {
+      const items = ['Сейчас', 'Проекты', 'Расход', 'Запросы'].concat(tech ? ['Активность', 'Потери'] : []).concat(['Морж', 'Настройки']);
+      return items.map((t) => ({ t, cur: t === 'Сейчас' ? 'page' : 'false', bg: t === 'Сейчас' ? 'var(--fill-2)' : 'transparent', fw: t === 'Сейчас' ? 500 : 400, badge: t === 'Запросы' ? '1' : '' }));
+    };
+    const sessions = (tech) => [
+      { k: 'waiting', n: 'shop-api', ff: mono, env: 'VS Code', line: tech ? 'Bash ждёт разрешения' : 'Ждёт вас: хочет выполнить команду', lf: sans, c: 'var(--st-wait)', r: tech ? '' : '', d: '42 мин' },
+      { k: 'running', n: 'boris', ff: mono, env: 'Терминал', line: tech ? 'Bash · 3 агента + workflow' : 'Запускает тесты · работают 3 агента', lf: sans, c: T2, r: tech ? '1,75 млн' : '', d: '1 ч 06 мин' },
+      { k: 'running', n: 'Отчёт за квартал', ff: sans, env: 'Cowork', line: 'Читает файлы проекта', lf: sans, c: T2, r: '', d: '' },
+      { k: 'done', n: 'Чат Claude', ff: sans, env: 'Чат', line: 'Ответ готов', lf: sans, c: T2, r: '', d: '' },
+      { k: 'unknown', n: 'deploy-tools', ff: mono, env: 'build-server', line: 'Нет связи с удалённой машиной', lf: sans, c: 'var(--tx-3)', r: '', d: '' }
+    ];
+    const fails = (tech) => [
+      { k: 'allFailed', n: 'Миграция данных', where: 'shop-api', t: tech ? 'Упали все агенты · 12 из 12 · лимит, сброс в 18:40' : 'Не получилось: кончился лимит, сброс в 18:40', time: '16:05' },
+      { k: 'failed', n: tech ? 'Субагент «Миграции»' : 'Помощник «Миграции»', where: 'shop-api', t: tech ? 'Ошибка API: перегрузка' : 'Claude сейчас перегружен, попробуйте повторить позже', time: '16:12' }
+    ];
+    const pane = (cls, tech, idle, label) => ({ cls, tech, idle, busy: !idle, label, mode: tech ? 'tech' : 'simple', nav: navFor(tech),
+      mood: idle ? 'Спит' : 'Ждёт', owlLine: idle ? 'Тихо. Можно заняться делом.' : '1 ждёт вас', doneWord: tech ? 'Завершён' : 'Готово',
+      sessions: sessions(tech), fails: fails(tech),
+      sP: tech ? 'false' : 'true', tP: tech ? 'true' : 'false', sBg: (tech ? off : on).bg, sSh: (tech ? off : on).sh, tBg: (tech ? on : off).bg, tSh: (tech ? on : off).sh });
+    return {
+      panes: [
+        pane('td', false, false, 'Тёмная · простой'), pane('td', true, false, 'Тёмная · технический'),
+        pane('tl', false, false, 'Светлая · простой'), pane('tl', true, false, 'Светлая · технический'),
+        pane('td', false, true, 'Тёмная · пусто: ничего не идёт')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

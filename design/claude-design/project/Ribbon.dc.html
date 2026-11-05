@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Ribbon · лента запуска</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div role="img" aria-label="{{aria}}" style="width: 100%; min-width: 0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif; color: var(--tx-1, #1D1D1F)">
+  <sc-if value="{{isThin}}" hint-placeholder-val="{{ true }}">
+    <div style="display: flex; height: 8px; align-items: center; width: 100%">
+      <sc-for list="{{phases}}" as="ph" hint-placeholder-count="3">
+        <sc-if value="{{ph.declared}}" hint-placeholder-val="{{ false }}">
+          <span title="{{ph.name}}: агентов пока нет" style="flex: 0 0 18px; height: 6px; box-sizing: border-box; border: 1px dashed var(--tx-3, #6A6A6F); border-radius: 2px; margin-left: {{ph.ml}}px"></span>
+        </sc-if>
+        <sc-if value="{{ph.started}}" hint-placeholder-val="{{ true }}">
+          <div style="flex: {{ph.total}} 1 0px; min-width: 3px; margin-left: {{ph.ml}}px; display: flex; align-items: center; height: 100%; border-radius: 2px; overflow: hidden">
+            <sc-for list="{{ph.segs}}" as="s" hint-placeholder-count="3">
+              <span style="flex: {{s.n}} 1 0px; min-width: 1px; height: {{s.hThin}}px; background: {{s.bg}}"></span>
+            </sc-for>
+          </div>
+        </sc-if>
+      </sc-for>
+    </div>
+  </sc-if>
+  <sc-if value="{{isWide}}" hint-placeholder-val="{{ false }}">
+    <div style="display: flex; width: 100%">
+      <sc-for list="{{phases}}" as="ph" hint-placeholder-count="3">
+        <div style="flex: {{ph.wflex}}; min-width: {{ph.wmin}}px; margin-left: {{ph.mlw}}px; display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0">
+            <span style="font-family: {{ph.nf}}; font-size: 11px; line-height: 14px; font-weight: {{ph.fw}}; color: {{ph.nc}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ph.name}}{{ph.curMark}}</span>
+            <span style="font-size: 11px; line-height: 14px; color: var(--tx-2, #55555A); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums">{{ph.summary}}</span>
+          </div>
+          <sc-if value="{{ph.declared}}" hint-placeholder-val="{{ false }}">
+            <span style="display: block; height: 12px; margin: 3px 0; box-sizing: border-box; border: 1px dashed var(--tx-3, #6A6A6F); border-radius: 2px"></span>
+          </sc-if>
+          <sc-if value="{{ph.started}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; align-items: center; height: 18px; border-radius: 2px; overflow: hidden">
+              <sc-for list="{{ph.segs}}" as="s" hint-placeholder-count="3">
+                <span style="flex: {{s.n}} 1 0px; min-width: 1px; height: {{s.hWide}}px; background: {{s.bg}}"></span>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+  <sc-if value="{{isGrid}}" hint-placeholder-val="{{ false }}">
+    <div style="display: flex; flex-direction: column; gap: 14px; width: 100%">
+      <sc-for list="{{phases}}" as="ph" hint-placeholder-count="3">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; gap: 8px; align-items: baseline">
+            <span style="font-family: {{ph.nf}}; font-size: 11px; font-weight: {{ph.fw}}; color: {{ph.nc}}">{{ph.name}}{{ph.curMark}}</span>
+            <span style="font-size: 11px; color: var(--tx-2, #55555A); font-variant-numeric: tabular-nums">{{ph.summary}}</span>
+          </div>
+          <sc-if value="{{ph.declared}}" hint-placeholder-val="{{ false }}">
+            <span style="display: block; width: 60px; height: 12px; box-sizing: border-box; border: 1px dashed var(--tx-3, #6A6A6F); border-radius: 2px"></span>
+          </sc-if>
+          <div style="display: flex; flex-wrap: wrap; gap: 2px">
+            <sc-for list="{{ph.cells}}" as="c" hint-placeholder-count="20">
+              <span style="width: 12px; height: 12px; box-sizing: border-box; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; background: {{c.bg}}; border: {{c.bd}}">
+                <sc-if value="{{c.f}}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3.6 3.6l4.8 4.8M8.4 3.6L3.6 8.4" style="stroke: #FFFFFF; stroke-width: 1.4; stroke-linecap: round"></path></svg></sc-if>
+                <sc-if value="{{c.r}}" hint-placeholder-val="{{ false }}"><span style="width: 4px; height: 4px; border-radius: 2px; background: var(--st-run, #1A6F75)"></span></sc-if>
+              </span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"preset":{"editor":"enum","options":["audit","auditEnded","noScript","tray","billing","docs","lint"],"default":"audit"},"scale":{"editor":"enum","options":["thin","wide","grid"],"default":"thin"},"phases":{"editor":null},"finished":{"editor":"boolean","default":false},"$preview":{"width":420,"height":80}}'>
+class Component extends DCLogic {
+  renderVals() {
+    // phase: { name, cur, declared (from meta.phases, no agents yet), runs: [[state, n]] }, name null = агенты без фазы
+    // states: d done, r running, f failed, c cancelled
+    const presets = {
+      audit: { finished: false, phases: [
+        { name: 'Scan', runs: [['d', 64]] },
+        { name: 'Audit', cur: true, runs: [['d', 76], ['f', 40], ['r', 35], ['c', 1]] },
+        { name: 'Summarize', declared: true, runs: [] },
+        { name: null, runs: [['r', 3]] }
+      ]},
+      auditEnded: { finished: true, phases: [
+        { name: 'Scan', runs: [['d', 64]] },
+        { name: 'Audit', runs: [['d', 110], ['f', 40], ['c', 2]] },
+        { name: 'Summarize', declared: true, runs: [] },
+        { name: null, runs: [['d', 3]] }
+      ]},
+      noScript: { finished: false, phases: [
+        { name: 'Scan', runs: [['d', 64]] },
+        { name: 'Audit', cur: true, runs: [['d', 76], ['f', 40], ['r', 35], ['c', 1]] },
+        { name: null, runs: [['r', 3]] }
+      ]},
+      tray: { finished: false, phases: [
+        { name: 'Search', runs: [['d', 3]] },
+        { name: 'Verify', cur: true, runs: [['d', 2], ['r', 3]] }
+      ]},
+      billing: { finished: true, flat: true, phases: [ { name: null, runs: [['f', 33]] } ] },
+      docs: { finished: true, flat: true, phases: [ { name: null, runs: [['d', 14], ['f', 1], ['d', 9], ['f', 1], ['d', 8]] } ] },
+      lint: { finished: true, flat: true, phases: [ { name: null, runs: [['d', 8]] } ] }
+    };
+    const p = this.props.phases ? { phases: this.props.phases, finished: !!this.props.finished } : (presets[this.props.preset ?? 'audit'] || presets.audit);
+    const finished = this.props.finished != null && this.props.phases ? !!this.props.finished : !!p.finished;
+    const scale = this.props.scale ?? 'thin';
+    const bgOf = { d: 'var(--rb-done, #2B7D4E)', f: 'var(--rb-fail, #E5383B)', r: 'var(--rb-run, #8CC7CB)', c: 'var(--rb-cancel, #A2A2A8)' };
+    const word = { d: 'готово', f: 'упало', r: 'идут', c: 'отменено' };
+    const allNoPhase = p.phases.every((ph) => ph.name == null);
+    let tot = { d: 0, f: 0, r: 0, c: 0 }, all = 0;
+    const visible = p.phases.filter((ph) => !(ph.declared && (!ph.runs || !ph.runs.length) && finished));
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+    const phases = visible.map((ph, i) => {
+      const c = { d: 0, f: 0, r: 0, c: 0 };
+      (ph.runs || []).forEach(([s, n]) => { c[s] += n; tot[s] += n; all += n; });
+      const total = c.d + c.f + c.r + c.c;
+      const declared = !!ph.declared && total === 0;
+      const noPhase = ph.name == null;
+      const parts = [];
+      if (c.d) parts.push(c.d + ' ' + word.d);
+      if (c.f) parts.push(word.f + ' ' + c.f);
+      if (c.r) parts.push(c.r + ' ' + word.r);
+      if (c.c) parts.push(c.c + ' ' + word.c);
+      const cells = [];
+      if (scale === 'grid') (ph.runs || []).forEach(([s, n]) => { for (let k = 0; k < n; k++) cells.push({ f: s === 'f', r: s === 'r', bg: s === 'r' ? 'transparent' : bgOf[s], bd: s === 'r' ? '1.5px solid var(--st-run, #1A6F75)' : '0' }); });
+      const gapBefore = i === 0 ? 0 : (noPhase && !allNoPhase ? 6 : 2);
+      return {
+        name: noPhase ? (allNoPhase ? 'агенты' : 'без фазы') : ph.name,
+        nf: noPhase ? sans : mono, nc: noPhase ? 'var(--tx-2, #55555A)' : 'var(--tx-1, #1D1D1F)',
+        total, declared, started: total > 0,
+        fw: ph.cur ? 600 : 400,
+        curMark: ph.cur ? ' · текущая' : '',
+        summary: declared ? 'впереди, агентов пока нет' : total + ': ' + parts.join(', '),
+        ml: gapBefore, mlw: i === 0 ? 0 : (noPhase && !allNoPhase ? 12 : 4),
+        wflex: declared ? '0 0 92px' : total + ' 1 0px', wmin: declared ? 92 : 64,
+        segs: (ph.runs || []).map(([s, n]) => ({ n, bg: bgOf[s], hThin: s === 'f' ? 8 : 4, hWide: s === 'f' ? 18 : 12 })),
+        cells
+      };
+    });
+    return {
+      phases,
+      isThin: scale === 'thin', isWide: scale === 'wide', isGrid: scale === 'grid',
+      aria: 'Лента запуска: стартовало ' + all + ', готово ' + tot.d + ', упало ' + tot.f + ', идут ' + tot.r + ', отменено ' + tot.c
+    };
+  }
+}
+</script>
+</body>
+</html>

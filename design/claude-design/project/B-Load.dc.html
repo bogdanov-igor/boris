@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · нагрузка на Mac</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<section aria-label="Нагрузка на Mac" style="box-sizing: border-box; width: 100%; display: flex; flex-direction: column; gap: {{gap}}px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif; color: var(--tx-1, #1D1D1F)">
+  <sc-if value="{{title}}" hint-placeholder-val="{{ true }}">
+    <span style="font-size: 12.5px; font-weight: 600">{{title}}</span>
+  </sc-if>
+
+  <sc-if value="{{isSimple}}" hint-placeholder-val="{{ false }}">
+    <span role="meter" aria-label="Нагрузка на Mac" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" style="display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--meter-track, rgba(0,0,0,.09))"><span style="width: 20%; background: var(--g-claude, #3F6FC2)"></span><span style="width: 40%; background: var(--g-rest, #A9AEB8)"></span></span>
+    <span style="font-size: 13px; line-height: 18px">Mac загружен на 60 %, из них Claude 20 %.</span>
+  </sc-if>
+
+  <sc-if value="{{isRows}}" hint-placeholder-val="{{ true }}">
+    <sc-for list="{{rows}}" as="r" hint-placeholder-count="3">
+      <div style="display: grid; grid-template-columns: {{cols}}; column-gap: 10px; row-gap: 4px; align-items: center">
+        <span style="font-size: {{fs}}px; color: var(--tx-2, #55555A)">{{r.n}}</span>
+        <sc-if value="{{r.nodata}}" hint-placeholder-val="{{ false }}">
+          <span style="font-size: {{fs}}px; text-align: right; color: var(--tx-3, #6A6A6F); font-style: italic; white-space: nowrap">нет данных</span>
+          <span style="height: {{bh}}px; border-radius: 3px; box-sizing: border-box; border: 1px dashed var(--tx-3, #6A6A6F); opacity: .6"></span>
+        </sc-if>
+        <sc-if value="{{r.has}}" hint-placeholder-val="{{ true }}">
+          <span style="font-size: {{fs}}px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums">{{r.v}}</span>
+          <span role="meter" aria-label="{{r.aria}}" style="display: flex; height: {{bh}}px; border-radius: 3px; overflow: hidden; background: var(--meter-track, rgba(0,0,0,.09))">
+            <sc-for list="{{r.segs}}" as="s" hint-placeholder-count="4"><span style="width: {{s.w}}%; background: {{s.c}}; box-shadow: inset -1px 0 0 0 var(--seg-gap, rgba(255,255,255,.55))"></span></sc-for>
+          </span>
+        </sc-if>
+        <sc-if value="{{r.legend}}" hint-placeholder-val="{{ false }}">
+          <span></span><span></span>
+          <span style="display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--tx-2, #55555A); font-variant-numeric: tabular-nums">
+            <sc-for list="{{r.legend}}" as="l" hint-placeholder-count="4"><span style="display: inline-flex; align-items: center; gap: 5px; white-space: nowrap"><span style="width: 8px; height: 8px; border-radius: 2px; background: {{l.c}}"></span>{{l.t}}</span></sc-for>
+          </span>
+        </sc-if>
+      </div>
+    </sc-for>
+    <sc-if value="{{note}}" hint-placeholder-val="{{ false }}">
+      <span style="font-size: 11px; line-height: 15px; color: var(--tx-3, #6A6A6F)">{{note}}</span>
+    </sc-if>
+  </sc-if>
+
+  <sc-if value="{{text}}" hint-placeholder-val="{{ false }}">
+    <span style="font-size: 12px; line-height: 17px; color: var(--tx-2, #55555A)">{{text}}</span>
+  </sc-if>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"kind":{"editor":"enum","options":["tech","simple","miniSimple","miniTech","session","sessionCowork","sessionRemote"],"default":"tech"},"state":{"editor":"enum","options":["normal","nodata","off"],"default":"normal"},"$preview":{"width":420,"height":180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const kind = this.props.kind ?? 'tech', st = this.props.state ?? 'normal';
+    const C = { 'Claude': 'var(--g-claude, #3F6FC2)', 'Cowork': 'var(--g-cowork, #8558C9)', 'VS Code': 'var(--g-vscode, #3B8C8C)', 'Cursor': 'var(--g-cursor, #B07A2A)', 'Claude Desktop': 'var(--g-desktop, #5E7FB8)', 'Boris': 'var(--g-boris, #5F6F84)', 'Остальное': 'var(--g-rest, #A9AEB8)' };
+    const off = st === 'off';
+    const parts = (claude, vs, boris, rest) => {
+      const p = [['Claude', claude]];
+      if (!off) p.push(['VS Code', vs]);
+      p.push(['Boris', boris], ['Остальное', off ? rest + vs : rest]);
+      return p;
+    };
+    const row = (n, total, p, aria) => ({ n, v: total + ' %', has: true, nodata: false, aria: aria + ' ' + total + ' %',
+      segs: p.map(([g, v]) => ({ w: v, c: C[g] })),
+      legend: p.map(([g, v]) => ({ t: g + ' ' + v, c: C[g] })) });
+    const nod = (n) => ({ n, has: false, nodata: true, legend: null, segs: [] });
+    let rows = [], title = 'Нагрузка на Mac', note = '', text = '', cols = '86px 48px minmax(0, 1fr)', fs = 12, bh = 8, gap = 10;
+    const cpu = row('Процессор', 60, parts(20, 12, 1, 27), 'Процессор');
+    const ram = st === 'nodata' ? nod('Оперативка') : row('Оперативка', 71, parts(18, 9, 1, 43), 'Оперативная память');
+    const disk = { n: 'Диск', v: '62 %', has: true, nodata: false, aria: 'Диск занят на 62 %', segs: [{ w: 62, c: 'var(--meter, #55555A)' }], legend: [{ t: 'Логи Claude 2,8 ГБ', c: 'var(--g-claude, #3F6FC2)' }] };
+    if (kind === 'tech') { rows = [cpu, ram, disk]; note = 'Процессор: 100 % это весь Mac. «Мониторинг системы» считает каждое ядро за 100 %, поэтому там цифры больше.' + (off ? ' VS Code: считывание выключено, его нагрузка входит в «Остальное».' : ''); }
+    else if (kind === 'miniSimple' || kind === 'miniTech') {
+      title = ''; cols = '74px 38px minmax(0, 1fr)'; fs = 11.5; bh = 4; gap = 6;
+      const strip = (r, claude) => Object.assign({}, r, { legend: kind === 'miniTech' && r.has ? [{ t: 'Claude ' + claude + ' %', c: C['Claude'] }] : null, segs: r.has ? [{ w: Number(r.v.replace(' %', '')), c: 'var(--meter, #55555A)' }] : [] });
+      rows = [strip(cpu, 20), strip(ram, 18)];
+      if (kind === 'miniTech') { rows = rows.map((r) => r.has ? Object.assign({}, r, { segs: [{ w: r === rows[0] ? 20 : 18, c: C['Claude'] }, { w: (r === rows[0] ? 60 : 71) - (r === rows[0] ? 20 : 18), c: 'var(--meter, #55555A)' }] }) : r); }
+    }
+    else if (kind === 'session') { title = 'Нагрузка на Mac · сессия с агентами и командами'; cols = '86px 60px minmax(0, 1fr)';
+      rows = [ { n: 'Процессор', v: '9 %', has: true, nodata: false, aria: 'Процессор 9 %', segs: [{ w: 9, c: C['Claude'] }], legend: null },
+               { n: 'Память', v: '1,2 ГБ', has: true, nodata: false, aria: 'Память 1,2 ГБ', segs: [{ w: 7, c: C['Claude'] }], legend: null } ];
+      note = 'Процессор: доля всего Mac. Память: сколько занято, полоса от объёма Mac.'; }
+    else if (kind === 'sessionCowork') { title = 'Нагрузка на Mac'; text = 'Cowork работает в одной виртуальной машине, и Mac видит её целиком. Отдельную долю этой сессии не посчитать.'; }
+    else if (kind === 'sessionRemote') { title = 'Нагрузка на Mac'; text = 'Сессия идёт на build-server и этот Mac не нагружает.'; }
+    return { rows, title, note, text, cols, fs, bh, gap, isSimple: kind === 'simple', isRows: rows.length > 0 };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · экран «Активность»</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--focus:#0A64D8;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--mono-bg:rgba(0,0,0,.05);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;--rb-done:#2B7D4E;--rb-run:#8CC7CB;--rb-fail:#E5383B;--rb-cancel:#A2A2A8;color:#1D1D1F}
+.td{--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--focus:#3D8BFF;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--mono-bg:rgba(255,255,255,.07);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;--rb-done:#3E9D66;--rb-run:#2F7479;--rb-fail:#E5383B;--rb-cancel:#6A6A70;color:#F2F2F4}
+
+</style>
+</helmet>
+<div style="width: 2520px; height: 910px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{panes}}" as="p" hint-placeholder-count="4">
+    <div class="{{p.cls}}" style="background: var(--desk); padding: 20px 30px 40px; display: flex; flex-direction: column; gap: 10px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{p.label}}</span>
+      <div style="position: relative; width: 1200px; height: 800px; border-radius: 10px; overflow: hidden; display: flex; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 18px 40px rgba(0,0,0,.28)">
+        <nav aria-label="Разделы" style="width: 210px; flex: none; background: var(--side); border-right: 1px solid var(--sep); display: flex; flex-direction: column; padding: 10px 10px 12px; box-sizing: border-box">
+          <div style="height: 22px; display: flex; gap: 8px; align-items: center; padding-left: 4px; margin-bottom: 16px"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span></div>
+          <sc-for list="{{p.nav}}" as="n" hint-placeholder-count="6">
+            <a href="#" aria-current="{{n.cur}}" style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: 6px; background: {{n.bg}}; color: var(--tx-1); text-decoration: none; font-size: 13px; font-weight: {{n.fw}}">
+              <span style="flex: 1">{{n.t}}</span>
+              <sc-if value="{{n.badge}}" hint-placeholder-val="{{ false }}"><span aria-label="{{n.badgeL}}" style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--st-wait); color: #FFFFFF; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums">{{n.badge}}</span></sc-if>
+            </a>
+          </sc-for>
+          <span style="flex: 1"></span>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0 10px">
+            <dc-import name="Owl" mood="{{p.owlMood}}" size="190" variant="full" hint-size="190px,190px"></dc-import>
+            <span style="font-size: 12px; line-height: 15px; color: var(--tx-2); text-align: center">{{p.owlText}}</span>
+          </div>
+          <div role="group" aria-label="Режим" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+            <button type="button" aria-pressed="{{p.sPressed}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.sBg}}; box-shadow: {{p.sSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Простой</button>
+            <button type="button" aria-pressed="{{p.tPressed}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.tBg}}; box-shadow: {{p.tSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Технический</button>
+          </div>
+        </nav>
+
+        <main style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; position: relative">
+          <header style="flex: none; padding: 14px 24px 10px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--sep)">
+            <div style="display: flex; align-items: baseline; gap: 12px">
+              <h1 style="margin: 0; font-size: 18px; line-height: 24px; font-weight: 600">Активность</h1>
+              <span style="font-size: 12.5px; color: var(--tx-2)">Действия всех сессий одной лентой</span>
+              <span style="flex: 1"></span>
+              <button type="button" style="height: 24px; padding: 0 10px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12px">Скопировать всё</button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+              <div role="group" aria-label="Тип" style="display: flex; gap: 4px; flex-wrap: wrap">
+                <sc-for list="{{p.types}}" as="t" hint-placeholder-count="8"><button type="button" aria-pressed="{{t.on}}" style="height: 22px; padding: 0 9px; border-radius: 11px; border: 0.5px solid {{t.bd}}; background: {{t.bg}}; color: {{t.c}}; font: inherit; font-size: 11.5px; white-space: nowrap">{{t.t}}</button></sc-for>
+              </div>
+              <span style="flex: 1"></span>
+              <span style="height: 24px; padding: 0 8px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); font-size: 12px">Проект: все <span style="font-size: 9px; color: var(--tx-2)">▾</span></span>
+              <span style="height: 24px; padding: 0 8px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); font-size: 12px">Среда: все <span style="font-size: 9px; color: var(--tx-2)">▾</span></span>
+            </div>
+          </header>
+          <div role="log" aria-label="Лента действий" style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 6px 12px 12px">
+            <sc-for list="{{p.rows}}" as="r" hint-placeholder-count="10">
+              <div style="display: grid; grid-template-columns: 58px 16px 112px 150px minmax(0, 1fr) 90px; column-gap: 10px; align-items: center; min-height: 34px; padding: 0 10px; border-radius: 6px; font-size: 12.5px">
+                <span style="font-size: 11.5px; color: var(--tx-3); font-variant-numeric: tabular-nums">{{r.time}}</span>
+                <dc-import name="StatusIcon" kind="{{r.k}}" size="14" hint-size="14px,14px"></dc-import>
+                <span style="justify-self: start; padding: 1px 7px; border-radius: 5px; background: var(--fill-2); font-size: 11px; white-space: nowrap">{{r.type}}</span>
+                <span style="min-width: 0; display: flex; flex-direction: column; line-height: 15px"><span style="font-family: {{r.pf}}; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.proj}}</span><span style="font-size: 11px; color: var(--tx-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.env}} · {{r.agent}}</span></span>
+                <span style="min-width: 0; font-family: {{r.tf}}; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.target}}<span style="font-family: inherit; color: var(--tx-2)">{{r.extra}}</span></span>
+                <span style="text-align: right; font-size: 11.5px; color: {{r.dc}}; font-variant-numeric: tabular-nums; white-space: nowrap">{{r.dur}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{p.jump}}" hint-placeholder-val="{{ false }}">
+            <button type="button" style="position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); height: 28px; padding: 0 14px; border-radius: 14px; border: 0.5px solid var(--btn-bd); background: var(--pop); color: var(--tx-1); box-shadow: 0 6px 18px rgba(0,0,0,.25); font: inherit; font-size: 12.5px">↓ К последнему · 3 новых</button>
+          </sc-if>
+        </main>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2520,"height":910}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+
+    const ON = { bg: 'var(--btn)', sh: '0 0 0 0.5px var(--btn-bd)' }, OFF = { bg: 'transparent', sh: 'none' };
+    const navFor = (cur, badge) => ['Сейчас', 'Проекты', 'Расход', 'Запросы', 'Активность', 'Потери', 'Морж', 'Настройки']
+      .map((t) => ({ t, cur: t === cur ? 'page' : 'false', bg: t === cur ? 'var(--fill-2)' : 'transparent', fw: t === cur ? 500 : 400, badge: t === 'Запросы' ? (badge === undefined ? '1' : badge) : '', badgeL: '1 ждёт ответа' }));
+    const winPane = (cls, label, cur, o) => Object.assign({ cls, label, nav: navFor(cur), owlMood: 'Ждёт', owlText: '1 ждёт вас',
+      sPressed: 'false', tPressed: 'true', sBg: OFF.bg, sSh: OFF.sh, tBg: ON.bg, tSh: ON.sh }, o || {});
+
+    const T = ['Все', 'Чтение', 'Запись', 'Команда', 'Поиск в интернете', 'Скилл', 'MCP', 'Запуск агента'];
+    const types = (cur) => T.map((t) => ({ t, on: t === cur ? 'true' : 'false', bg: t === cur ? 'var(--tx-1)' : 'var(--btn)', c: t === cur ? 'var(--win)' : 'var(--tx-1)', bd: t === cur ? 'transparent' : 'var(--btn-bd)' }));
+    const R = (time, k, type, proj, env, agent, target, o) => Object.assign({ time, k, type, proj, env, agent, target, extra: '', dur: '', dc: 'var(--tx-2)', pf: mono, tf: mono }, o || {});
+    const all = [
+      R('15:39:12', 'waiting', 'Команда', 'shop-api', 'VS Code', 'Главный агент', 'npm run migrate', { dur: 'ждёт вас', dc: 'var(--st-wait)' }),
+      R('15:47:10', 'done', 'Запись', 'landing', 'Claude Desktop', 'Главный агент', 'index.html', { extra: '  +48 −12', dur: '0,6 с' }),
+      R('16:02:31', 'done', 'Команда', 'boris', 'Терминал', 'Проверка кода', 'git diff --stat', { dur: '0,3 с' }),
+      R('16:05:40', 'done', 'Поиск в интернете', 'boris', 'Терминал', 'Аудит зависимостей · Поиск', '[ПРИМЕР] swift-crypto advisories', { tf: sans, dur: '2,1 с' }),
+      R('16:08:02', 'done', 'MCP', 'shop-api', 'VS Code', 'Миграции', '[ПРИМЕР] postgres · query', { dur: '0,8 с' }),
+      R('16:12:44', 'done', 'Скилл', 'boris', 'Терминал', 'Главный агент', '[ПРИМЕР] swift-testing', { dur: '' }),
+      R('16:19:30', 'done', 'Запуск агента', 'boris', 'Терминал', 'Проверка кода', 'Проверка находки', { tf: sans, dur: '' }),
+      R('16:20:41', 'running', 'Чтение', 'Отчёт за квартал', 'Cowork', 'Cowork', '[ПРИМЕР] выручка-Q3.xlsx', { pf: sans, dur: 'идёт', dc: 'var(--st-run)' }),
+      R('16:20:58', 'done', 'Чтение', 'boris', 'Терминал', 'Проверка кода', 'src/session.swift', { dur: '0,9 с' }),
+      R('16:21:04', 'running', 'Команда', 'boris', 'Терминал', 'Главный агент', 'swift test', { dur: 'идёт 0:14', dc: 'var(--st-run)' })
+    ];
+    return {
+      panes: [
+        winPane('td', 'Тёмная · все типы · прокручено вверх, кнопка «К последнему»', 'Активность', { types: types('Все'), rows: all, jump: true }),
+        winPane('tl', 'Светлая · фильтр «Команда»', 'Активность', { types: types('Команда'), rows: all.filter((r) => r.type === 'Команда'), jump: false })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

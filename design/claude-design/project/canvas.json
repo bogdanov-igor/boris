@@ -1,0 +1,764 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "B-Kit.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1600,
+      "h": 2000,
+      "title": "Boris · компоненты и токены",
+      "page": "v2"
+    },
+    "B-Loss.dc.html": {
+      "x": 2600,
+      "y": 9900,
+      "w": 2520,
+      "h": 900,
+      "title": "Boris · Потери",
+      "page": "v2"
+    },
+    "B-Load.dc.html": {
+      "x": 500,
+      "y": 13000,
+      "w": 420,
+      "h": 180,
+      "title": "Компонент: B-Load",
+      "page": "v2"
+    },
+    "B-Requests.dc.html": {
+      "x": 0,
+      "y": 13700,
+      "w": 2520,
+      "h": 1820,
+      "title": "Boris · Запросы",
+      "page": "v2"
+    },
+    "B-Projects.dc.html": {
+      "x": 0,
+      "y": 15700,
+      "w": 2520,
+      "h": 1820,
+      "title": "Boris · Проекты и Проект",
+      "page": "v2"
+    },
+    "B-About.dc.html": {
+      "x": 2600,
+      "y": 13700,
+      "w": 2520,
+      "h": 1500,
+      "title": "Boris · О Boris (последний раздел настроек)",
+      "page": "v2"
+    },
+    "B-Docs.dc.html": {
+      "x": 2600,
+      "y": 15300,
+      "w": 2340,
+      "h": 840,
+      "title": "Boris · Документация (из «О Boris»)",
+      "page": "v2"
+    },
+    "B-Spend.dc.html": {
+      "x": 0,
+      "y": 9900,
+      "w": 2520,
+      "h": 3000,
+      "title": "Boris · Расход",
+      "page": "v2"
+    },
+    "B-Tray.dc.html": {
+      "x": 2600,
+      "y": 6700,
+      "w": 1500,
+      "h": 640,
+      "title": "Boris · трей и меню",
+      "page": "v2"
+    },
+    "B-Panel.dc.html": {
+      "x": 2600,
+      "y": 7460,
+      "w": 2000,
+      "h": 760,
+      "title": "Boris · панель без чёлки",
+      "page": "v2"
+    },
+    "B-Now.dc.html": {
+      "x": 0,
+      "y": 6700,
+      "w": 2520,
+      "h": 2700,
+      "title": "Boris · Сейчас",
+      "page": "v2"
+    },
+    "B-Mini.dc.html": {
+      "x": 1900,
+      "y": 5100,
+      "w": 2060,
+      "h": 1060,
+      "title": "Boris · мини-окно",
+      "page": "v2"
+    },
+    "B-Notch.dc.html": {
+      "x": 0,
+      "y": 5100,
+      "w": 1820,
+      "h": 1080,
+      "title": "Boris · чёлка",
+      "page": "v2"
+    },
+    "B-Cards.dc.html": {
+      "x": 2600,
+      "y": 2400,
+      "w": 1840,
+      "h": 2300,
+      "title": "Boris · карточки запроса",
+      "page": "v2"
+    },
+    "B-Card.dc.html": {
+      "x": 0,
+      "y": 13000,
+      "w": 420,
+      "h": 260,
+      "title": "Компонент: B-Card",
+      "page": "v2"
+    },
+    "B-Session.dc.html": {
+      "x": 0,
+      "y": 2400,
+      "w": 2520,
+      "h": 1820,
+      "title": "Boris · Сессия: технический и простой",
+      "page": "v2"
+    },
+    "B-Boris.dc.html": {
+      "x": 1680,
+      "y": 0,
+      "w": 2200,
+      "h": 1900,
+      "title": "Boris · морж в поверхностях",
+      "page": "v2"
+    },
+    "Feed-simple.dc.html": {
+      "x": 3400,
+      "y": 3300,
+      "w": 1860,
+      "h": 1560,
+      "title": "Простой · ход работы"
+    },
+    "Feed-tech.dc.html": {
+      "x": 5340,
+      "y": 3300,
+      "w": 1860,
+      "h": 1560,
+      "title": "Технический · ход работы агента"
+    },
+    "AgentFeed.dc.html": {
+      "x": 3368,
+      "y": 9180,
+      "w": 420,
+      "h": 860,
+      "title": "Компонент: AgentFeed"
+    },
+    "About.dc.html": {
+      "x": 1260,
+      "y": 7180,
+      "w": 1180,
+      "h": 1600,
+      "title": "Дашборд · О проекте"
+    },
+    "Info.dc.html": {
+      "x": 2520,
+      "y": 7180,
+      "w": 1180,
+      "h": 1600,
+      "title": "Дашборд · Инфо"
+    },
+    "Replies.dc.html": {
+      "x": 3400,
+      "y": 5300,
+      "w": 2440,
+      "h": 1560,
+      "title": "Реплики Бориса"
+    },
+    "Desk.dc.html": {
+      "h": 480,
+      "title": "Борис на столе",
+      "w": 1000,
+      "x": 1180,
+      "y": 6300
+    },
+    "Limits.dc.html": {
+      "h": 80,
+      "title": "Компонент: Limits",
+      "w": 388,
+      "x": 1900,
+      "y": 9180
+    },
+    "LimitsCases.dc.html": {
+      "h": 1400,
+      "title": "Лимиты · 1, 2, 3, 4 окна и без данных",
+      "w": 960,
+      "x": 3400,
+      "y": 0
+    },
+    "Main.dc.html": {
+      "h": 1600,
+      "title": "Токены",
+      "w": 1280,
+      "x": 0,
+      "y": 0
+    },
+    "Menu-alert.dc.html": {
+      "h": 1000,
+      "title": "Технический · меню, тревога",
+      "w": 960,
+      "x": 1040,
+      "y": 3500
+    },
+    "Menu-details.dc.html": {
+      "h": 1000,
+      "title": "Технический · вкладки «Запрос» и «Результат»",
+      "w": 960,
+      "x": 1040,
+      "y": 4900
+    },
+    "Menu-expanded.dc.html": {
+      "h": 1000,
+      "title": "Технический · раскрытый запуск",
+      "w": 960,
+      "x": 0,
+      "y": 4900
+    },
+    "Menu-normal.dc.html": {
+      "h": 1000,
+      "title": "Технический · меню, обычное",
+      "w": 960,
+      "x": 0,
+      "y": 3500
+    },
+    "Menu-permission.dc.html": {
+      "h": 1000,
+      "title": "Технический · запрос разрешения [хуки]",
+      "w": 960,
+      "x": 2080,
+      "y": 4900
+    },
+    "Menu-quiet.dc.html": {
+      "h": 1000,
+      "title": "Технический · меню, всё тихо",
+      "w": 960,
+      "x": 2080,
+      "y": 3500
+    },
+    "Menu.dc.html": {
+      "h": 880,
+      "title": "Компонент: Menu (технический)",
+      "w": 420,
+      "x": 1400,
+      "y": 9180
+    },
+    "MenuSimple.dc.html": {
+      "h": 900,
+      "title": "Компонент: MenuSimple",
+      "w": 420,
+      "x": 2868,
+      "y": 9180
+    },
+    "Menubar.dc.html": {
+      "h": 420,
+      "title": "Значок в строке меню",
+      "w": 1000,
+      "x": 0,
+      "y": 2000
+    },
+    "Notch.dc.html": {
+      "h": 480,
+      "title": "Чёлка · событие и наведение",
+      "w": 1100,
+      "x": 0,
+      "y": 6300
+    },
+    "Owl.dc.html": {
+      "h": 200,
+      "title": "Компонент: заглушка Бориса",
+      "w": 200,
+      "x": 0,
+      "y": 9180
+    },
+    "Ribbon.dc.html": {
+      "h": 80,
+      "title": "Компонент: Ribbon",
+      "w": 420,
+      "x": 400,
+      "y": 9180
+    },
+    "RunRow.dc.html": {
+      "h": 90,
+      "title": "Компонент: RunRow",
+      "w": 420,
+      "x": 900,
+      "y": 9180
+    },
+    "RunRows.dc.html": {
+      "h": 1060,
+      "title": "Технический · строка запуска A и B",
+      "w": 1000,
+      "x": 1080,
+      "y": 2000
+    },
+    "Shift.dc.html": {
+      "h": 1600,
+      "title": "Дашборд · Смена",
+      "w": 1180,
+      "x": 0,
+      "y": 7180
+    },
+    "Simple-details.dc.html": {
+      "h": 1000,
+      "title": "Простой · подробности задачи",
+      "w": 960,
+      "x": 6520,
+      "y": 1800
+    },
+    "Simple-expanded.dc.html": {
+      "h": 1000,
+      "title": "Простой · раскрытая задача",
+      "w": 960,
+      "x": 4440,
+      "y": 1800
+    },
+    "Simple-normal.dc.html": {
+      "h": 1000,
+      "title": "Простой · меню, Ultra",
+      "w": 960,
+      "x": 3400,
+      "y": 1800
+    },
+    "Simple-quiet.dc.html": {
+      "h": 1000,
+      "title": "Простой · всё тихо",
+      "w": 960,
+      "x": 5480,
+      "y": 1800
+    },
+    "Simple-stress.dc.html": {
+      "h": 1000,
+      "title": "Простой · крайние случаи",
+      "w": 960,
+      "x": 7560,
+      "y": 1800
+    },
+    "StatusIcon.dc.html": {
+      "h": 40,
+      "title": "Компонент: StatusIcon",
+      "w": 40,
+      "x": 280,
+      "y": 9180
+    },
+    "Statuses.dc.html": {
+      "h": 1600,
+      "title": "Статусы, лента, заглушка персонажа",
+      "w": 1280,
+      "x": 1360,
+      "y": 0
+    },
+    "TaskRow.dc.html": {
+      "h": 110,
+      "title": "Компонент: TaskRow",
+      "w": 420,
+      "x": 2368,
+      "y": 9180
+    },
+    "TaskRows.dc.html": {
+      "h": 1240,
+      "title": "Простой · длина названия и подробности",
+      "w": 1000,
+      "x": 4440,
+      "y": 0
+    },
+    "B-Replies.dc.html": {
+      "x": 0,
+      "y": 18100,
+      "w": 2520,
+      "h": 2000,
+      "title": "Boris · реплики моржа на местах",
+      "page": "v2"
+    },
+    "B-Settings.dc.html": {
+      "x": 0,
+      "y": 20600,
+      "w": 1680,
+      "h": 4740,
+      "title": "Boris · Настройки",
+      "page": "v2"
+    },
+    "B-SessionEn.dc.html": {
+      "x": 1800,
+      "y": 20600,
+      "w": 2520,
+      "h": 910,
+      "title": "Boris · Session (English)",
+      "page": "v2"
+    },
+    "B-MiniEn.dc.html": {
+      "x": 1800,
+      "y": 21600,
+      "w": 1648,
+      "h": 1060,
+      "title": "Boris · mini window (English)",
+      "page": "v2"
+    },
+    "B-CardsEn.dc.html": {
+      "x": 1800,
+      "y": 22800,
+      "w": 1840,
+      "h": 2300,
+      "title": "Boris · request cards (English)",
+      "page": "v2"
+    },
+    "B-CardEn.dc.html": {
+      "x": 1000,
+      "y": 13000,
+      "w": 420,
+      "h": 260,
+      "title": "Компонент: B-CardEn",
+      "page": "v2"
+    },
+    "B-Activity.dc.html": {
+      "x": 0,
+      "y": 25700,
+      "w": 2520,
+      "h": 910,
+      "title": "Boris · Активность",
+      "page": "v2"
+    },
+    "B-Walrus.dc.html": {
+      "x": 0,
+      "y": 26700,
+      "w": 2520,
+      "h": 1820,
+      "title": "Boris · Морж",
+      "page": "v2"
+    },
+    "B-FirstRun.dc.html": {
+      "x": 0,
+      "y": 28600,
+      "w": 2520,
+      "h": 3640,
+      "title": "Boris · Первый запуск",
+      "page": "v2"
+    },
+    "B-Notifs.dc.html": {
+      "x": 2600,
+      "y": 25700,
+      "w": 2400,
+      "h": 840,
+      "title": "Boris · уведомления Mac и Telegram",
+      "page": "v2"
+    },
+    "B-States.dc.html": {
+      "x": 2600,
+      "y": 26700,
+      "w": 2520,
+      "h": 1900,
+      "title": "Boris · особые состояния",
+      "page": "v2"
+    },
+    "B-Extra.dc.html": {
+      "x": 0,
+      "y": 32800,
+      "w": 2520,
+      "h": 1700,
+      "title": "Boris · дополнения: лента, сессия, простой режим",
+      "page": "v2"
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-04T12:40:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas",
+    "page": "v2"
+  },
+  "noteOrder": [
+    "t-base",
+    "t-menubar",
+    "t-menu1",
+    "t-menu2",
+    "t-presence",
+    "t-shift",
+    "t-comp",
+    "t-add1",
+    "t-add2",
+    "t-feed",
+    "t-replies",
+    "b-t1",
+    "b-t2",
+    "b-t3",
+    "b-t4",
+    "b-t5",
+    "b-t6",
+    "b-t7",
+    "b-t8",
+    "b-t9",
+    "b-t10"
+  ],
+  "notes": {
+    "b-t6": {
+      "kind": "title1",
+      "maxW": 5200,
+      "text": "Запросы, Проекты, Проект",
+      "w": 240,
+      "x": 0,
+      "y": 13400,
+      "page": "v2"
+    },
+    "b-t5": {
+      "kind": "title1",
+      "maxW": 5200,
+      "text": "Расход и Потери",
+      "w": 240,
+      "x": 0,
+      "y": 9600,
+      "page": "v2"
+    },
+    "b-t4": {
+      "kind": "title1",
+      "maxW": 4600,
+      "text": "Сейчас, трей, панель без чёлки",
+      "w": 240,
+      "x": 0,
+      "y": 6400,
+      "page": "v2"
+    },
+    "b-t3": {
+      "kind": "title1",
+      "maxW": 4440,
+      "text": "Чёлка и мини-окно",
+      "w": 240,
+      "x": 0,
+      "y": 4800,
+      "page": "v2"
+    },
+    "b-t2": {
+      "kind": "title1",
+      "maxW": 4440,
+      "text": "Сессия и карточки запроса",
+      "w": 240,
+      "x": 0,
+      "y": 2100,
+      "page": "v2"
+    },
+    "b-t1": {
+      "kind": "title1",
+      "maxW": 3880,
+      "text": "Основа: компоненты, токены, морж в поверхностях",
+      "w": 240,
+      "x": 0,
+      "y": -300,
+      "page": "v2"
+    },
+    "t-replies": {
+      "kind": "title1",
+      "maxW": 2440,
+      "text": "Реплики Бориса: везде, кроме трея",
+      "w": 240,
+      "x": 3400,
+      "y": 5000
+    },
+    "t-feed": {
+      "kind": "title1",
+      "maxW": 3800,
+      "text": "Детали агента: живая лента в обоих видах",
+      "w": 240,
+      "x": 3400,
+      "y": 3000
+    },
+    "t-add1": {
+      "kind": "title1",
+      "maxW": 2040,
+      "text": "Дополнение · лимиты и строка задачи",
+      "w": 240,
+      "x": 3400,
+      "y": -300
+    },
+    "t-add2": {
+      "kind": "title1",
+      "maxW": 5120,
+      "text": "Вид: простой, по умолчанию · Ultra",
+      "w": 240,
+      "x": 3400,
+      "y": 1500
+    },
+    "t-base": {
+      "kind": "title1",
+      "maxW": 2640,
+      "text": "Стадия 1 · Основа: токены и статусы",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "t-comp": {
+      "kind": "title1",
+      "maxW": 3290,
+      "text": "Компоненты (используются всеми артбордами)",
+      "w": 240,
+      "x": 0,
+      "y": 8880
+    },
+    "t-menu1": {
+      "kind": "title1",
+      "maxW": 3040,
+      "text": "Технический режим: обычное, тревога, всё тихо",
+      "w": 240,
+      "x": 0,
+      "y": 3200
+    },
+    "t-menu2": {
+      "kind": "title1",
+      "maxW": 3040,
+      "text": "Технический режим: запуск, детали агента, разрешение",
+      "w": 240,
+      "x": 0,
+      "y": 4600
+    },
+    "t-menubar": {
+      "kind": "title1",
+      "maxW": 2080,
+      "text": "Значок и строка запуска",
+      "w": 240,
+      "x": 0,
+      "y": 1700
+    },
+    "t-presence": {
+      "kind": "title1",
+      "maxW": 2180,
+      "text": "Один продукт: чёлка, Борис на столе",
+      "w": 240,
+      "x": 0,
+      "y": 6000
+    },
+    "t-shift": {
+      "kind": "title1",
+      "maxW": 3700,
+      "text": "Дашборд: Смена, О проекте, Инфо",
+      "w": 240,
+      "x": 0,
+      "y": 6880
+    },
+    "b-t7": {
+      "kind": "title1",
+      "maxW": 5200,
+      "text": "Реплики моржа на местах",
+      "w": 240,
+      "x": 0,
+      "y": 17800,
+      "page": "v2"
+    },
+    "b-t8": {
+      "kind": "title1",
+      "maxW": 5200,
+      "text": "Настройки и английская версия",
+      "w": 240,
+      "x": 0,
+      "y": 20300,
+      "page": "v2"
+    },
+    "b-t9": {
+      "kind": "title1",
+      "maxW": 5200,
+      "text": "Активность, Морж, первый запуск, уведомления, особые состояния",
+      "w": 240,
+      "x": 0,
+      "y": 25400,
+      "page": "v2"
+    },
+    "b-t10": {
+      "kind": "title1",
+      "maxW": 5200,
+      "text": "Дополнения к ленте, сессии и простому режиму",
+      "w": 240,
+      "x": 0,
+      "y": 32500,
+      "page": "v2"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Statuses.dc.html",
+    "Menubar.dc.html",
+    "RunRows.dc.html",
+    "Menu-normal.dc.html",
+    "Menu-alert.dc.html",
+    "Menu-quiet.dc.html",
+    "Menu-expanded.dc.html",
+    "Menu-details.dc.html",
+    "Menu-permission.dc.html",
+    "Notch.dc.html",
+    "Desk.dc.html",
+    "Shift.dc.html",
+    "LimitsCases.dc.html",
+    "TaskRows.dc.html",
+    "Simple-normal.dc.html",
+    "Simple-expanded.dc.html",
+    "Simple-quiet.dc.html",
+    "Simple-details.dc.html",
+    "Simple-stress.dc.html",
+    "Feed-simple.dc.html",
+    "Feed-tech.dc.html",
+    "About.dc.html",
+    "Info.dc.html",
+    "Replies.dc.html",
+    "Owl.dc.html",
+    "StatusIcon.dc.html",
+    "Ribbon.dc.html",
+    "RunRow.dc.html",
+    "Menu.dc.html",
+    "Limits.dc.html",
+    "TaskRow.dc.html",
+    "MenuSimple.dc.html",
+    "AgentFeed.dc.html",
+    "B-Kit.dc.html",
+    "B-Boris.dc.html",
+    "B-Session.dc.html",
+    "B-Cards.dc.html",
+    "B-Card.dc.html",
+    "B-Notch.dc.html",
+    "B-Mini.dc.html",
+    "B-Now.dc.html",
+    "B-Tray.dc.html",
+    "B-Panel.dc.html",
+    "B-Spend.dc.html",
+    "B-Loss.dc.html",
+    "B-Load.dc.html",
+    "B-Requests.dc.html",
+    "B-Projects.dc.html",
+    "B-About.dc.html",
+    "B-Docs.dc.html",
+    "B-Replies.dc.html",
+    "B-Settings.dc.html",
+    "B-SessionEn.dc.html",
+    "B-MiniEn.dc.html",
+    "B-CardsEn.dc.html",
+    "B-CardEn.dc.html",
+    "B-Activity.dc.html",
+    "B-Walrus.dc.html",
+    "B-FirstRun.dc.html",
+    "B-Notifs.dc.html",
+    "B-States.dc.html",
+    "B-Extra.dc.html"
+  ],
+  "pages": [
+    {
+      "id": "v1",
+      "name": "Стадии 1–3 (архив)"
+    },
+    {
+      "id": "v2",
+      "name": "Boris · бриф 5 ноября"
+    }
+  ],
+  "title": "Борис 1.0"
+}

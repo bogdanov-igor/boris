@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · уведомления</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--focus:#0A64D8;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--mono-bg:rgba(0,0,0,.05);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;--rb-done:#2B7D4E;--rb-run:#8CC7CB;--rb-fail:#E5383B;--rb-cancel:#A2A2A8;color:#1D1D1F}
+.td{--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--focus:#3D8BFF;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--mono-bg:rgba(255,255,255,.07);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;--rb-done:#3E9D66;--rb-run:#2F7479;--rb-fail:#E5383B;--rb-cancel:#6A6A70;color:#F2F2F4}
+.tl{--wall:#C9CCD3;--tg-bg:#DCE8D3;--tg-in:#FFFFFF;--tg-head:#FFFFFF}.td{--wall:#2B2D33;--tg-bg:#0E1621;--tg-in:#182533;--tg-head:#17212B}
+</style>
+</helmet>
+<div style="width: 2400px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+    <div class="{{th.cls}}" style="background: var(--desk); padding: 22px 30px 30px; display: flex; flex-direction: column; gap: 12px; color: var(--tx-1)">
+      <span style="font-size: 13px; font-weight: 600; color: var(--tx-2)">{{th.label}}</span>
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 12px; font-weight: 600">Уведомления Mac</span>
+          <div style="position: relative; min-height: 640px; border-radius: 8px; background: var(--wall); padding: 34px 14px 14px; box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-end; gap: 10px">
+            <div style="position: absolute; top: 0; left: 0; right: 0; height: 24px; background: rgba(0,0,0,.18)"></div>
+            <sc-for list="{{notes}}" as="n" hint-placeholder-count="4">
+              <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end">
+                <span style="font-size: 11px; color: var(--tx-2); padding-right: 6px">{{n.cap}}</span>
+                <div role="alert" style="width: 360px; padding: 10px 12px; box-sizing: border-box; border-radius: 16px; background: var(--pop); box-shadow: 0 0 0 0.5px var(--sep), 0 10px 26px rgba(0,0,0,.25); display: grid; grid-template-columns: 36px minmax(0, 1fr) max-content; column-gap: 10px; align-items: start">
+                  <dc-import name="Owl" mood="{{n.m}}" size="36" variant="simple" hint-size="36px,36px"></dc-import>
+                  <div style="min-width: 0; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 13px; font-weight: 600">{{n.t}}</span><span style="font-size: 12.5px; line-height: 17px; color: var(--tx-1)">{{n.b}}</span></div>
+                  <span style="font-size: 11px; color: var(--tx-3)">{{n.w}}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 12px; font-weight: 600">Telegram</span>
+          <div style="border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 0.5px var(--sep), 0 10px 26px rgba(0,0,0,.2); background: var(--tg-bg); display: flex; flex-direction: column">
+            <div style="height: 48px; background: var(--tg-head); display: flex; align-items: center; gap: 10px; padding: 0 12px"><dc-import name="Owl" mood="Дежурит" size="32" variant="simple" hint-size="32px,32px"></dc-import><div style="display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 600">Boris</span><span style="font-size: 11px; color: var(--tx-2)">бот</span></div></div>
+            <div style="min-height: 560px; padding: 12px; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px">
+              <sc-for list="{{tg}}" as="m" hint-placeholder-count="5">
+                <div style="align-self: flex-start; max-width: 290px; padding: 7px 10px 6px; border-radius: 12px 12px 12px 4px; background: var(--tg-in); box-shadow: 0 1px 1px rgba(0,0,0,.12); display: flex; flex-direction: column; gap: 2px">
+                  <span style="font-size: 13px; line-height: 18px"><b>{{m.p}}</b> · {{m.e}}</span>
+                  <span style="align-self: flex-end; font-size: 10.5px; color: var(--tx-3)">{{m.w}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <span style="font-size: 11.5px; line-height: 16px; color: var(--tx-2)">Только проект и событие: ни команд, ни кода, ни путей к файлам.</span>
+        </div>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2400,"height":840}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+
+    const ON = { bg: 'var(--btn)', sh: '0 0 0 0.5px var(--btn-bd)' }, OFF = { bg: 'transparent', sh: 'none' };
+    const navFor = (cur, badge) => ['Сейчас', 'Проекты', 'Расход', 'Запросы', 'Активность', 'Потери', 'Морж', 'Настройки']
+      .map((t) => ({ t, cur: t === cur ? 'page' : 'false', bg: t === cur ? 'var(--fill-2)' : 'transparent', fw: t === cur ? 500 : 400, badge: t === 'Запросы' ? (badge === undefined ? '1' : badge) : '', badgeL: '1 ждёт ответа' }));
+    const winPane = (cls, label, cur, o) => Object.assign({ cls, label, nav: navFor(cur), owlMood: 'Ждёт', owlText: '1 ждёт вас',
+      sPressed: 'false', tPressed: 'true', sBg: OFF.bg, sSh: OFF.sh, tBg: ON.bg, tSh: ON.sh }, o || {});
+
+    return {
+      themes: [ { cls: 'td', label: 'Тёмная тема' }, { cls: 'tl', label: 'Светлая тема' } ],
+      notes: [
+        { cap: 'Обычное · запрос', m: 'Ждёт', t: 'shop-api · ждёт разрешения', b: 'Claude хочет выполнить команду в VS Code.', w: 'сейчас' },
+        { cap: 'Сводное · кончился лимит', m: 'Устал', t: 'Кончился лимит · упали 12 агентов', b: 'shop-api, «Миграция данных». Сброс в 18:40.', w: '16:05' },
+        { cap: 'Сводное · прервалось, пока Boris был закрыт', m: 'Тревога', t: 'Пока Boris был закрыт, прервались 2 сессии', b: '[ПРИМЕР] boris и deploy-tools. Откройте, чтобы увидеть, где остановились.', w: '09:12' },
+        { cap: 'Сводное · пропущенное за «не беспокоить»', m: 'Дежурит', t: 'Пока было «не беспокоить»', b: '[ПРИМЕР] 3 запроса, 1 сбой, 2 завершения. 1 запрос всё ещё ждёт.', w: '17:21' }
+      ],
+      tg: [
+        { p: 'Boris', e: 'бот подключён, проверка связи', w: '12:02' },
+        { p: 'shop-api', e: 'ждёт разрешения (VS Code)', w: '15:39' },
+        { p: 'landing', e: 'готово', w: '15:47' },
+        { p: 'shop-api', e: 'кончился лимит, упали 12 агентов «Миграции данных». Сброс в 18:40', w: '16:05' },
+        { p: 'shop-api', e: 'сбой субагента «Миграции»: ошибка Claude', w: '16:12' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

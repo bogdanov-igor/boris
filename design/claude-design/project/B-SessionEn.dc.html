@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Boris · Session (English)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--focus:#0A64D8;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--mono-bg:rgba(0,0,0,.05);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;--rb-done:#2B7D4E;--rb-run:#8CC7CB;--rb-fail:#E5383B;--rb-cancel:#A2A2A8;color:#1D1D1F}
+.td{--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--focus:#3D8BFF;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--mono-bg:rgba(255,255,255,.07);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;--rb-done:#3E9D66;--rb-run:#2F7479;--rb-fail:#E5383B;--rb-cancel:#6A6A70;color:#F2F2F4}
+</style>
+</helmet>
+<div style="width: 2520px; height: 910px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{panes}}" as="p" hint-placeholder-count="4">
+    <div class="{{p.cls}}" style="background: var(--desk); padding: 20px 30px 40px; display: flex; flex-direction: column; gap: 10px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{p.label}}</span>
+      <div style="width: 1200px; height: 800px; border-radius: 10px; overflow: hidden; display: flex; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 18px 40px rgba(0,0,0,.28)">
+
+        <nav aria-label="Sections" style="width: 210px; flex: none; background: var(--side); border-right: 1px solid var(--sep); display: flex; flex-direction: column; padding: 10px 10px 12px; box-sizing: border-box">
+          <div style="height: 22px; display: flex; gap: 8px; align-items: center; padding-left: 4px; margin-bottom: 16px"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span></div>
+          <sc-for list="{{p.nav}}" as="n" hint-placeholder-count="6">
+            <a href="#" aria-current="{{n.cur}}" style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: 6px; background: {{n.bg}}; color: var(--tx-1); text-decoration: none; font-size: 13px; font-weight: {{n.fw}}">
+              <span style="flex: 1">{{n.t}}</span>
+              <sc-if value="{{n.badge}}" hint-placeholder-val="{{ false }}"><span aria-label="1 request" style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--st-wait); color: #FFFFFF; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums">{{n.badge}}</span></sc-if>
+            </a>
+          </sc-for>
+          <span style="flex: 1"></span>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0 10px">
+            <dc-import name="Owl" mood="Working" size="190" variant="full" hint-size="190px,190px"></dc-import>
+            <span style="font-size: 12px; line-height: 15px; color: var(--tx-2); text-align: center">3 agents working</span>
+          </div>
+          <div role="group" aria-label="View" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+            <button type="button" aria-pressed="{{p.sPressed}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.sBg}}; box-shadow: {{p.sSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Simple</button>
+            <button type="button" aria-pressed="{{p.tPressed}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.tBg}}; box-shadow: {{p.tSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Technical</button>
+          </div>
+        </nav>
+
+        <main style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden">
+          <header style="flex: none; padding: 12px 20px 12px 24px; border-bottom: 1px solid var(--sep); display: flex; flex-direction: column; gap: 6px">
+            <span style="font-size: 11.5px; color: var(--tx-2)">Projects › boris</span>
+            <div style="display: flex; align-items: center; gap: 10px">
+              <h1 style="margin: 0; font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 18px; line-height: 24px; font-weight: 600">boris</h1>
+              <span style="display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px 0 6px; border-radius: 5px; background: var(--fill-1); box-shadow: inset 0 0 0 0.5px var(--sep); font-size: 11.5px"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2.5 3.5h11v9h-11z M5 7l2 1.5L5 10 M8.5 10.5h2.5" style="fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round"></path></svg>Terminal</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--st-run)"><dc-import name="StatusIcon" kind="running" size="14" hint-size="14px,14px"></dc-import>{{p.stateWord}}</span>
+              <span style="font-size: 12px; color: var(--tx-2); font-variant-numeric: tabular-nums">1 h 06 min</span>
+              <span style="flex: 1"></span>
+              <button type="button" style="height: 26px; padding: 0 12px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12.5px">Open Terminal</button>
+            </div>
+            <sc-if value="{{p.tech}}" hint-placeholder-val="{{ false }}">
+              <span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: var(--tx-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">5c1e0a7d-3f2b-4c9e-8a61-0d4e7b9f2a13 · [model] · branch main · ~/dev/boris</span>
+            </sc-if>
+          </header>
+
+          <sc-if value="{{p.tech}}" hint-placeholder-val="{{ true }}">
+            <div style="flex: 1; min-height: 0; display: flex">
+              <aside aria-label="Agents" style="width: 380px; flex: none; border-right: 1px solid var(--sep); overflow: auto; padding: 12px 12px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+                <section style="display: flex; flex-direction: column; gap: 2px">
+                  <h2 style="margin: 0 0 4px 6px; font-size: 11.5px; font-weight: 600; color: var(--tx-2)">Agents · 3 + workflow</h2>
+                  <sc-for list="{{tree}}" as="a" hint-placeholder-count="3">
+                    <button type="button" aria-pressed="false" style="display: grid; grid-template-columns: {{a.indent}}px 14px minmax(0, 1fr) max-content; column-gap: 8px; row-gap: 1px; align-items: center; padding: 5px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--tx-1); font: inherit; text-align: left">
+                      <span></span>
+                      <dc-import name="StatusIcon" kind="running" size="14" hint-size="14px,14px"></dc-import>
+                      <span style="display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px"><span style="font-weight: {{a.fw}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{a.name}}</span><sc-if value="{{a.branch}}" hint-placeholder-val="{{ false }}"><span title="Separate project copy (worktree)" style="display: inline-flex; align-items: center; gap: 3px; flex: none; padding: 0 5px; height: 17px; border-radius: 4px; background: var(--fill-2); font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 10.5px; color: var(--tx-2)"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M5 2.5v11M5 9.5c0-3 6-2 6-5.5M11 4a1.5 1.5 0 1 0 0-.01M5 13.5a1.5 1.5 0 1 0 0-.01" style="fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round"></path></svg>{{a.branch}}</span></sc-if></span>
+                      <span style="font-size: 11px; color: var(--tx-2); font-variant-numeric: tabular-nums">{{a.tok}}</span>
+                      <span></span><span></span>
+                      <span style="grid-column: 3 / 5; font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: var(--tx-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{a.act}}</span>
+                    </button>
+                  </sc-for>
+                  <div style="margin-top: 6px; padding: 8px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); display: flex; flex-direction: column; gap: 6px">
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px"><dc-import name="StatusIcon" kind="running" size="14" hint-size="14px,14px"></dc-import><span style="font-weight: 600; flex: 1">Dependency audit</span><span style="font-size: 11px; color: var(--tx-2); font-variant-numeric: tabular-nums">12 agents</span></div>
+                    <div style="padding-left: 22px; display: grid"><dc-import name="Ribbon" phases="{{wfPhases}}" scale="thin" hint-size="100%,8px"></dc-import></div>
+                    <sc-for list="{{phases}}" as="f" hint-placeholder-count="2">
+                      <button type="button" aria-expanded="false" style="display: flex; align-items: center; gap: 8px; min-height: 24px; padding: 0 4px 0 22px; border: 0; border-radius: 5px; background: transparent; color: var(--tx-1); font: inherit; font-size: 12px; text-align: left">
+                        <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M6 4l4 4-4 4" style="fill: none; stroke: var(--tx-2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"></path></svg>
+                        <span style="flex: 1">{{f.n}}</span>
+                        <span style="font-size: 11px; color: {{f.c}}; font-variant-numeric: tabular-nums">{{f.s}}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </section>
+                <section style="display: flex; flex-direction: column; gap: 4px">
+                  <h2 style="margin: 0 0 2px 6px; font-size: 11.5px; font-weight: 600; color: var(--tx-2)">Changed files · 1</h2>
+                  <div style="display: flex; align-items: center; gap: 8px; padding: 5px 8px; font-size: 12px"><span style="flex: 1; font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px">src/auth.swift</span><span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11px"><span style="color: var(--st-done)">+12</span> <span style="color: var(--st-red-tx)">−3</span></span><a href="#" style="font-size: 11.5px; color: var(--st-wait); text-decoration: none">Changes</a></div>
+                </section>
+                <section style="display: flex; flex-direction: column; gap: 4px">
+                  <h2 style="margin: 0 0 2px 6px; font-size: 11.5px; font-weight: 600; color: var(--tx-2)">Failures · 0</h2>
+                  <span style="padding: 2px 8px; font-size: 12px; color: var(--tx-2)">No failures in this session.</span>
+                </section>
+                <section style="display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 8px; background: var(--fill-1)">
+                  <div style="display: flex; justify-content: space-between; font-size: 11.5px"><span style="color: var(--tx-2)">Session tokens</span><span style="font-weight: 600; font-variant-numeric: tabular-nums">1.75M</span></div>
+                  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; font-size: 11px; font-variant-numeric: tabular-nums">
+                    <span style="display: flex; flex-direction: column"><span style="color: var(--tx-3)">In</span><span>412K</span></span>
+                    <span style="display: flex; flex-direction: column"><span style="color: var(--tx-3)">Out</span><span>38K</span></span>
+                    <span style="display: flex; flex-direction: column"><span style="color: var(--tx-3)">Cache read</span><span>1.2M</span></span>
+                    <span style="display: flex; flex-direction: column"><span style="color: var(--tx-3)">Cache write</span><span>96K</span></span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 11px"><span style="color: var(--tx-3)">Main context</span><span style="flex: 1; height: 4px; border-radius: 2px; background: var(--meter-track); overflow: hidden"><span style="display: block; width: 64%; height: 100%; background: var(--meter)"></span></span><span style="font-variant-numeric: tabular-nums">64 %</span></div>
+                </section>
+                <section style="padding: 10px; border-radius: 8px; background: var(--fill-1)"><div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px"><span style="font-size: 12.5px; font-weight: 600">Load on Mac · this session with agents and commands</span><span style="display: flex; justify-content: space-between"><span style="color: var(--tx-2)">CPU</span><span style="font-weight: 600">9%</span></span><span style="display: flex; justify-content: space-between"><span style="color: var(--tx-2)">Memory</span><span style="font-weight: 600">1.2 GB</span></span></div></section>
+              </aside>
+
+              <section aria-label="Live feed" style="flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative">
+                <div style="flex: none; display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 16px; border-bottom: 1px solid var(--sep)">
+                  <span style="font-size: 12.5px; font-weight: 600">Feed</span>
+                  <button type="button" style="height: 22px; padding: 0 8px; border-radius: 5px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12px">All agents ▾</button>
+                  <span style="flex: 1"></span>
+                  <button type="button" style="height: 22px; padding: 0 8px; border: 0; border-radius: 5px; background: transparent; color: var(--tx-2); font: inherit; font-size: 12px">Copy all</button>
+                </div>
+                <div style="flex: 1; overflow: auto; padding: 12px 16px 20px; display: flex; flex-direction: column; gap: 3px">
+                  <div style="padding: 8px 10px; border-radius: 8px; background: var(--fill-1); display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px">
+                    <span style="display: flex; justify-content: space-between; font-size: 11px; color: var(--tx-3); font-variant-numeric: tabular-nums"><span>You · 14:02</span><a href="#" style="color: var(--tx-2); text-decoration: none">Copy</a></span>
+                    <span style="font-size: 12.5px; line-height: 17px">[USER PROMPT] Check auth and fix the token expiry check.</span>
+                  </div>
+                  <sc-for list="{{feed}}" as="e" hint-placeholder-count="6">
+                    <div style="display: flex; flex-direction: column">
+                      <sc-if value="{{e.note}}" hint-placeholder-val="{{ false }}">
+                        <div style="margin: 6px 0 6px 44px; padding: 6px 10px; border-left: 2px solid var(--sep); display: flex; flex-direction: column; gap: 3px">
+                          <span style="font-size: 11px; color: var(--tx-3)">Claude’s note · {{e.time}}</span>
+                          <span style="font-size: 12.5px; line-height: 18px">{{e.note}}</span>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{e.step}}" hint-placeholder-val="{{ true }}">
+                        <button type="button" aria-expanded="{{e.openStr}}" style="display: grid; grid-template-columns: 14px 100px minmax(0, 1fr) max-content max-content max-content 10px; column-gap: 8px; align-items: center; min-height: 28px; padding: 0 6px; border: 0; border-radius: 6px; background: {{e.bg}}; color: var(--tx-1); font: inherit; text-align: left">
+                          <dc-import name="StatusIcon" kind="{{e.k}}" size="14" hint-size="14px,14px"></dc-import>
+                          <span style="font-size: 11px; color: var(--tx-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{e.agent}}</span>
+                          <span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><b style="font-weight: 600">{{e.tool}}</b> {{e.target}}</span>
+                          <span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11px"><span style="color: var(--st-done)">{{e.plus}}</span> <span style="color: var(--st-red-tx)">{{e.minus}}</span></span>
+                          <span style="font-size: 11px; color: {{e.dc}}; font-variant-numeric: tabular-nums">{{e.dur}}</span>
+                          <span style="font-size: 11px; color: var(--tx-3); font-variant-numeric: tabular-nums">{{e.time}}</span>
+                          <svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="{{e.chev}}" style="fill: none; stroke: var(--tx-2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round"></path></svg>
+                        </button>
+                      </sc-if>
+                      <sc-if value="{{e.diff}}" hint-placeholder-val="{{ false }}">
+                        <div style="margin: 2px 0 6px 28px; border-radius: 6px; overflow: hidden; background: var(--win); box-shadow: inset 0 0 0 1px var(--sep); font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; line-height: 18px">
+                          <div style="padding: 3px 8px; font-size: 10.5px; color: var(--tx-3); border-bottom: 1px solid var(--sep)">src/auth.swift · [SAMPLE EDIT]</div>
+                          <sc-for list="{{e.diff}}" as="d" hint-placeholder-count="4">
+                            <div style="display: grid; grid-template-columns: 36px 14px minmax(0, 1fr); padding-right: 8px; background: {{d.bg}}; color: {{d.c}}"><span style="text-align: right; padding-right: 6px; color: var(--tx-3)">{{d.n}}</span><span style="font-weight: 700">{{d.sign}}</span><span style="white-space: pre">{{d.s}}</span></div>
+                          </sc-for>
+                          <div style="padding: 3px 8px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif; font-size: 11px; color: var(--tx-2); border-top: 1px solid var(--sep)">11 more lines · Show all</div>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{e.out}}" hint-placeholder-val="{{ false }}">
+                        <div style="margin: 2px 0 6px 28px; border-radius: 6px; overflow: hidden; background: var(--win); box-shadow: inset 0 0 0 1px var(--sep); font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; line-height: 16px">
+                          <div style="padding: 6px 8px; border-bottom: 1px solid var(--sep)">$ swift test</div>
+                          <sc-for list="{{e.out}}" as="o" hint-placeholder-count="3"><div style="padding: 0 8px; color: {{o.c}}; white-space: pre-wrap">{{o.s}}</div></sc-for>
+                          <div style="height: 6px"></div>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                  <div style="display: flex; align-items: center; gap: 8px; min-height: 26px; padding: 0 6px; font-size: 12px; color: var(--tx-2)"><dc-import name="StatusIcon" kind="silent" size="14" hint-size="14px,14px"></dc-import><span style="width: 100px; font-size: 11px">Finding check</span>Thinking…</div>
+                </div>
+              </section>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{p.simple}}" hint-placeholder-val="{{ false }}">
+            <div style="flex: 1; min-height: 0; overflow: auto; padding: 22px 24px 28px; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 24px; align-content: start">
+              <div style="display: flex; flex-direction: column; gap: 18px">
+                <section style="display: flex; flex-direction: column; gap: 4px">
+                  <span style="font-size: 12px; color: var(--tx-2)">Now</span>
+                  <span style="font-size: 20px; line-height: 26px; font-weight: 600">Reviewing code and running tests</span>
+                  <span style="font-size: 13px; color: var(--tx-2)">3 agents working</span>
+                </section>
+                <section style="padding: 12px 14px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); display: flex; flex-direction: column; gap: 8px">
+                  <div style="display: flex; align-items: center; gap: 8px"><dc-import name="StatusIcon" kind="running" size="16" hint-size="16px,16px"></dc-import><span style="font-size: 13px; font-weight: 600; flex: 1">Dependency audit</span><span style="font-size: 12px; color: var(--st-run); font-weight: 600">Working</span></div>
+                  <span role="progressbar" aria-label="Progress" aria-valuenow="67" aria-valuemin="0" aria-valuemax="100" style="height: 5px; border-radius: 3px; background: var(--meter-track); overflow: hidden"><span style="display: block; width: 67%; height: 100%; background: var(--st-run)"></span></span>
+                  <span style="font-size: 12px; color: var(--tx-2)">Search done, checking in progress</span>
+                </section>
+                <section style="display: flex; flex-direction: column; gap: 2px">
+                  <h2 style="margin: 0 0 6px; font-size: 13px; font-weight: 600">What’s done</h2>
+                  <sc-for list="{{simpleSteps}}" as="s" hint-placeholder-count="5">
+                    <div style="display: grid; grid-template-columns: 16px minmax(0, 1fr) max-content max-content; column-gap: 10px; align-items: center; min-height: 32px; border-bottom: 1px solid var(--sep); font-size: 13px">
+                      <dc-import name="StatusIcon" kind="{{s.k}}" size="14" hint-size="14px,14px"></dc-import>
+                      <span>{{s.t}}</span>
+                      <span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11px"><span style="color: var(--st-done)">{{s.plus}}</span> <span style="color: var(--st-red-tx)">{{s.minus}}</span></span>
+                      <span style="font-size: 11.5px; color: {{s.c}}; font-variant-numeric: tabular-nums">{{s.w}}</span>
+                    </div>
+                  </sc-for>
+                </section>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 18px">
+                <section style="padding: 12px 14px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); display: flex; flex-direction: column; gap: 6px">
+                  <h2 style="margin: 0; font-size: 13px; font-weight: 600">Changed files</h2>
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px"><span style="flex: 1">auth.swift</span><span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11px"><span style="color: var(--st-done)">+12</span> <span style="color: var(--st-red-tx)">−3</span></span></div>
+                  <a href="#" style="font-size: 12px; color: var(--st-wait); text-decoration: none">View changes</a>
+                </section>
+                <section style="padding: 12px 14px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); display: flex; flex-direction: column; gap: 4px">
+                  <h2 style="margin: 0; font-size: 13px; font-weight: 600">Failures</h2>
+                  <span style="font-size: 12.5px; color: var(--tx-2)">Nothing broke.</span>
+                </section>
+                <section style="padding: 12px 14px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); display: flex; flex-direction: column; gap: 4px">
+                  <h2 style="margin: 0; font-size: 13px; font-weight: 600">Tokens</h2>
+                  <span style="font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums">1.75M</span>
+                  <span style="font-size: 12px; color: var(--tx-2); font-variant-numeric: tabular-nums">≈ $3.10 at API prices · estimate</span>
+                </section>
+              </div>
+            </div>
+          </sc-if>
+        </main>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2520,"height":1820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const R = 'var(--st-red-tx)', G = 'var(--st-done)', T2 = 'var(--tx-2)', RUN = 'var(--st-run)';
+    const on = { bg: 'var(--btn)', sh: '0 0 0 0.5px var(--btn-bd)' }, off = { bg: 'transparent', sh: 'none' };
+    const navFor = (tech) => {
+      const base = ['Now', 'Projects', 'Usage', 'Requests'];
+      const items = tech ? base.concat(['Activity', 'Losses', 'Walrus', 'Settings']) : base.concat(['Walrus', 'Settings']);
+      return items.map((t) => ({ t, cur: t === 'Projects' ? 'page' : 'false', bg: t === 'Projects' ? 'var(--fill-2)' : 'transparent', fw: t === 'Projects' ? 500 : 400, badge: t === 'Requests' ? '1' : '' }));
+    };
+    const pane = (cls, tech, label) => ({ cls, tech, simple: !tech, label, nav: navFor(tech), stateWord: tech ? 'Running' : 'Working',
+      sPressed: tech ? 'false' : 'true', tPressed: tech ? 'true' : 'false',
+      sBg: (tech ? off : on).bg, sSh: (tech ? off : on).sh, tBg: (tech ? on : off).bg, tSh: (tech ? on : off).sh });
+    const step = (o) => Object.assign({ step: true, note: '', k: 'done', plus: '', minus: '', dur: '', dc: T2, open: false, diff: null, out: null }, o);
+    const feed = [
+      step({ agent: 'Main', tool: 'Read', target: 'src/auth.swift', dur: '1.2 s', time: '14:02' }),
+      step({ agent: 'Main', tool: 'Grep', target: 'isExpired src/', dur: '0.4 s', time: '14:02' }),
+      { step: false, note: 'The token expiry is checked after the signature is parsed. I’ll move the check to the top and add a test for an expired token.', time: '14:03', diff: null, out: null },
+      step({ agent: 'Main', tool: 'Task', target: 'Code review', dur: '', time: '14:03' }),
+      step({ agent: 'Main', tool: 'Edit', target: 'src/auth.swift', plus: '+12', minus: '−3', dur: '2.0 s', time: '14:04', open: true,
+        diff: [
+          { n: '41', sign: '−', s: '    if try verifySignature(token) {', bg: 'var(--st-red-soft)', c: R },
+          { n: '42', sign: '−', s: '        guard !token.isExpired else { return .expired }', bg: 'var(--st-red-soft)', c: R },
+          { n: '41', sign: '+', s: '    guard !token.isExpired else { return .expired }', bg: 'var(--ok-soft)', c: G },
+          { n: '42', sign: '+', s: '    guard try verifySignature(token) else { return .invalid }', bg: 'var(--ok-soft)', c: G }
+        ] }),
+      step({ agent: 'Code review', tool: 'Read', target: 'src/session.swift', dur: '0.9 s', time: '14:05' }),
+      step({ agent: 'Main', k: 'running', tool: 'Bash', target: 'swift test', dur: 'running 0:14', dc: RUN, time: '14:06', open: true,
+        out: [ { s: '[SAMPLE OUTPUT]', c: 'var(--tx-3)' }, { s: 'Test Suite AuthTests started', c: T2 }, { s: 'Test Case testExpiredToken passed (0.003 s)', c: T2 }, { s: 'Test Case testInvalidSignature running…', c: 'var(--tx-1)' } ] })
+    ];
+    feed.forEach((e) => { e.openStr = e.open ? 'true' : 'false'; e.chev = e.open ? 'M4 6l4 4 4-4' : 'M6 4l4 4-4 4'; e.bg = e.open ? 'var(--fill-1)' : 'transparent'; });
+    return {
+      panes: [
+        pane('td', true, 'Dark · technical'), pane('tl', false, 'Light · simple')
+      ],
+      tree: [
+        { indent: 0, name: 'Main agent', fw: 600, branch: '', tok: '84.2K', act: 'Bash · running' },
+        { indent: 18, name: 'Code review', fw: 500, branch: '', tok: '21.7K', act: 'Read src/session.swift' },
+        { indent: 36, name: 'Finding check', fw: 500, branch: 'review/token-expiry', tok: '6.3K', act: 'Thinking…' }
+      ],
+      wfPhases: [ { name: 'Search', runs: [['d', 8]] }, { name: 'Check', cur: true, runs: [['d', 1], ['r', 3]] } ],
+      phases: [ { n: 'Search', s: '8 of 8 · done', c: G }, { n: 'Check', s: '1 of 4 · running', c: RUN } ],
+      feed,
+      simpleSteps: [
+        { k: 'done', t: 'Read 12 files', plus: '', minus: '', w: '14:02', c: T2 },
+        { k: 'done', t: 'Changed 1 file', plus: '+12', minus: '−3', w: '14:04', c: T2 },
+        { k: 'done', t: 'Asked a helper to review the code', plus: '', minus: '', w: '14:03', c: T2 },
+        { k: 'running', t: 'Running tests', plus: '', minus: '', w: 'running 0:14', c: RUN }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

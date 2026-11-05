@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · экран «Запросы»</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--focus:#0A64D8;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--mono-bg:rgba(0,0,0,.05);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;--rb-done:#2B7D4E;--rb-run:#8CC7CB;--rb-fail:#E5383B;--rb-cancel:#A2A2A8;color:#1D1D1F}
+.td{--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--focus:#3D8BFF;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--mono-bg:rgba(255,255,255,.07);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;--rb-done:#3E9D66;--rb-run:#2F7479;--rb-fail:#E5383B;--rb-cancel:#6A6A70;color:#F2F2F4}
+</style>
+</helmet>
+<div style="width: 2520px; height: 1820px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{panes}}" as="p" hint-placeholder-count="4">
+    <div class="{{p.cls}}" style="background: var(--desk); padding: 20px 30px 40px; display: flex; flex-direction: column; gap: 10px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{p.label}}</span>
+      <div style="width: 1200px; height: 800px; border-radius: 10px; overflow: hidden; display: flex; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 18px 40px rgba(0,0,0,.28)">
+        <nav aria-label="Разделы" style="width: 210px; flex: none; background: var(--side); border-right: 1px solid var(--sep); display: flex; flex-direction: column; padding: 10px 10px 12px; box-sizing: border-box">
+          <div style="height: 22px; display: flex; gap: 8px; align-items: center; padding-left: 4px; margin-bottom: 16px"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span></div>
+          <sc-for list="{{p.nav}}" as="n" hint-placeholder-count="6">
+            <a href="#" aria-current="{{n.cur}}" style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: 6px; background: {{n.bg}}; color: var(--tx-1); text-decoration: none; font-size: 13px; font-weight: {{n.fw}}">
+              <span style="flex: 1">{{n.t}}</span>
+              <sc-if value="{{n.badge}}" hint-placeholder-val="{{ false }}"><span aria-label="{{n.badgeL}}" style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--st-wait); color: #FFFFFF; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums">{{n.badge}}</span></sc-if>
+            </a>
+          </sc-for>
+          <span style="flex: 1"></span>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0 10px">
+            <dc-import name="Owl" mood="{{p.owlMood}}" size="190" variant="full" hint-size="190px,190px"></dc-import>
+            <span style="font-size: 12px; line-height: 15px; color: var(--tx-2); text-align: center">{{p.owlText}}</span>
+          </div>
+          <div role="group" aria-label="Режим" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+            <button type="button" aria-pressed="{{p.sPressed}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.sBg}}; box-shadow: {{p.sSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Простой</button>
+            <button type="button" aria-pressed="{{p.tPressed}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.tBg}}; box-shadow: {{p.tSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Технический</button>
+          </div>
+        </nav>
+
+        <main style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden">
+          <header style="flex: none; padding: 14px 24px 12px; border-bottom: 1px solid var(--sep); display: flex; align-items: baseline; gap: 12px">
+            <h1 style="margin: 0; font-size: 18px; line-height: 24px; font-weight: 600">Запросы</h1>
+            <span style="font-size: 12.5px; color: {{p.subC}}; font-weight: {{p.subW}}">{{p.sub}}</span>
+            <span style="flex: 1"></span>
+            <span style="font-size: 11.5px; color: var(--tx-3)">Enter ничего не подтверждает · ⌥⌘Y разрешить · ⌥⌘N отклонить</span>
+          </header>
+
+          <div style="flex: 1; min-height: 0; overflow: auto; padding: 16px 24px 20px; display: flex; flex-direction: column; gap: 20px">
+            <sc-if value="{{p.busy}}" hint-placeholder-val="{{ true }}">
+              <div style="display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; align-items: start">
+                <section aria-label="Ждут ответа" style="display: flex; flex-direction: column; gap: 4px">
+                  <h2 style="margin: 0 0 4px 4px; font-size: 11.5px; font-weight: 600; color: var(--tx-2)">Ждут ответа · 2 · из Boris можно ответить 2 минуты</h2>
+                  <sc-for list="{{queue}}" as="q" hint-placeholder-count="3">
+                    <button type="button" aria-current="{{q.cur}}" style="display: grid; grid-template-columns: 16px minmax(0, 1fr) max-content; column-gap: 8px; row-gap: 2px; align-items: center; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: {{q.bg}}; box-shadow: {{q.sh}}; color: var(--tx-1); font: inherit; text-align: left">
+                      <dc-import name="StatusIcon" kind="waiting" size="16" hint-size="16px,16px"></dc-import>
+                      <span style="min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px"><span style="font-family: {{q.ff}}; font-weight: 600">{{q.proj}}</span> <span style="font-size: 11.5px; color: var(--tx-2)">{{q.env}}</span></span>
+                      <span style="font-size: 11.5px; color: {{q.ac}}; font-weight: 600; font-variant-numeric: tabular-nums">{{q.age}}</span>
+                      <span></span>
+                      <span style="grid-column: 2 / 4; min-width: 0; font-size: 12px; color: var(--tx-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; color: var(--tx-1)">{{q.kind}}</span> · {{q.what}} · {{q.agent}}</span>
+                    </button>
+                  </sc-for>
+                  <h2 style="margin: 10px 0 4px 4px; font-size: 11.5px; font-weight: 600; color: var(--tx-2)">Время ответа из Boris истекло · 1</h2>
+                  <div style="display: grid; grid-template-columns: 16px minmax(0, 1fr) max-content; column-gap: 8px; row-gap: 2px; align-items: center; padding: 8px 10px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep)">
+                    <dc-import name="StatusIcon" kind="stopped" size="16" hint-size="16px,16px"></dc-import>
+                    <span style="font-size: 13px"><span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-weight: 600">shop-api</span> <span style="font-size: 11.5px; color: var(--tx-2)">VS Code</span></span>
+                    <span style="font-size: 11.5px; color: var(--tx-2); font-variant-numeric: tabular-nums">ждёт 42 мин</span>
+                    <span></span>
+                    <span style="grid-column: 2 / 4; font-size: 12px; color: var(--tx-2)"><span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; color: var(--tx-1)">Bash</span> · команда · ответить можно в VS Code</span>
+                    <span></span>
+                    <button type="button" style="grid-column: 2 / 4; justify-self: start; margin-top: 4px; height: 24px; padding: 0 10px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12px">Открыть VS Code</button>
+                  </div>
+                  <span style="padding: 6px 4px 0; font-size: 11px; line-height: 15px; color: var(--tx-3)">В списке видно только тип действия и файл. Текст команды открывается в карточке справа.</span>
+                </section>
+                <section aria-label="Выбранный запрос" style="display: flex; flex-direction: column; gap: 8px">
+                  <dc-import name="B-Card" v="edit" mode="tech" hint-size="100%,260px"></dc-import>
+                </section>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{p.empty}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; align-items: center; gap: 20px; padding: 20px 24px; border-radius: 10px; background: var(--fill-1)">
+                <dc-import name="Owl" mood="Дежурит" size="96" variant="simple" hint-size="96px,96px"></dc-import>
+                <div style="display: flex; flex-direction: column; gap: 4px; max-width: 560px">
+                  <span style="font-size: 15px; font-weight: 600">Никто не ждёт ответа</span>
+                  <span style="font-size: 13px; line-height: 19px; color: var(--tx-2)">Когда Claude попросит разрешение, задаст вопрос или предложит план, запрос появится здесь, в чёлке и в мини-окне.</span>
+                </div>
+              </div>
+            </sc-if>
+
+            <section aria-label="Решено сегодня" style="display: flex; flex-direction: column; gap: 6px">
+              <div style="display: flex; align-items: baseline; gap: 8px; padding-left: 4px"><h2 style="margin: 0; font-size: 13px; font-weight: 600">Решено сегодня · 6</h2><span style="font-size: 11px; color: var(--tx-3)">[ПРИМЕР] строки</span></div>
+              <div role="table" aria-label="Решённые запросы" style="border-radius: 8px; box-shadow: inset 0 0 0 1px var(--sep); overflow: hidden">
+                <div role="row" style="display: grid; grid-template-columns: 52px 92px 118px 112px minmax(0, 1fr) 130px 130px 52px; column-gap: 10px; padding: 6px 12px; background: var(--fill-1); font-size: 11px; font-weight: 600; color: var(--tx-2)">
+                  <span role="columnheader">Время</span><span role="columnheader">Проект</span><span role="columnheader">Среда</span><span role="columnheader">Агент</span><span role="columnheader">Действие</span><span role="columnheader">Решение</span><span role="columnheader">Где ответили</span><span role="columnheader" style="text-align: right">Ждал</span>
+                </div>
+                <sc-for list="{{hist}}" as="h" hint-placeholder-count="6">
+                  <div role="row" style="display: grid; grid-template-columns: 52px 92px 118px 112px minmax(0, 1fr) 130px 130px 52px; column-gap: 10px; align-items: center; min-height: 30px; padding: 0 12px; border-top: 1px solid var(--sep); font-size: 12px">
+                    <span role="cell" style="color: var(--tx-2); font-variant-numeric: tabular-nums">{{h.t}}</span>
+                    <span role="cell" style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{h.proj}}</span>
+                    <span role="cell" style="color: var(--tx-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{h.env}}</span>
+                    <span role="cell" style="color: var(--tx-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{h.agent}}</span>
+                    <span role="cell" style="min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px">{{h.kind}}</span><span style="color: var(--tx-2)"> · {{h.what}}</span></span>
+                    <span role="cell" style="display: inline-flex; align-items: center; gap: 6px; color: {{h.dc}}; font-weight: 500"><dc-import name="StatusIcon" kind="{{h.k}}" size="14" hint-size="14px,14px"></dc-import>{{h.d}}</span>
+                    <span role="cell" style="color: var(--tx-2)">{{h.where}}</span>
+                    <span role="cell" style="text-align: right; color: var(--tx-2); font-variant-numeric: tabular-nums">{{h.wait}}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <span style="padding-left: 4px; font-size: 11px; color: var(--tx-3)">Текст команд в истории не показывается. Ответы на вопросы и текст плана открываются в сессии.</span>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2520,"height":1820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+    const on = { bg: 'var(--btn)', sh: '0 0 0 0.5px var(--btn-bd)' };
+    const G = 'var(--st-done)', R = 'var(--st-red-tx)', T2 = 'var(--tx-2)';
+    const navFor = (badge) => ['Сейчас', 'Проекты', 'Расход', 'Запросы', 'Активность', 'Потери', 'Морж', 'Настройки']
+      .map((t) => ({ t, cur: t === 'Запросы' ? 'page' : 'false', bg: t === 'Запросы' ? 'var(--fill-2)' : 'transparent', fw: t === 'Запросы' ? 500 : 400, badge: t === 'Запросы' ? badge : '', badgeL: badge + ' ждут ответа' }));
+    const pane = (cls, busy, label) => ({ cls, busy, empty: !busy, label, nav: navFor(busy ? '3' : ''),
+      owlMood: busy ? 'Ждёт' : 'Дежурит', owlText: busy ? '3 ждут вас' : '2 агента работают',
+      sub: busy ? '2 ждут ответа · 1 ждёт в VS Code' : 'Сейчас никто не ждёт', subC: busy ? 'var(--st-wait)' : 'var(--tx-2)', subW: busy ? 600 : 400,
+      sPressed: 'false', tPressed: 'true', sBg: 'transparent', sSh: 'none', tBg: on.bg, tSh: on.sh });
+    const q = (o) => Object.assign({ cur: 'false', bg: 'transparent', sh: 'none', ff: mono, ac: 'var(--tx-2)' }, o);
+    return {
+      panes: [ pane('td', true, 'Тёмная · технический · ждут три запроса, как в открытой чёлке'), pane('tl', true, 'Светлая · технический'),
+               pane('td', false, 'Тёмная · пусто'), pane('tl', false, 'Светлая · пусто') ],
+      queue: [
+        q({ cur: 'true', bg: 'var(--fill-2)', sh: 'inset 0 0 0 1px var(--st-wait)', proj: 'boris', env: 'Терминал', age: '1:42 из 2:00', ac: 'var(--st-wait)', kind: 'Edit', what: 'src/auth.swift', agent: 'Проверка находки' }),
+        q({ proj: '[ПРИМЕР] api-docs', env: 'Терминал', age: '1:55 из 2:00', kind: 'AskUserQuestion', what: '1 вопрос', agent: 'Главный агент' })
+      ],
+      hist: [
+        { t: '16:02', proj: 'boris', env: 'Терминал', agent: 'Проверка кода', kind: 'Bash', what: 'команда', k: 'done', d: 'Разрешено', dc: G, where: 'Boris · чёлка', wait: '0:08' },
+        { t: '15:47', proj: 'landing', env: 'Claude Desktop', agent: 'Главный агент', kind: 'Write', what: 'index.html', k: 'done', d: 'Разрешено', dc: G, where: 'В сессии', wait: '2:00' },
+        { t: '15:20', proj: 'landing', env: 'Claude Desktop', agent: 'Главный агент', kind: 'ExitPlanMode', what: 'план', k: 'done', d: 'План подтверждён', dc: G, where: 'Boris · окно', wait: '1:46' },
+        { t: '14:36', proj: 'shop-api', env: 'VS Code', agent: 'Главный агент', kind: 'Bash', what: 'команда', k: 'failed', d: 'Отклонено', dc: R, where: 'Boris · мини-окно', wait: '0:19' },
+        { t: '13:58', proj: 'boris', env: 'Терминал', agent: 'Главный агент', kind: 'AskUserQuestion', what: '1 вопрос', k: 'done', d: 'Ответ дан', dc: G, where: 'Boris · чёлка', wait: '0:44' },
+        { t: '12:10', proj: 'shop-api', env: 'Терминал', agent: 'Главный агент', kind: 'Bash', what: 'команда', k: 'stopped', d: 'Время истекло', dc: T2, where: 'В сессии', wait: '2:00' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

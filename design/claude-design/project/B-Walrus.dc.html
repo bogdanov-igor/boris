@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · экран «Морж»</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--focus:#0A64D8;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--mono-bg:rgba(0,0,0,.05);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;--rb-done:#2B7D4E;--rb-run:#8CC7CB;--rb-fail:#E5383B;--rb-cancel:#A2A2A8;color:#1D1D1F}
+.td{--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--focus:#3D8BFF;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--mono-bg:rgba(255,255,255,.07);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;--rb-done:#3E9D66;--rb-run:#2F7479;--rb-fail:#E5383B;--rb-cancel:#6A6A70;color:#F2F2F4}
+.tl{--bub:#FFFFFF;--bub-bd:rgba(0,0,0,.12);--brand-gold:#B8902E}.td{--bub:#3A3A3E;--bub-bd:rgba(255,255,255,.14);--brand-gold:#D4A940}
+</style>
+</helmet>
+<div style="width: 2520px; height: 1820px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{panes}}" as="p" hint-placeholder-count="4">
+    <div class="{{p.cls}}" style="background: var(--desk); padding: 20px 30px 40px; display: flex; flex-direction: column; gap: 10px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{p.label}}</span>
+      <div style="position: relative; width: 1200px; height: 800px; border-radius: 10px; overflow: hidden; display: flex; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 18px 40px rgba(0,0,0,.28)">
+        <nav aria-label="Разделы" style="width: 210px; flex: none; background: var(--side); border-right: 1px solid var(--sep); display: flex; flex-direction: column; padding: 10px 10px 12px; box-sizing: border-box">
+          <div style="height: 22px; display: flex; gap: 8px; align-items: center; padding-left: 4px; margin-bottom: 16px"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span></div>
+          <sc-for list="{{p.nav}}" as="n" hint-placeholder-count="6">
+            <a href="#" aria-current="{{n.cur}}" style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: 6px; background: {{n.bg}}; color: var(--tx-1); text-decoration: none; font-size: 13px; font-weight: {{n.fw}}">
+              <span style="flex: 1">{{n.t}}</span>
+              <sc-if value="{{n.badge}}" hint-placeholder-val="{{ false }}"><span aria-label="{{n.badgeL}}" style="min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--st-wait); color: #FFFFFF; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums">{{n.badge}}</span></sc-if>
+            </a>
+          </sc-for>
+          <span style="flex: 1"></span>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0 10px">
+            <dc-import name="Owl" mood="{{p.owlMood}}" size="190" variant="full" hint-size="190px,190px"></dc-import>
+            <span style="font-size: 12px; line-height: 15px; color: var(--tx-2); text-align: center">{{p.owlText}}</span>
+          </div>
+          <div role="group" aria-label="Режим" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+            <button type="button" aria-pressed="{{p.sPressed}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.sBg}}; box-shadow: {{p.sSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Простой</button>
+            <button type="button" aria-pressed="{{p.tPressed}}" style="flex: 1; height: 20px; border: 0; border-radius: 4px; background: {{p.tBg}}; box-shadow: {{p.tSh}}; color: var(--tx-1); font: inherit; font-size: 11.5px">Технический</button>
+          </div>
+        </nav>
+
+        <main style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; position: relative">
+          <header style="flex: none; padding: 14px 24px 12px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--sep)">
+            <h1 style="margin: 0; font-size: 18px; line-height: 24px; font-weight: 600">Морж</h1>
+            <div role="tablist" aria-label="Галерея" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+              <sc-for list="{{tabs}}" as="t" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{t.on}}" style="height: 22px; padding: 0 12px; border: 0; border-radius: 4px; background: {{t.bg}}; box-shadow: {{t.sh}}; color: var(--tx-1); font: inherit; font-size: 12px">{{t.t}}</button></sc-for>
+            </div>
+            <span style="flex: 1"></span>
+            <button type="button" style="height: 26px; padding: 0 12px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12.5px">Импортировать набор…</button>
+          </header>
+          <div style="flex: 1; min-height: 0; display: grid; grid-template-columns: 390px minmax(0, 1fr); overflow: hidden">
+            <section aria-label="Предпросмотр" style="border-right: 1px solid var(--sep); padding: 16px 20px; display: flex; flex-direction: column; gap: 12px">
+              <h2 style="margin: 0; font-size: 13px; font-weight: 600">Предпросмотр</h2>
+              <div style="position: relative; height: 270px; border-radius: 10px; background: var(--fill-1); display: flex; align-items: flex-end; justify-content: flex-start; padding: 16px; box-sizing: border-box">
+                <dc-import name="Owl" mood="{{p.mood}}" size="170" variant="full" hint-size="170px,170px"></dc-import>
+                <div role="status" style="position: absolute; left: 196px; top: 34px; max-width: 150px; padding: 7px 11px 8px; border-radius: 10px; background: var(--bub); box-shadow: 0 0 0 0.5px var(--bub-bd), 0 8px 22px rgba(0,0,0,.2); border-left: 2px solid var(--brand-gold); font-size: 12.5px; line-height: 17px">{{p.reply}}</div>
+                <span style="position: absolute; right: 12px; bottom: 10px; font-size: 11px; color: var(--tx-3)">анимация идёт по кругу</span>
+              </div>
+              <span style="font-size: 11.5px; font-weight: 600; color: var(--tx-2)">Состояние</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 5px"><sc-for list="{{p.moods}}" as="m" hint-placeholder-count="10"><button type="button" aria-pressed="{{m.on}}" style="height: 22px; padding: 0 9px; border-radius: 11px; border: 0.5px solid {{m.bd}}; background: {{m.bg}}; color: {{m.c}}; font: inherit; font-size: 11.5px; white-space: nowrap">{{m.t}}</button></sc-for></div>
+              <span style="font-size: 11.5px; font-weight: 600; color: var(--tx-2)">Реплика на</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 5px"><sc-for list="{{p.events}}" as="m" hint-placeholder-count="5"><button type="button" aria-pressed="{{m.on}}" style="height: 22px; padding: 0 9px; border-radius: 11px; border: 0.5px solid {{m.bd}}; background: {{m.bg}}; color: {{m.c}}; font: inherit; font-size: 11.5px; white-space: nowrap">{{m.t}}</button></sc-for></div>
+            </section>
+            <section aria-label="Наряды" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; overflow: hidden">
+              <div style="display: flex; align-items: baseline; gap: 8px"><h2 style="margin: 0; font-size: 13px; font-weight: 600">Наряды</h2><span style="font-size: 11px; color: var(--tx-3)">заглушки, [ПРИМЕР] названия кроме первого</span></div>
+              <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+                <sc-for list="{{outfits}}" as="o" hint-placeholder-count="8">
+                  <div role="button" tabindex="0" aria-pressed="{{o.on}}" style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 6px; border-radius: 10px; background: var(--fill-1); box-shadow: {{o.sh}}">
+                    <dc-import name="Owl" mood="Дежурит" size="72" variant="simple" hint-size="72px,72px"></dc-import>
+                    <span style="font-size: 12px; text-align: center; line-height: 15px">{{o.t}}</span>
+                    <span style="font-size: 11px; color: {{o.sc}}">{{o.s}}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 6px"><h2 style="margin: 0; font-size: 13px; font-weight: 600">Реакции</h2><span style="font-size: 11px; color: var(--tx-3)">короткие анимации поверх позы</span></div>
+              <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px">
+                <sc-for list="{{reactions}}" as="o" hint-placeholder-count="5">
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 4px; border-radius: 10px; background: var(--fill-1)">
+                    <dc-import name="Owl" mood="{{o.m}}" size="56" variant="simple" hint-size="56px,56px"></dc-import>
+                    <span style="font-size: 11.5px; text-align: center; line-height: 14px">{{o.t}}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </section>
+          </div>
+          <sc-if value="{{p.err}}" hint-placeholder-val="{{ false }}">
+            <div style="position: absolute; inset: 0; background: rgba(0,0,0,.28)"></div>
+            <div role="alertdialog" aria-label="Набор не импортирован" style="position: absolute; left: 50%; top: 0; transform: translateX(-50%); width: 440px; padding: 18px 20px 16px; box-sizing: border-box; border-radius: 0 0 12px 12px; background: var(--pop); box-shadow: 0 0 0 0.5px var(--sep), 0 18px 40px rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 10px">
+              <div style="display: flex; gap: 12px; align-items: flex-start">
+                <dc-import name="Owl" mood="Хм?" size="48" variant="simple" hint-size="48px,48px"></dc-import>
+                <div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 14px; font-weight: 700">Набор не импортирован</span><span style="font-size: 12.5px; line-height: 18px; color: var(--tx-2)">В наборе «[ПРИМЕР] Борис в отпуске» не хватает файлов. Добавьте их и импортируйте снова.</span></div>
+              </div>
+              <ul style="margin: 0; padding: 8px 12px 8px 28px; border-radius: 8px; background: var(--fill-1); font-size: 12.5px; line-height: 20px">
+                <li>Поза «Сломалось»</li><li>Поза «Хм?»</li><li>Реплики на событие «Лимит близко»</li><li>Одноцветный значок для трея</li>
+              </ul>
+              <span style="font-size: 11px; color: var(--tx-3)">[ПРИМЕР] состав набора уточним, когда будет формат</span>
+              <div style="display: flex; justify-content: flex-end; gap: 8px"><button type="button" style="height: 26px; padding: 0 12px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12.5px">Скопировать список</button><button type="button" style="height: 26px; padding: 0 14px; border-radius: 6px; border: 0; background: var(--focus); color: #FFFFFF; font: inherit; font-size: 12.5px">Понятно</button></div>
+            </div>
+          </sc-if>
+        </main>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2520,"height":1820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+
+    const ON = { bg: 'var(--btn)', sh: '0 0 0 0.5px var(--btn-bd)' }, OFF = { bg: 'transparent', sh: 'none' };
+    const navFor = (cur, badge) => ['Сейчас', 'Проекты', 'Расход', 'Запросы', 'Активность', 'Потери', 'Морж', 'Настройки']
+      .map((t) => ({ t, cur: t === cur ? 'page' : 'false', bg: t === cur ? 'var(--fill-2)' : 'transparent', fw: t === cur ? 500 : 400, badge: t === 'Запросы' ? (badge === undefined ? '1' : badge) : '', badgeL: '1 ждёт ответа' }));
+    const winPane = (cls, label, cur, o) => Object.assign({ cls, label, nav: navFor(cur), owlMood: 'Ждёт', owlText: '1 ждёт вас',
+      sPressed: 'false', tPressed: 'true', sBg: OFF.bg, sSh: OFF.sh, tBg: ON.bg, tSh: ON.sh }, o || {});
+
+    const chips = (list, cur) => list.map((t) => ({ t, on: t === cur ? 'true' : 'false', bg: t === cur ? 'var(--tx-1)' : 'var(--btn)', c: t === cur ? 'var(--win)' : 'var(--tx-1)', bd: t === cur ? 'transparent' : 'var(--btn-bd)' }));
+    const M = ['Дежурит', 'Работает', 'Ждёт', 'Радуется', 'Хм?', 'Настороже', 'Устал', 'Тревога', 'Сломалось', 'Спит'];
+    const E = ['По нажатию', 'Запрос', 'Завершение', 'Сбой', 'Лимит близко'];
+    const tabs = ['Наряды', 'Темы', 'Наборы'].map((t) => ({ t, on: t === 'Наряды' ? 'true' : 'false', bg: (t === 'Наряды' ? ON : OFF).bg, sh: (t === 'Наряды' ? ON : OFF).sh }));
+    const O = (t, s, on) => ({ t, s, on: on ? 'true' : 'false', sh: on ? 'inset 0 0 0 2px var(--focus)' : 'none', sc: on ? 'var(--focus)' : 'var(--tx-3)' });
+    return {
+      tabs,
+      outfits: [ O('Котелок и монокль', 'надет', true), O('[ПРИМЕР] Цилиндр', 'встроенный'), O('[ПРИМЕР] Шарф', 'встроенный'), O('[ПРИМЕР] Морская форма', 'встроенный'),
+                 O('[ПРИМЕР] Праздничный', 'встроенный'), O('[ПРИМЕР] Зимний', 'встроенный'), O('[ПРИМЕР] Свой набор', 'импортирован'), O('[ПРИМЕР] Ночной', 'встроенный') ],
+      reactions: [ { m: 'Ждёт', t: 'Запрос' }, { m: 'Радуется', t: 'Завершение' }, { m: 'Тревога', t: 'Сбой' }, { m: 'Устал', t: 'Лимит близко' }, { m: 'Хм?', t: 'По нажатию' } ],
+      panes: [
+        winPane('td', 'Тёмная · состояние «Тревога», реплика на сбой', 'Морж', { mood: 'Тревога', reply: 'Агент упал в shop-api. Это не конец. Это даже не начало конца.', moods: chips(M, 'Тревога'), events: chips(E, 'Сбой'), err: false }),
+        winPane('tl', 'Светлая · состояние «Устал», реплика на «Лимит близко»', 'Морж', { mood: 'Устал', reply: 'Лимит близко. Мне нечего предложить, кроме токенов, пота и слёз.', moods: chips(M, 'Устал'), events: chips(E, 'Лимит близко'), err: false }),
+        winPane('td', 'Тёмная · ошибка импорта набора', 'Морж', { mood: 'Дежурит', reply: 'Никогда ещё столь многие токены не тратились столь немногими агентами.', moods: chips(M, 'Дежурит'), events: chips(E, 'По нажатию'), err: true }),
+        winPane('tl', 'Светлая · ошибка импорта набора', 'Морж', { mood: 'Дежурит', reply: 'Никогда ещё столь многие токены не тратились столь немногими агентами.', moods: chips(M, 'Дежурит'), events: chips(E, 'По нажатию'), err: true })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

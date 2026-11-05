@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · карточки запроса · English</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--st-run:#1A6F75;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;color:#1D1D1F}
+.td{--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--st-run:#5CC0C6;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;color:#F2F2F4}
+</style>
+</helmet>
+<div style="width: 1840px; min-height: 2300px; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{blocks}}" as="bl" hint-placeholder-count="2">
+    <div class="{{bl.cls}}" style="background: var(--desk); padding: 24px 32px 32px; display: flex; flex-direction: column; gap: 20px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{bl.label}}</span>
+      <sc-for list="{{bl.rows}}" as="r" hint-placeholder-count="3">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 13px; font-weight: 600">{{r.t}}</span>
+          <div style="display: flex; gap: 24px; align-items: flex-start">
+            <sc-for list="{{r.cards}}" as="c" hint-placeholder-count="4">
+              <div style="width: 420px; flex: none; display: flex; flex-direction: column; gap: 6px">
+                <span style="font-size: 11.5px; color: var(--tx-2)">{{c.l}}</span>
+                <dc-import name="B-CardEn" v="{{c.v}}" mode="{{c.m}}" hint-size="420px,220px"></dc-import>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-for>
+  <div class="td" style="background: var(--win); padding: 28px 40px 40px; color: var(--tx-1)">
+    <h2 style="margin: 0 0 10px; font-size: 17px; font-weight: 600">Правила карточки</h2>
+    <ul style="margin: 0; padding-left: 18px; font-size: 13px; line-height: 21px; columns: 2; column-gap: 48px">
+      <li>Всегда видны проект, среда и агент.</li>
+      <li>Простой режим не прячет команду и правку: человек видит ровно то, что разрешает.</li>
+      <li>Технический добавляет инструмент и режим разрешений.</li>
+      <li>Горячие клавиши на кнопках: ⌥⌘Y разрешить или ответить, ⌥⌘N отклонить, Esc назад. Enter ничего не разрешает.</li>
+      <li>Кнопки «Всегда разрешать» нет. Фокус по умолчанию ни на одной кнопке.</li>
+      <li>Длинная команда свёрнута до двух строк, раскрывается целиком.</li>
+      <li>Таймер показывает остаток ожидания (по умолчанию 2 минуты). После истечения карточка становится «Ответить можно в Claude».</li>
+      <li>Один компонент для чёлки, мини-окна и главного окна. В чёлке фон карточки чуть светлее чёрного.</li>
+    </ul>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1840,"height":2300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const c = (v, m, l) => ({ v, m, l });
+    return {
+      blocks: [
+        { cls: 'td', label: 'Тёмная', rows: [
+          { t: 'Простой режим · разрешения', cards: [ c('cmd', 'simple', '1 · Команда'), c('cmdLong', 'simple', '1 · Длинная команда, свёрнута'), c('cmdDeny', 'simple', '1 · Отказ с причиной'), c('edit', 'simple', '2 · Правка файла') ] },
+          { t: 'Простой режим · вопросы, планы, без ответа из Boris', cards: [ c('question', 'simple', '3 · Вопрос: один и несколько вариантов'), c('plan', 'simple', '4 · План'), c('cowork', 'simple', '5 · Cowork: ответ в Claude Desktop'), c('nohooks', 'simple', '6 · Хуки не подключены') ] },
+          { t: 'Технический режим', cards: [ c('cmd', 'tech', 'Команда'), c('edit', 'tech', 'Правка'), c('question', 'tech', 'Вопрос'), c('timeout', 'tech', '7 · Время истекло') ] }
+        ] },
+        { cls: 'tl', label: 'Светлая', rows: [
+          { t: 'Основные', cards: [ c('cmd', 'simple', 'Команда · простой'), c('cmd', 'tech', 'Команда · технический'), c('edit', 'simple', 'Правка · простой'), c('timeout', 'simple', 'Время истекло · простой') ] }
+        ] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

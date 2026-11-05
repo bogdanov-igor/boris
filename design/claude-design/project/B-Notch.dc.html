@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · чёлка</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.wall{--wall:#2B2D33;--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;color:#F2F2F4}
+.np{--pop:#1C1C1E;--card:#1C1C1E;--win:#111113;--fill-1:rgba(255,255,255,.07);--fill-2:rgba(255,255,255,.12);--sep:rgba(255,255,255,.12);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.14);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.14);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.06);--owl-label-bg:#000000;--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;color:#F2F2F4}
+</style>
+</helmet>
+<div class="wall" style="width: 1820px; min-height: 1080px; background: var(--wall); padding: 24px 32px 40px; box-sizing: border-box; display: flex; gap: 36px; align-items: flex-start; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+
+  <div style="width: 480px; display: flex; flex-direction: column; gap: 22px">
+    <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">Закрытая · не забирает фокус</span>
+    <sc-for list="{{closed}}" as="c" hint-placeholder-count="4">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 11.5px; color: var(--tx-2)">{{c.l}}</span>
+        <div style="position: relative; height: 48px; border-radius: 8px; background: rgba(255,255,255,.06); overflow: hidden">
+          <div class="np" style="position: absolute; top: 0; left: 50%; margin-left: -{{c.half}}px; width: {{c.w}}px; height: 37px; background: #000000; border-radius: 0 0 12px 12px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px 0 8px; box-sizing: border-box">
+              <span style="display: inline-flex; align-items: center; gap: 6px"><dc-import name="Owl" mood="{{c.m}}" size="28" variant="simple" hint-size="28px,28px"></dc-import></span>
+              <span style="font-size: 12px; color: {{c.c}}; font-variant-numeric: tabular-nums; white-space: nowrap">{{c.t}}</span>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+    <p style="margin: 0; font-size: 12px; line-height: 17px; color: var(--tx-2)">Морж слева от выреза, текст справа. Технический добавляет токены, лимит и контекст. Наведение раскрывает панель, клик по моржу говорит.</p>
+  </div>
+
+  <sc-for list="{{open}}" as="o" hint-placeholder-count="2">
+    <div style="width: 560px; display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{o.l}}</span>
+      <div class="np" style="width: 540px; background: #000000; border-radius: 0 0 18px 18px; padding: 0 12px 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+        <div style="height: 37px; display: flex; align-items: center; justify-content: space-between; padding: 0 4px">
+          <dc-import name="Owl" mood="Ждёт" size="28" variant="simple" hint-size="28px,28px"></dc-import>
+          <span style="font-size: 12px; color: var(--st-wait); font-weight: 600">1 ждёт вас</span>
+        </div>
+        <sc-if value="{{o.tech}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; gap: 14px; padding: 0 4px; font-size: 11px; color: var(--tx-2); font-variant-numeric: tabular-nums"><span>Сегодня 1,84 млн</span><span>5 ч 62 %, сброс 18:40</span><span>Неделя 34 %</span><span>Контекст boris 64 %</span></div>
+        </sc-if>
+
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 0 4px">
+            <span style="font-size: 11.5px; font-weight: 600; color: var(--tx-2)">Запросы · 1 из 3</span>
+            <span style="flex: 1"></span>
+            <button type="button" aria-label="Предыдущий запрос" style="width: 22px; height: 20px; border: 0; border-radius: 4px; background: var(--fill-1); color: var(--tx-3); font: inherit">‹</button>
+            <button type="button" aria-label="Следующий запрос" style="width: 22px; height: 20px; border: 0; border-radius: 4px; background: var(--fill-1); color: var(--tx-1); font: inherit">›</button>
+          </div>
+          <div style="position: relative; padding-bottom: 10px">
+            <div aria-hidden="true" style="position: absolute; left: 16px; right: 16px; bottom: 0; height: 12px; border-radius: 0 0 10px 10px; background: #141416; box-shadow: 0 0 0 0.5px var(--sep)"></div>
+            <div aria-hidden="true" style="position: absolute; left: 8px; right: 8px; bottom: 5px; height: 12px; border-radius: 0 0 10px 10px; background: #18181A; box-shadow: 0 0 0 0.5px var(--sep)"></div>
+            <div style="position: relative"><dc-import name="B-Card" v="cmd" mode="{{o.mode}}" hint-size="516px,190px"></dc-import></div>
+          </div>
+          <span style="padding: 0 4px; font-size: 11px; color: var(--tx-3)">Дальше: boris · правка файла, shop-api · вопрос</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="padding: 0 4px 4px; font-size: 11.5px; font-weight: 600; color: var(--tx-2)">Активные сессии</span>
+          <sc-for list="{{o.sessions}}" as="s" hint-placeholder-count="3">
+            <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr) max-content; column-gap: 8px; align-items: center; min-height: 28px; padding: 0 6px; border-radius: 6px; font-size: 12.5px">
+              <dc-import name="StatusIcon" kind="{{s.k}}" size="14" hint-size="14px,14px"></dc-import>
+              <span style="min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: {{s.ff}}; font-weight: 600">{{s.n}}</span><span style="color: var(--tx-2)"> · {{s.line}}</span></span>
+              <span style="font-size: 11px; color: var(--tx-2); font-variant-numeric: tabular-nums">{{s.r}}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="padding: 8px 10px; border-radius: 8px; background: var(--st-red-soft); display: flex; gap: 8px; align-items: flex-start">
+          <dc-import name="StatusIcon" kind="failed" size="14" hint-size="14px,14px"></dc-import>
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; line-height: 17px">
+            <span><span style="font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-weight: 600">shop-api</span><span style="color: var(--tx-2)"> · {{o.failWho}}</span></span>
+            <span style="color: var(--st-red-tx)">{{o.fail}}</span>
+          </div>
+          <span style="font-size: 11px; color: var(--tx-2); font-variant-numeric: tabular-nums">16:12</span>
+        </div>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1820,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+    const sessions = (tech) => [
+      { k: 'waiting', n: 'shop-api', ff: mono, line: tech ? 'VS Code · Bash ждёт разрешения' : 'VS Code · ждёт вас', r: '42 мин' },
+      { k: 'running', n: 'boris', ff: mono, line: tech ? 'Терминал · Bash · 3 агента' : 'Терминал · запускает тесты', r: tech ? '84,2K' : '' },
+      { k: 'running', n: 'Отчёт за квартал', ff: sans, line: 'Cowork · читает файлы', r: '' }
+    ];
+    return {
+      closed: [
+        { l: 'Простой · работа идёт', m: 'Работает', t: '3 агента работают', c: '#F2F2F4', w: 380, half: 190 },
+        { l: 'Простой · нужен ответ', m: 'Ждёт', t: '1 ждёт вас', c: '#62A6FF', w: 380, half: 190 },
+        { l: 'Технический', m: 'Работает', t: '3 агента · 1,84 млн · 5 ч 62 % · ктх 64 %', c: '#F2F2F4', w: 460, half: 230 },
+        { l: 'Ничего не идёт', m: 'Спит', t: 'Тихо', c: '#B0B0B6', w: 300, half: 150 }
+      ],
+      open: [
+        { l: 'Открытая · простой', tech: false, mode: 'simple', sessions: sessions(false), failWho: 'помощник «Миграции»', fail: 'Claude сейчас перегружен, попробуйте повторить позже' },
+        { l: 'Открытая · технический', tech: true, mode: 'tech', sessions: sessions(true), failWho: 'субагент «Миграции»', fail: 'Ошибка API: перегрузка' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

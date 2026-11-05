@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Boris · раздел «О Boris»</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--win:#FFFFFF;--side:#EDEDF0;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--focus:#0A64D8;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--mono-bg:rgba(0,0,0,.05);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-smoke:#8A8A92;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;--st-limit:#4A4FBF;--rb-done:#2B7D4E;--rb-run:#8CC7CB;--rb-fail:#E5383B;--rb-cancel:#A2A2A8;color:#1D1D1F}
+.td{--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--win:#1E1E20;--side:#262629;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--focus:#3D8BFF;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--mono-bg:rgba(255,255,255,.07);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-smoke:#82828A;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;--st-limit:#9A9DFF;--rb-done:#3E9D66;--rb-run:#2F7479;--rb-fail:#E5383B;--rb-cancel:#6A6A70;color:#F2F2F4}
+@keyframes boris-credits{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+.credits-roll{animation:boris-credits 36s linear infinite}
+@media (prefers-reduced-motion: reduce){.credits-roll{animation:none}}
+</style>
+</helmet>
+<div style="width: 2520px; height: 1500px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{panes}}" as="p" hint-placeholder-count="6">
+    <div class="{{p.cls}}" style="background: var(--desk); padding: 20px 30px 30px; display: flex; flex-direction: column; gap: 10px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{p.label}}</span>
+      <div style="width: 760px; height: 660px; border-radius: 10px; overflow: hidden; display: flex; background: var(--win); box-shadow: 0 0 0 0.5px var(--sep), 0 18px 40px rgba(0,0,0,.28)">
+
+        <nav aria-label="Разделы настроек" style="width: 190px; flex: none; background: var(--side); border-right: 1px solid var(--sep); display: flex; flex-direction: column; gap: 2px; padding: 10px 10px 12px; box-sizing: border-box">
+          <div style="height: 22px; display: flex; gap: 8px; align-items: center; padding-left: 4px; margin-bottom: 12px"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840"></span></div>
+          <sc-for list="{{sections}}" as="n" hint-placeholder-count="5">
+            <div role="link" tabindex="0" aria-current="{{n.cur}}" style="display: flex; align-items: center; height: 28px; padding: 0 8px; border-radius: 6px; background: {{n.bg}}; color: var(--tx-1); text-decoration: none; font-size: 13px; font-weight: {{n.fw}}">{{n.t}}</div>
+          </sc-for>
+        </nav>
+
+        <main style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden">
+          <sc-if value="{{p.about}}" hint-placeholder-val="{{ true }}">
+            <div style="flex: 1; min-height: 0; overflow: auto; padding: 22px 36px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 2px">
+                <dc-import name="Owl" mood="Дежурит" size="120" variant="full" hint-size="120px,120px"></dc-import>
+                <h1 style="margin: 6px 0 0; font-size: 20px; line-height: 26px; font-weight: 700">Boris</h1>
+                <span style="font-size: 12px; color: var(--tx-2)">Версия 1.0</span>
+              </div>
+              <p style="margin: 0; max-width: 440px; text-align: center; font-size: 13px; line-height: 19px; color: var(--tx-2)">Boris показывает всю работу с Claude в одном месте: что делают агенты, сколько это стоит, что сломалось и кто ждёт ответа. Работает на вашем Mac, без аккаунта.</p>
+
+              <div style="width: 100%; border-radius: 8px; background: var(--fill-1); display: flex; flex-direction: column">
+                <div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); column-gap: 12px; align-items: center; min-height: 32px; padding: 6px 12px; box-sizing: border-box; font-size: 12.5px"><span style="color: var(--tx-2)">Автор</span><span>Игорь Богданов</span></div>
+                <div role="link" tabindex="0" style="display: grid; grid-template-columns: 120px minmax(0, 1fr) 12px; column-gap: 12px; align-items: center; min-height: 32px; padding: 6px 12px; box-sizing: border-box; border-top: 1px solid var(--sep); color: var(--tx-1); text-decoration: none; font-size: 12.5px"><span style="color: var(--tx-2)">Лицензия</span><span>Код: MIT. Морж, реплики и звуки: все права защищены.</span><span style="color: var(--tx-3)">›</span></div>
+                <div role="link" tabindex="0" style="display: grid; grid-template-columns: 120px minmax(0, 1fr) 12px; column-gap: 12px; align-items: center; min-height: 32px; padding: 6px 12px; box-sizing: border-box; border-top: 1px solid var(--sep); color: var(--tx-1); text-decoration: none; font-size: 12.5px"><span style="color: var(--tx-2)">Сторонние лицензии</span><span>Библиотеки, на которых собран Boris</span><span style="color: var(--tx-3)">›</span></div>
+                <div role="link" tabindex="0" style="display: grid; grid-template-columns: 120px minmax(0, 1fr) 12px; column-gap: 12px; align-items: center; min-height: 32px; padding: 6px 12px; box-sizing: border-box; border-top: 1px solid var(--sep); color: var(--tx-1); font-size: 12.5px"><span style="color: var(--tx-2)">Документация</span><span>Как устроен Boris: данные, хуки, статусы, расход</span><span style="color: var(--tx-3)">›</span></div>
+                <div style="display: grid; grid-template-columns: 120px minmax(0, 1fr); column-gap: 12px; align-items: center; min-height: 32px; padding: 6px 12px; box-sizing: border-box; border-top: 1px solid var(--sep); font-size: 12.5px"><span style="color: var(--tx-2)">Благодарности</span><span>anhyobin, за Claude Code Monitor</span></div>
+              </div>
+
+              <section aria-label="Титры" style="width: 100%; display: flex; flex-direction: column; gap: 6px">
+                <sc-if value="{{p.roll}}" hint-placeholder-val="{{ true }}">
+                  <div style="height: 92px; overflow: hidden; -webkit-mask-image: linear-gradient(transparent, #000 28%, #000 72%, transparent); mask-image: linear-gradient(transparent, #000 28%, #000 72%, transparent)">
+                    <div class="credits-roll" style="display: flex; flex-direction: column; align-items: center">
+                      <sc-for list="{{rollLines}}" as="c" hint-placeholder-count="12"><span style="height: 22px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--tx-2)"><span style="color: var(--tx-3)">{{c.r}}:</span><span style="color: var(--tx-1)">{{c.n}}</span></span></sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{p.still}}" hint-placeholder-val="{{ false }}">
+                  <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; align-items: center; gap: 2px">
+                    <sc-for list="{{lines}}" as="c" hint-placeholder-count="6"><li style="font-size: 12px; line-height: 18px; color: var(--tx-2)"><span style="color: var(--tx-3)">{{c.r}}:</span> <span style="color: var(--tx-1)">{{c.n}}</span></li></sc-for>
+                  </ul>
+                </sc-if>
+              </section>
+
+              <sc-if value="{{p.coffee}}" hint-placeholder-val="{{ true }}">
+                <button type="button" style="display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 14px; border-radius: 14px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12.5px"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 6h8v4.5a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z M11 7h1.2a1.8 1.8 0 0 1 0 3.6H11 M5.5 2.5c-.6.8.6 1.2 0 2 M8 2.5c-.6.8.6 1.2 0 2" style="fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round"></path></svg>Угостить Бориса кофе</button>
+              </sc-if>
+              <span style="flex: 1"></span>
+              <span style="font-size: 11px; color: var(--tx-3)">Boris не связан с Anthropic.</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{p.lic}}" hint-placeholder-val="{{ false }}">
+            <header style="flex: none; padding: 12px 20px; border-bottom: 1px solid var(--sep); display: flex; align-items: center; gap: 10px">
+              <button type="button" style="height: 24px; padding: 0 10px 0 6px; border: 0; border-radius: 6px; background: var(--fill-1); color: var(--tx-1); font: inherit; font-size: 12.5px">‹ О Boris</button>
+              <div role="tablist" aria-label="Текст" style="display: flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--fill-1)">
+                <sc-for list="{{p.tabs}}" as="t" hint-placeholder-count="2"><button type="button" role="tab" aria-selected="{{t.on}}" style="height: 22px; padding: 0 10px; border: 0; border-radius: 4px; background: {{t.bg}}; box-shadow: {{t.sh}}; color: var(--tx-1); font: inherit; font-size: 12px">{{t.t}}</button></sc-for>
+              </div>
+              <span style="flex: 1"></span>
+              <button type="button" style="height: 24px; padding: 0 10px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12px">Скопировать</button>
+            </header>
+            <sc-if value="{{p.own}}" hint-placeholder-val="{{ true }}">
+              <div style="flex: 1; min-height: 0; overflow: auto; padding: 16px 24px 20px; display: flex; flex-direction: column; gap: 12px">
+                <span style="font-size: 11px; color: var(--tx-3)">[ПРИМЕР] точная формулировка будет позже</span>
+                <h2 style="margin: 0; font-size: 13px; font-weight: 600">Код: MIT</h2>
+                <pre style="margin: 0; padding: 12px 14px; border-radius: 8px; background: var(--mono-bg); font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; line-height: 17px; white-space: pre-wrap; color: var(--tx-1)">MIT License
+
+Copyright (c) 2026 Игорь Богданов
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND…</pre>
+                <h2 style="margin: 0; font-size: 13px; font-weight: 600">Морж, реплики и звуки</h2>
+                <p style="margin: 0; font-size: 12.5px; line-height: 18px; color: var(--tx-2)">Все права защищены. Изображения моржа, его реплики и звуки не входят в лицензию MIT.</p>
+              </div>
+            </sc-if>
+            <sc-if value="{{p.third}}" hint-placeholder-val="{{ false }}">
+              <div style="flex: 1; min-height: 0; display: flex">
+                <div role="listbox" aria-label="Библиотеки" style="width: 200px; flex: none; border-right: 1px solid var(--sep); padding: 10px 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px">
+                  <span style="padding: 0 6px 6px; font-size: 11px; color: var(--tx-3)">[ПРИМЕР] названия библиотек</span>
+                  <sc-for list="{{libs}}" as="l" hint-placeholder-count="4"><div role="option" aria-selected="{{l.on}}" style="display: flex; justify-content: space-between; align-items: center; height: 28px; padding: 0 8px; border-radius: 6px; background: {{l.bg}}; font-size: 12.5px"><span>{{l.n}}</span><span style="font-size: 11px; color: var(--tx-2)">{{l.lic}}</span></div></sc-for>
+                </div>
+                <div style="flex: 1; min-width: 0; overflow: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px">
+                  <h2 style="margin: 0; font-size: 13px; font-weight: 600">Библиотека A · MIT</h2>
+                  <pre style="margin: 0; padding: 12px 14px; border-radius: 8px; background: var(--mono-bg); font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 11.5px; line-height: 17px; white-space: pre-wrap; color: var(--tx-1)">[Полный текст лицензии библиотеки, как его прислал автор]
+
+Copyright (c) …
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software…</pre>
+                </div>
+              </div>
+            </sc-if>
+          </sc-if>
+        </main>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2520,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const on = { bg: 'var(--btn)', sh: '0 0 0 0.5px var(--btn-bd)' }, off = { bg: 'transparent', sh: 'none' };
+    const tabs = (cur) => ['Лицензия', 'Сторонние лицензии'].map((t) => ({ t, on: t === cur ? 'true' : 'false', bg: (t === cur ? on : off).bg, sh: (t === cur ? on : off).sh }));
+    const pane = (cls, label, o) => Object.assign({ cls, label, about: true, lic: false, roll: true, still: false, coffee: true, own: false, third: false, tabs: [] }, o);
+    const lines = [
+      ['Морж в главной роли', 'Борис'], ['Сигара', 'всё ещё горит'], ['Монокль', 'на цепочке, на всякий случай'],
+      ['[ПРИМЕР] Счётчик токенов', 'не спал ни минуты'], ['[ПРИМЕР] Каскадёр', 'субагент «Миграции»'], ['[ПРИМЕР] Режиссёр тишины', 'режим «Не беспокоить»']
+    ].map(([r, n]) => ({ r, n }));
+    return {
+      sections: ['Общие', 'Источники', 'Поверхности', 'Уведомления', 'Подключения', 'О Boris']
+        .map((t) => ({ t, cur: t === 'О Boris' ? 'page' : 'false', bg: t === 'О Boris' ? 'var(--fill-2)' : 'transparent', fw: t === 'О Boris' ? 500 : 400 })),
+      lines, rollLines: lines.concat(lines),
+      libs: [ { n: 'Библиотека A', lic: 'MIT', on: 'true', bg: 'var(--fill-2)' }, { n: 'Библиотека B', lic: 'Apache 2.0', on: 'false', bg: 'transparent' }, { n: 'Библиотека C', lic: 'BSD', on: 'false', bg: 'transparent' } ],
+      panes: [
+        pane('td', 'Тёмная · с кнопкой кофе · титры прокручиваются'),
+        pane('tl', 'Светлая · с кнопкой кофе'),
+        pane('td', 'Тёмная · ссылка на кофе не задана, кнопки нет', { coffee: false }),
+        pane('tl', 'Светлая · уменьшение движения: титры обычным списком', { roll: false, still: true }),
+        pane('td', 'Тёмная · просмотр лицензии', { about: false, lic: true, own: true, tabs: tabs('Лицензия') }),
+        pane('tl', 'Светлая · сторонние лицензии', { about: false, lic: true, third: true, tabs: tabs('Сторонние лицензии') })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

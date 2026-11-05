@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Boris · mini window (English)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.tl{--g-claude:#3F6FC2;--g-cowork:#8558C9;--g-vscode:#3B8C8C;--g-cursor:#B07A2A;--g-desktop:#5E7FB8;--g-boris:#5F6F84;--g-rest:#B9BEC7;--seg-gap:rgba(255,255,255,.7);--desk:#E4E4E9;--pop:#F6F6F7;--card:#FFFFFF;--win:#FFFFFF;--fill-1:rgba(0,0,0,.045);--fill-2:rgba(0,0,0,.085);--sep:rgba(0,0,0,.11);--tx-1:#1D1D1F;--tx-2:#55555A;--tx-3:#6A6A6F;--btn:#FFFFFF;--btn-bd:rgba(0,0,0,.16);--meter:#55555A;--meter-track:rgba(0,0,0,.09);--owl-ph:#8E8E94;--owl-ph-bg:rgba(0,0,0,.05);--st-run:#1A6F75;--st-done:#1A7340;--ok-soft:#E6F3EA;--st-red:#E5383B;--st-red-tx:#B4262A;--st-red-soft:#FBEAEA;--st-grey:#6A6A6F;--st-wait:#1D66C9;--st-wait-soft:#E7EEFA;color:#1D1D1F}
+.td{--g-claude:#6F9BEA;--g-cowork:#B08BEA;--g-vscode:#5DB3B3;--g-cursor:#D7A24E;--g-desktop:#8AA6DA;--g-boris:#9AA9BD;--g-rest:#55585F;--seg-gap:rgba(0,0,0,.35);--desk:#141416;--pop:#2A2A2D;--card:#333336;--win:#1E1E20;--fill-1:rgba(255,255,255,.06);--fill-2:rgba(255,255,255,.11);--sep:rgba(255,255,255,.11);--tx-1:#F2F2F4;--tx-2:#B0B0B6;--tx-3:#A2A2A8;--btn:#3A3A3E;--btn-bd:rgba(255,255,255,.13);--meter:#B0B0B6;--meter-track:rgba(255,255,255,.12);--owl-ph:#8A8A90;--owl-ph-bg:rgba(255,255,255,.05);--st-run:#5CC0C6;--st-done:#4CC27E;--ok-soft:#1C3226;--st-red:#E5383B;--st-red-tx:#FF7A7C;--st-red-soft:#3B2527;--st-grey:#A2A2A8;--st-wait:#62A6FF;--st-wait-soft:#1E2B42;color:#F2F2F4}
+</style>
+</helmet>
+<div style="width: 1648px; min-height: 1060px; display: flex; gap: 0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif">
+  <sc-for list="{{wins}}" as="w" hint-placeholder-count="5">
+    <div class="{{w.cls}}" style="width: 412px; flex: none; background: var(--desk); padding: 24px 26px 32px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; color: var(--tx-1)">
+      <span style="font-size: 12px; font-weight: 600; color: var(--tx-2)">{{w.l}}</span>
+      <div style="width: 360px; background: var(--pop); border-radius: 10px; box-shadow: 0 0 0 0.5px var(--sep), 0 12px 32px rgba(0,0,0,.24); display: flex; flex-direction: column; overflow: hidden">
+        <div style="padding: 12px 14px 10px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid var(--sep)">
+          <dc-import name="Owl" mood="{{w.mood}}" size="40" variant="simple" hint-size="40px,40px"></dc-import>
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 13px; font-weight: 600; color: {{w.hc}}">{{w.h1}}</span><span style="font-size: 11.5px; color: var(--tx-2)">{{w.h2}}</span></div>
+        </div>
+
+        <div style="padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; border-bottom: 1px solid var(--sep)">
+          <div style="display: grid; grid-template-columns: max-content minmax(50px, 1fr) max-content max-content; column-gap: 8px; row-gap: 6px; align-items: center; font-size: 11.5px">
+            <span style="color: var(--tx-2)">5 hours</span><span style="height: 4px; border-radius: 2px; background: var(--meter-track); overflow: hidden"><span style="display: block; width: 62%; height: 100%; background: var(--meter)"></span></span><span style="font-weight: 600; font-variant-numeric: tabular-nums">62 %</span><span style="color: var(--tx-3); font-size: 11px">resets 18:40</span>
+            <span style="color: var(--tx-2)">Week</span><span style="height: 4px; border-radius: 2px; background: var(--meter-track); overflow: hidden"><span style="display: block; width: 34%; height: 100%; background: var(--meter)"></span></span><span style="font-weight: 600; font-variant-numeric: tabular-nums">34 %</span><span style="color: var(--tx-3); font-size: 11px">resets Mon</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--tx-3)"><span>updated 12 min ago</span><button type="button" aria-label="Refresh limits" style="width: 18px; height: 18px; padding: 0; border: 0; border-radius: 4px; background: var(--fill-1); color: var(--tx-2); display: inline-flex; align-items: center; justify-content: center"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M12.8 8.4a4.9 4.9 0 1 1-1.4-3.9M12.6 2.4v3.2H9.4" style="fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round"></path></svg></button></div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; font-size: 12px"><span style="color: var(--tx-2)">Tokens today</span><span style="font-weight: 600; font-variant-numeric: tabular-nums">1.84M <span style="font-weight: 400; color: var(--tx-3)">· ≈ $12.40 estimate</span></span></div>
+          <sc-if value="{{w.tech}}" hint-placeholder-val="{{ false }}">
+            <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; font-size: 10.5px; font-variant-numeric: tabular-nums; color: var(--tx-2)"><span>in 0.52M</span><span>out 0.06M</span><span>cache r. 1.17M</span><span>cache w. 0.09M</span></div>
+          </sc-if>
+          <div style="padding-top: 7px; margin-top: 1px; border-top: 1px solid var(--sep)"><div style="display: grid; grid-template-columns: 74px 38px minmax(0, 1fr); column-gap: 10px; row-gap: 6px; align-items: center; font-size: 11.5px"><span style="color: var(--tx-2)">CPU</span><span style="text-align: right; font-weight: 600">60%</span><span style="height: 4px; border-radius: 2px; background: var(--meter-track); overflow: hidden"><span style="display: block; width: 60%; height: 100%; background: var(--meter)"></span></span><span style="color: var(--tx-2)">Memory</span><span style="text-align: right; font-weight: 600">71%</span><span style="height: 4px; border-radius: 2px; background: var(--meter-track); overflow: hidden"><span style="display: block; width: 71%; height: 100%; background: var(--meter)"></span></span></div></div>
+        </div>
+
+        <sc-if value="{{w.busy}}" hint-placeholder-val="{{ true }}">
+          <div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--sep)">
+            <span style="padding: 0 2px; font-size: 11.5px; font-weight: 600; color: var(--st-wait)">Waiting for you · 1</span>
+            <dc-import name="B-CardEn" v="cmd" mode="{{w.mode}}" hint-size="336px,190px"></dc-import>
+          </div>
+          <div style="padding: 8px 8px 10px; display: flex; flex-direction: column; gap: 1px">
+            <span style="padding: 0 6px 4px; font-size: 11.5px; font-weight: 600; color: var(--tx-2)">Active sessions</span>
+            <sc-for list="{{w.sessions}}" as="s" hint-placeholder-count="3">
+              <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr) max-content; column-gap: 8px; row-gap: 1px; align-items: center; padding: 5px 6px; border-radius: 6px; font-size: 12.5px">
+                <dc-import name="StatusIcon" kind="{{s.k}}" size="14" hint-size="14px,14px"></dc-import>
+                <span style="min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span style="font-family: {{s.ff}}; font-weight: 600">{{s.n}}</span> <span style="font-size: 11.5px; color: var(--tx-2)">{{s.env}}</span></span>
+                <span style="font-size: 11px; color: var(--tx-2); font-variant-numeric: tabular-nums">{{s.r}}</span>
+                <span></span>
+                <span style="grid-column: 2 / 4; font-size: 11.5px; color: var(--tx-2); font-family: {{s.lf}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{s.line}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{w.idle}}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 22px 14px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center">
+            <span style="font-size: 13px; font-weight: 600">Nothing running</span>
+            <span style="font-size: 12px; color: var(--tx-2)">Nobody is waiting. 4 sessions today.</span>
+          </div>
+        </sc-if>
+
+        <div style="padding: 8px 12px; border-top: 1px solid var(--sep); display: flex; align-items: center; gap: 8px">
+          <span style="flex: 1; font-size: 11px; color: var(--tx-3)">⌥⌘O opens this window</span>
+          <button type="button" style="height: 24px; padding: 0 12px; border-radius: 6px; border: 0.5px solid var(--btn-bd); background: var(--btn); color: var(--tx-1); font: inherit; font-size: 12.5px">Open Boris</button>
+        </div>
+      </div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2060,"height":1060}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mono = "'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace", sans = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif";
+    const sessions = (tech) => [
+      { k: 'running', n: 'boris', ff: mono, env: 'Terminal', r: tech ? '1.75M' : '3 agents', line: tech ? 'Bash · running · context 64%' : 'Running tests', lf: tech ? mono : sans },
+      { k: 'running', n: 'Quarterly report', ff: sans, env: 'Cowork', r: '', line: 'Reading project files', lf: sans },
+      { k: 'done', n: 'Claude chat', ff: sans, env: 'Chat', r: '', line: 'Reply ready', lf: sans }
+    ];
+    const w = (cls, tech, idle, l) => ({ cls, tech, idle, busy: !idle, l, mode: tech ? 'tech' : 'simple', loadKind: tech ? 'miniTech' : 'miniSimple', sessions: sessions(tech),
+      mood: idle ? 'Asleep' : 'Waiting', h1: idle ? 'Quiet' : '1 waiting for you', hc: idle ? 'var(--tx-1)' : 'var(--st-wait)', h2: idle ? 'Nothing running' : '3 sessions working' });
+    return {
+      wins: [
+        w('td', false, false, 'Dark · simple'), w('td', true, false, 'Dark · technical'), w('tl', false, false, 'Light · simple'), w('tl', true, false, 'Light · technical')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
