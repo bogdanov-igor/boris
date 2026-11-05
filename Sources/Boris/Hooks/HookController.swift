@@ -91,6 +91,7 @@ final class HookController {
 
     /// Also puts damaged hooks back: the same entries are written again.
     func connect() throws {
+        try guardRealSettings()
         try HookInstaller.install(at: settingsFile, plan: plan)
         settings.hooksWanted = true
         since = Date()
@@ -98,9 +99,25 @@ final class HookController {
     }
 
     func disconnect() throws {
+        try guardRealSettings()
         try HookInstaller.uninstall(at: settingsFile)
         settings.hooksWanted = false
         refresh()
+    }
+
+    /// A developer's build lives in a folder that goes away, so its path must never land in the person's real Claude settings.
+    static func mayChange(_ file: URL, environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
+        #if DEBUG
+        if environment["BORIS_ALLOW_REAL_SETTINGS"] == "1" { return true }
+        let temporary = URL(fileURLWithPath: NSTemporaryDirectory()).resolvingSymlinksInPath().path + "/"
+        return file.resolvingSymlinksInPath().path.hasPrefix(temporary)
+        #else
+        true
+        #endif
+    }
+
+    private func guardRealSettings() throws {
+        guard Self.mayChange(settingsFile) else { throw CocoaError(.fileWriteNoPermission) }
     }
 
     private func startServer() {

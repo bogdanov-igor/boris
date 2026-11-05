@@ -20,7 +20,7 @@ final class SettingsWindowController {
     func show(_ section: SettingsSection) {
         model.settingsSection = section
         if window == nil {
-            let host = NSHostingController(rootView: SettingsView(model: model, connect: connect, actions: actions))
+            let host = WindowFit.host(SettingsView(model: model, connect: connect, actions: actions))
             let created = NSWindow(contentViewController: host)
             created.title = L("Settings")
             created.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
@@ -30,6 +30,9 @@ final class SettingsWindowController {
             created.setContentSize(NSSize(width: 760, height: 720))
             created.minSize = NSSize(width: 680, height: 520)
             created.center()
+            if let visible = (created.screen ?? NSScreen.main)?.visibleFrame {
+                created.setFrame(WindowFit.fitted(created.frame, in: visible), display: false)
+            }
             window = created
         }
         NSApp.activate(ignoringOtherApps: true)

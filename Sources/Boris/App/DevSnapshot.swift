@@ -15,6 +15,25 @@ enum DevSnapshot {
         #endif
     }
 
+    /// Without this, a check whose mode this build does not know would quietly start the real app: windows on the
+    /// person's screen, their settings, their Claude folder. That has happened. A debug build has to be told.
+    static var mayStartForReal: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["BORIS_ALLOW_UI"] == "1"
+        #else
+        true
+        #endif
+    }
+
+    /// Snapshots of other debug builds come and go under the same bundle id, and they are not another Boris to give way to.
+    static var ignoresOtherCopies: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["BORIS_ALLOW_UI"] == "1"
+        #else
+        false
+        #endif
+    }
+
     static var isSmoke: Bool {
         #if DEBUG
         ProcessInfo.processInfo.environment["BORIS_SMOKE"] != nil

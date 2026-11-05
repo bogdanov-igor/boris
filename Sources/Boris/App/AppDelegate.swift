@@ -36,6 +36,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if DevSnapshot.runIfRequested() { return }
+        guard DevSnapshot.mayStartForReal else {
+            FileHandle.standardError.write(Data("A debug build starts as the real app only with BORIS_ALLOW_UI=1.\n".utf8))
+            exit(2)
+        }
         registerAutostartOnce()
         if managesAutostart, launch.handOverToAgentIfNeeded() {
             NSApp.terminate(nil)

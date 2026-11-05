@@ -23,7 +23,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
 
     func show() {
         if window == nil {
-            let host = NSHostingController(rootView: MainWindowView(model: model, connect: connect, openSettings: { [weak self] section in
+            let host = WindowFit.host(MainWindowView(model: model, connect: connect, openSettings: { [weak self] section in
                 self?.onOpenSettings?(section)
             }))
             let created = NSWindow(contentViewController: host)
@@ -38,6 +38,9 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             created.minSize = NSSize(width: 900, height: 600)
             created.setFrameAutosaveName("main")
             if !created.setFrameUsingName("main") { created.center() }
+            if let visible = (created.screen ?? NSScreen.main)?.visibleFrame {
+                created.setFrame(WindowFit.fitted(created.frame, in: visible), display: false)
+            }
             window = created
         }
         NSApp.activate(ignoringOtherApps: true)
