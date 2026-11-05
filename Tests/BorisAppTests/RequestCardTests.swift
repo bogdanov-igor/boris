@@ -88,9 +88,15 @@ struct RequestCardTests {
             let app = model()
             let asked = PendingPermission(session: "s1", tool: "x", content: content, project: "proj", askedAt: Date().addingTimeInterval(-30))
             app.hooks.showRequestsForSnapshot(open: [asked], expired: [], decisions: [])
+            // With an answer chosen, so that a question has something Enter could send.
+            if case .questions(let questions) = content, let first = questions.first, let label = first.options.first?.label {
+                app.hooks.updateDraft(asked.id) { $0.toggle(label, in: first) }
+            }
             let screen = OffScreen(RequestCardList(model: app))
             defer { screen.close() }
             #expect(await screen.wait { app.hooks.hotKeyTarget == asked }, "карточка действительно нарисована: \(content)")
+            // Past the pause after a card appears: it swallows any answer, and would hide a wrong one from this test.
+            try? await Task.sleep(for: .seconds(HookController.settleTime + 0.1))
             for (key, text) in [(UInt16(kVK_Return), "\r"), (UInt16(kVK_ANSI_KeypadEnter), "\u{3}")] {
                 screen.press(keyCode: key, characters: text)
                 await screen.settle()
@@ -108,7 +114,8 @@ struct RequestCardTests {
         app.hooks.updateDraft(asked.id) { $0.denying = true; $0.reason = "причина" }
         let screen = OffScreen(RequestCardList(model: app))
         defer { screen.close() }
-        await screen.settle()
+        #expect(await screen.wait { app.hooks.hotKeyTarget == asked })
+        try? await Task.sleep(for: .seconds(HookController.settleTime + 0.1))
         screen.press(keyCode: UInt16(kVK_Return), characters: "\r")
         await screen.settle()
         #expect(app.hooks.pending == [asked])

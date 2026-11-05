@@ -319,24 +319,26 @@ struct HookRelayTests {
         #expect(answer["message"] as? String == "сначала сделай резервную копию")
     }
 
-    @Test("Ответ на один запрос не трогает другой: у каждого своё соединение")
+    @Test("Ответ на один запрос не трогает другие: у каждого своё соединение")
     func answersDoNotCross() async throws {
         let path = socketPath()
         let (server, received) = try server(path)
         defer { server.stop() }
-        let first = ask(path, try request(tool: "Bash", session: "s1", input: ["command": "первая"]))
-        let second = ask(path, try request(tool: "Bash", session: "s2", input: ["command": "вторая"]))
-        #expect(await eventually { received.allRequests.count == 2 })
+        // Six at once: with two, an answer sent to the wrong hook would still land on the right one half the time.
+        let sessions = (0..<6).map { "s\($0)" }
+        var tasks: [String: Task<Result, Error>] = [:]
+        for session in sessions {
+            tasks[session] = ask(path, try request(tool: "Bash", session: session, input: ["command": "команда \(session)"]))
+        }
+        #expect(await eventually { received.allRequests.count == sessions.count })
         let requests = received.allRequests
-        let one = try #require(requests.first { $0.session == "s1" })
-        let two = try #require(requests.first { $0.session == "s2" })
-        #expect(one.command == "первая")
-        #expect(two.command == "вторая")
-
-        server.answer(two.id, .deny(reason: "нет"))
-        #expect(try decision(try await second.value)["behavior"] as? String == "deny")
-        server.answer(one.id, .allow)
-        #expect(try decision(try await first.value)["behavior"] as? String == "allow")
+        for session in sessions.reversed() {
+            let held = try #require(requests.first { $0.session == session })
+            #expect(held.command == "команда \(session)")
+            server.answer(held.id, .deny(reason: "причина \(session)"))
+            let hook = try #require(tasks[session])
+            #expect(try decision(try await hook.value)["message"] as? String == "причина \(session)")
+        }
     }
 
     @Test("Повторный ответ на закрытый запрос никуда не идёт и никому не мешает")
