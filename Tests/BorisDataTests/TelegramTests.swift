@@ -236,6 +236,18 @@ struct TelegramTests {
         #expect(await results.all == [.noConnection])
     }
 
+    /// No fake in the way: the real session, and a port on this Mac that nobody listens on.
+    @Test("Настоящий отказ в соединении становится статусом «нет связи»") func realRefusal() async throws {
+        var request = try TelegramAPI.request(line, token: token, chat: "777")
+        request.url = URL(string: "http://127.0.0.1:1/")
+        do {
+            _ = try await URLSessionTelegramTransport().send(request)
+            Issue.record("the port answered")
+        } catch {
+            #expect(TelegramAPI.problem(error: error) == .noConnection)
+        }
+    }
+
     @Test("Настоящая отправка: то, что ушло, и то, что вернулось") func realTransportAnswers() async throws {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [AnsweringProtocol.self]
@@ -305,7 +317,7 @@ struct NotificationRestartTests {
         // The first life of Boris sees them at work and writes down what it knows.
         let first = await engine(folder, memory: DetectorMemory()).scanOnce()
         #expect(first.events.isEmpty)
-        #expect(first.detectorMemory.liveSessions == ["boris-id", "deploy-tools-id"])
+        #expect(first.detectorMemory.liveSessions == Set(zip(processes, ["boris", "deploy-tools"]).map { "\($1)-id|\($0.processIdentifier)" }))
         let saved = try JSONEncoder().encode(first.detectorMemory)
 
         // While it is closed, the sessions die.
@@ -335,6 +347,60 @@ struct NotificationRestartTests {
         #expect(banners[0].body.contains("deploy-tools"))
 
         // And the third look has nothing more to say.
+        #expect(await second.scanOnce().events.isEmpty)
+    }
+
+    /// The state of runs is saved too, so here the second life remembers that the run was at work.
+    @Test("Запуск и обычная сессия прервались, пока Boris был закрыт: при первом же взгляде одна сводка") func runDiesWhileClosed() async throws {
+        let folder = TempFolder()
+        let processes = try [startedProcess(), startedProcess()]
+        defer { processes.filter(\.isRunning).forEach { $0.terminate() } }
+        for (process, name) in zip(processes, ["boris", "deploy-tools"]) {
+            let pid = process.processIdentifier
+            let start = try #require(ProcessInspector.startTime(pid: pid))
+            let updated = Int(Date().timeIntervalSince1970 * 1000)
+            folder.write("sessions/\(pid).json", #"{"sessionId":"\#(name)-id","pid":\#(pid),"procStart":"\#(procStart(start))","cwd":"/x/\#(name)","entrypoint":"cli","status":"busy","statusUpdatedAt":\#(updated)}"#)
+        }
+        let run = "projects/p/boris-id/subagents/workflows/wf_a"
+        folder.write("\(run)/journal.jsonl", #"{"type":"launched"}"# + "\n" + #"{"type":"started","key":"k","agentId":"a1","label":"x"}"# + "\n")
+
+        let first = await WorkEngine(paths: ClaudePaths(root: folder.url), others: { [] }, handler: { _ in }).scanOnce()
+        #expect(first.runs.map(\.status) == [.running])
+        #expect(first.events.isEmpty)
+        let savedRuns = try JSONEncoder().encode(first.runMemory)
+        let savedDetector = try JSONEncoder().encode(first.detectorMemory)
+
+        for process in processes {
+            process.interrupt()
+            process.waitUntilExit()
+        }
+        // Boris stayed closed for a while, so the run's last write is no longer fresh.
+        let past = Date().addingTimeInterval(-600)
+        for file in ["\(run)/journal.jsonl", run] {
+            try FileManager.default.setAttributes([.modificationDate: past], ofItemAtPath: folder.url.appendingPathComponent(file).path)
+        }
+
+        let second = WorkEngine(
+            paths: ClaudePaths(root: folder.url),
+            runs: try JSONDecoder().decode([String: RunMemory].self, from: savedRuns),
+            detector: try JSONDecoder().decode(DetectorMemory.self, from: savedDetector),
+            others: { [] },
+            handler: { _ in }
+        )
+        let output = await second.scanOnce()
+        #expect(output.runs.map(\.status) == [.interrupted])
+        #expect(output.events.count == 2)
+        #expect(output.events.allSatisfy { $0.kind == .interrupted && $0.whileAway })
+
+        var router = NotificationRouter()
+        let on = Reaction(banner: true, sound: true, mood: .none)
+        let delivered = router.route(output.events.map { NotificationRouter.Item(event: $0, reaction: on, telegram: true) }, now: output.at)
+        let banners = delivered.compactMap { delivery -> MacBanner? in
+            if case .banner(let banner) = delivery { return banner }
+            return nil
+        }
+        #expect(banners.map(\.title) == ["While Boris was closed"])
+        #expect(banners[0].body.hasPrefix("2 sessions were interrupted"))
         #expect(await second.scanOnce().events.isEmpty)
     }
 }

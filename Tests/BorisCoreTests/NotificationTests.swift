@@ -505,6 +505,52 @@ struct InterruptedSessionTests {
         #expect(detector.detect(runs: [], sessions: [], usage: nil, now: at(15), endedSessions: [stale]).isEmpty)
     }
 
+    @Test("Перезапуск Boris не возвращает тревогу о старом файле убитой и продолженной сессии") func resumedAcrossRestart() throws {
+        var before = EventDetector()
+        _ = before.detect(runs: [], sessions: [info("s1")], usage: nil, now: t0)
+        let stale = session(id: "s1", pid: 100, status: "busy")
+        #expect(before.detect(runs: [], sessions: [], usage: nil, now: at(5), endedSessions: [stale]).count == 1)
+        let resumed = session(id: "s1", pid: 200, status: "busy")
+        _ = before.detect(runs: [], sessions: [resumed], usage: nil, now: at(10), endedSessions: [stale])
+
+        let saved = try JSONDecoder().decode(DetectorMemory.self, from: JSONEncoder().encode(before.memory))
+        var after = EventDetector(memory: saved)
+        #expect(after.detect(runs: [], sessions: [resumed], usage: nil, now: at(100), endedSessions: [stale]).isEmpty)
+        // It ends properly, and only the old file is left.
+        #expect(after.detect(runs: [], sessions: [], usage: nil, now: at(105), endedSessions: [stale]).isEmpty)
+    }
+
+    @Test("Всё упало, сессию продолжили и нормально закрыли: тревога была одна, при запуске") func rebootThenResumed() {
+        var before = EventDetector()
+        _ = before.detect(runs: [], sessions: [info("s1")], usage: nil, now: t0)
+        var after = EventDetector(memory: before.memory)
+        let stale = session(id: "s1", pid: 100, status: "busy")
+        #expect(after.detect(runs: [], sessions: [], usage: nil, now: at(100), endedSessions: [stale]).map(\.whileAway) == [true])
+        let resumed = session(id: "s1", pid: 200, status: "busy")
+        #expect(after.detect(runs: [], sessions: [resumed], usage: nil, now: at(110), endedSessions: [stale]).isEmpty)
+        #expect(after.detect(runs: [], sessions: [], usage: nil, now: at(120), endedSessions: [stale]).isEmpty)
+    }
+
+    @Test("Сессию убили и продолжили, пока Boris был закрыт: когда она нормально закончится, тревоги нет") func resumedWhileClosed() {
+        var before = EventDetector()
+        _ = before.detect(runs: [], sessions: [info("s1")], usage: nil, now: t0)
+        var after = EventDetector(memory: before.memory)
+        let stale = session(id: "s1", pid: 100, status: "busy")
+        let resumed = session(id: "s1", pid: 200, status: "busy")
+        #expect(after.detect(runs: [], sessions: [resumed], usage: nil, now: at(100), endedSessions: [stale]).isEmpty)
+        #expect(after.detect(runs: [], sessions: [], usage: nil, now: at(110), endedSessions: [stale]).isEmpty)
+    }
+
+    @Test("Продолженную сессию убили снова: это новая потеря") func killedAgain() {
+        var detector = EventDetector()
+        _ = detector.detect(runs: [], sessions: [info("s1")], usage: nil, now: t0)
+        let stale = session(id: "s1", pid: 100, status: "busy")
+        let resumed = session(id: "s1", pid: 200, status: "busy")
+        _ = detector.detect(runs: [], sessions: [], usage: nil, now: at(5), endedSessions: [stale])
+        _ = detector.detect(runs: [], sessions: [resumed], usage: nil, now: at(10), endedSessions: [stale])
+        #expect(detector.detect(runs: [], sessions: [], usage: nil, now: at(15), endedSessions: [stale, resumed]).map(\.id) == ["ended|s1|200"])
+    }
+
     @Test("Старый файл состояния, где этой памяти ещё нет, читается") func oldState() throws {
         let old = #"{"notified":[],"activeRuns":{},"usageFired":[],"usageSeen":{},"limitFired":{}}"#
         let memory = try JSONDecoder().decode(DetectorMemory.self, from: Data(old.utf8))

@@ -7,7 +7,7 @@ public struct DetectorMemory: Codable, Sendable, Equatable {
     public var usageFired: Set<String>
     public var usageSeen: [String: Double]
     public var limitFired: [String: Date]
-    /// Sessions with a running process at the last look. Optional, so a state file from before it still loads.
+    /// Running processes of sessions at the last look, each as `id|pid`. Optional, so a state file from before it still loads.
     public var liveSessions: Set<String>?
 
     public init(notified: Set<String> = [], activeRuns: [String: Int] = [:], usageFired: Set<String> = [], usageSeen: [String: Double] = [:], limitFired: [String: Date] = [:], liveSessions: Set<String>? = nil) {
@@ -114,20 +114,24 @@ public struct EventDetector: Sendable {
         )
     }
 
+    private static func processKey(_ session: SessionInfo) -> String {
+        "\(session.sessionId)|\(session.pid)"
+    }
+
     /// A process that vanished in the middle of work never said goodbye. A session idling at that moment lost nothing,
     /// and a workflow under it reports for itself, so the same loss is not told twice.
     private mutating func interruptedSessions(_ sessions: [SessionInfo], ended: [SessionInfo], runs: [RunState], now: Date) -> [BorisEvent] {
         let known = memory.liveSessions ?? []
-        let live = Set(sessions.filter { !$0.isUnlisted }.map(\.sessionId))
-        memory.liveSessions = live
+        let listed = sessions.filter { !$0.isUnlisted }
+        let live = Set(listed.map(\.sessionId))
+        memory.liveSessions = Set(listed.map(Self.processKey))
         return ended.compactMap { session in
-            guard known.contains(session.sessionId), !live.contains(session.sessionId), session.status != "idle" else { return nil }
+            // A killed session can be resumed under a new process, and the old file stays behind for long after.
+            // Only the process that was alive at the last look is news, which also tells each loss once.
+            guard known.contains(Self.processKey(session)), !live.contains(session.sessionId), session.status != "idle" else { return nil }
             guard !runs.contains(where: { $0.sessionId == session.sessionId && ($0.status.isActive || $0.status == .interrupted) }) else { return nil }
-            // A killed session can be resumed under a new process, and the old file stays behind. Its one loss is told once.
-            let key = "ended|\(session.sessionId)|\(session.pid)"
-            guard memory.notified.insert(key).inserted else { return nil }
             return BorisEvent(
-                id: key,
+                id: "ended|\(Self.processKey(session))",
                 kind: .interrupted,
                 at: now,
                 sessionId: session.sessionId,
