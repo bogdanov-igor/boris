@@ -77,7 +77,7 @@ struct MiniWindowView: View {
     }
 
     @ViewBuilder private var sessions: some View {
-        if model.work.waitingSessions.isEmpty, model.activeSessions.isEmpty {
+        if model.requestCount == 0, model.activeSessions.isEmpty {
             VStack(spacing: 4) {
                 Text(L("Nothing is going on")).font(.system(size: 13, weight: .semibold))
                 Text(L("Nobody is waiting for an answer.")).font(.system(size: 12)).foregroundStyle(Palette.text2)
@@ -87,12 +87,12 @@ struct MiniWindowView: View {
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
-                    list(L("Waiting for you · %lld", model.work.waitingSessions.count), model.work.waitingSessions, color: Palette.waiting)
+                    RequestCardList(model: model, surface: .mini)
                     list(L("Active sessions"), model.activeSessions, color: Palette.text2)
                 }
                 .padding(EdgeInsets(top: 8, leading: 8, bottom: 10, trailing: 8))
             }
-            .frame(maxHeight: 340)
+            .frame(maxHeight: 480)
             .fixedSize(horizontal: false, vertical: true)
         }
     }

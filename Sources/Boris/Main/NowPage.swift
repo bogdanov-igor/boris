@@ -7,7 +7,7 @@ struct NowPage: View {
     @Bindable var model: AppModel
 
     private var mode: DisplayMode { model.settings.displayMode }
-    private var nothing: Bool { model.work.waitingSessions.isEmpty && model.activeSessions.isEmpty }
+    private var nothing: Bool { model.requestCount == 0 && model.activeSessions.isEmpty }
 
     var body: some View {
         if !model.world.claudeFolderFound {
@@ -49,11 +49,7 @@ struct NowPage: View {
 
     private var sessions: some View {
         VStack(alignment: .leading, spacing: 20) {
-            if !model.work.waitingSessions.isEmpty {
-                section(L("Waiting for you · %lld", model.work.waitingSessions.count), color: Palette.waiting) {
-                    ForEach(model.work.waitingSessions) { row($0) }
-                }
-            }
+            RequestCardList(model: model)
             if !model.activeSessions.isEmpty {
                 section(L("Active sessions · %lld", model.activeSessions.count), color: Palette.text1) {
                     ForEach(model.activeSessions) { row($0) }

@@ -81,9 +81,11 @@ enum DevSnapshot {
         case now, projects, spend, requests, activity, losses, walrus, mini
         case general, sources, surfaces, notifications, connections, about
         case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
+        case requestCards, requestsNoHooks, nowRequests, miniRequests
 
         var page: AppPage? {
-            AppPage(rawValue: rawValue)
+            if self == .requestsNoHooks { return .requests }
+            return AppPage(rawValue: rawValue)
         }
 
         var section: SettingsSection? {
@@ -102,13 +104,17 @@ enum DevSnapshot {
         data.fill(model)
         if let page = screen.page { model.page = page }
         if let section = screen.section { model.settingsSection = section }
+        if [.requests, .requestCards, .nowRequests, .miniRequests].contains(screen) { RequestDevData.fill(model, data: data) }
 
         let view: AnyView
         var canvas = size ?? CGSize(width: 1200, height: 800)
         switch screen {
-        case .mini:
+        case .mini, .miniRequests:
             view = AnyView(MiniWindowView(model: model, openMain: {}))
             canvas = CGSize(width: 360, height: 0)
+        case .requestCards:
+            view = AnyView(RequestCardsSheet(model: model))
+            canvas = size ?? CGSize(width: 1320, height: 0)
         case .general, .sources, .surfaces, .notifications, .connections, .about, .license:
             view = AnyView(SettingsView(model: model, connect: connect, actions: SettingsActions()))
             canvas = size ?? CGSize(width: 760, height: 720)

@@ -16,5 +16,6 @@ let package = Package(
         .testTarget(name: "BorisCoreTests", dependencies: ["BorisCore"]),
         .testTarget(name: "BorisDataTests", dependencies: ["BorisCore", "BorisData"]),
         .testTarget(name: "BorisCharacterTests", dependencies: ["BorisCore", "BorisCharacter"]),
+        .testTarget(name: "BorisAppTests", dependencies: ["Boris", "BorisCore", "BorisData"]),
     ]
 )

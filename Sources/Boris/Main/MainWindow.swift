@@ -163,7 +163,7 @@ private struct PageContent: View {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(model.page.title).font(.system(size: 18, weight: .semibold))
                 Text(subtitle).font(.system(size: 12)).foregroundStyle(Palette.text2).lineLimit(1)
-                Spacer(minLength: 0)
+                if model.page == .requests { RequestsHeader(model: model) } else { Spacer(minLength: 0) }
             }
             .padding(.horizontal, 24)
             .frame(height: 52)

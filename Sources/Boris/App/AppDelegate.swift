@@ -53,6 +53,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBar.onOpenMain = { [weak main] in main?.show() }
         statusBar.onOpenSettings = { [weak settings] section in settings?.show(section) }
         main.onOpenSettings = { [weak settings] section in settings?.show(section) }
+        model.hooks.onConnect = { [weak main, weak model, connect] in
+            guard let model else { return }
+            // Repairing is one button: the person already agreed to these entries.
+            if model.hooks.connection == .damaged {
+                connect.repair(model)
+                if connect.stage != .closed { main?.show() }
+            } else {
+                main?.show()
+                connect.begin(model)
+            }
+        }
         actions.applyHotKey = { [weak self] in self?.registerHotKey() }
         actions.isAutostartAvailable = { [weak self] in self?.managesAutostart ?? false }
         actions.isAutostartOn = { [weak self] in self?.launch.agent.status == .enabled }
@@ -79,7 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        model?.hooks.stopServer()
+        model?.hooks.quit()
         model?.persistNow()
     }
 
