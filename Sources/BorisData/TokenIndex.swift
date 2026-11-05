@@ -186,8 +186,9 @@ public actor TokenIndex {
     /// The main transcript comes before its subagents, so a fork's repeats are the ones left out.
     static func transcripts(in roots: [ClaudePaths]) -> [URL] {
         var files: [URL] = []
+        let hidden = BorisPaths.usageProbeProject
         for root in roots {
-            for project in FileInfo.names(in: root.projects) where !project.hasPrefix(".") {
+            for project in FileInfo.names(in: root.projects) where !project.hasPrefix(".") && project != hidden {
                 let folder = root.projects.appendingPathComponent(project)
                 for name in FileInfo.names(in: folder) where !name.hasPrefix(".") {
                     let item = folder.appendingPathComponent(name)

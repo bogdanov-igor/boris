@@ -157,10 +157,9 @@ public actor RunScanner {
             read.sessions += more.sessions
             read.unreadable += more.unreadable
         }
-        let ownFolder = BorisPaths.usageProbeFolder.path
-        var sessions = read.sessions.filter { SessionReader.isLive($0) && $0.cwd != ownFolder }
-        let ended = read.sessions.filter { !SessionReader.isLive($0) && $0.cwd != ownFolder && recentlyActive($0, now: now) }
-        sessions += unlistedSessions(listed: Set(read.sessions.map(\.sessionId)), now: now).filter { $0.cwd != ownFolder }
+        var sessions = read.sessions.filter { SessionReader.isLive($0) && !BorisPaths.isUsageProbe(cwd: $0.cwd) }
+        let ended = read.sessions.filter { !SessionReader.isLive($0) && !BorisPaths.isUsageProbe(cwd: $0.cwd) && recentlyActive($0, now: now) }
+        sessions += unlistedSessions(listed: Set(read.sessions.map(\.sessionId)), now: now).filter { !BorisPaths.isUsageProbe(cwd: $0.cwd) }
         applyTitles(&sessions, now: now)
         for index in sessions.indices where sessions[index].status != "idle" {
             let unnamedTool = WaitingReason(sessions[index].waitingFor) == .permission(tool: nil)
