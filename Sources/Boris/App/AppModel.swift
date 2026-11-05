@@ -49,6 +49,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 final class AppModel {
     let settings: AppSettings
     let hooks: HookController
+    let losses = LossStore()
     private let store: StateStore?
     private var state: AppState
     private var board = MoodBoard()
@@ -68,6 +69,7 @@ final class AppModel {
     private(set) var hasAlarm = false
     private(set) var quiet: QuietMode
     private(set) var now = Date()
+    var mainWindowIsOpen = false
     var page = AppPage.now
     var settingsSection = SettingsSection.general
     var showIconNotice = false
@@ -207,6 +209,8 @@ final class AppModel {
     }
 
     // MARK: - What the screens ask
+
+    var tokenRecords: [TokenRecord] { tokens }
 
     /// Sessions waiting for the person, together with requests that are held here.
     var requestCount: Int {

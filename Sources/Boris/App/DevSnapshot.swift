@@ -81,6 +81,7 @@ enum DevSnapshot {
         case now, projects, spend, requests, activity, losses, walrus, mini
         case general, sources, surfaces, notifications, connections, about
         case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
+        case lossesReading, lossesFiltered, lossesNothingMatches
 
         var page: AppPage? {
             AppPage(rawValue: rawValue)
@@ -133,6 +134,17 @@ enum DevSnapshot {
                 data.fill(model, issues: [.unknownJournalEvent("x")])
             case .folderMissing:
                 data.fill(model, folderFound: false)
+            case .lossesReading:
+                model.page = .losses
+                model.losses.showProgressForSnapshot(done: 640, total: 2263)
+            case .lossesFiltered:
+                model.page = .losses
+                model.losses.kind = .toolError
+                model.losses.project = "boris"
+            case .lossesNothingMatches:
+                model.page = .losses
+                model.losses.kind = .denied
+                model.losses.project = "shop-api"
             default:
                 break
             }
