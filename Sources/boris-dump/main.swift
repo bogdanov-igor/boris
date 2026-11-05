@@ -3,7 +3,8 @@ import BorisData
 import Foundation
 
 // Prints what Boris sees right now, without any interface. The text of prompts, commands and results is never printed.
-// `boris-dump` looks at the work, `boris-dump tokens` adds up the logs, using the cache in `BORIS_STATE_DIR` if it is set.
+// `boris-dump` looks at the work, `boris-dump tokens` adds up the logs, using the cache in `BORIS_STATE_DIR` if it is set,
+// and `boris-dump limits` reads the limits. Money is never printed, only percent.
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let paths = ClaudePaths.resolve()
@@ -30,6 +31,27 @@ func tokens() async {
     let building = clock.now
     let book = TokenBook(records: records, now: Date())
     print("records \(records.count), book built in \(clock.now - building), all time ≈ $\(Int(book.report(.all).estimate.dollars))")
+}
+
+func limits() {
+    guard let profile = UsageReader.profile(paths.profile, settings: paths.settings) else {
+        print("profile: cannot be read")
+        return
+    }
+    print("account: \(profile.account)")
+    guard let usage = profile.usage else {
+        print("limits: none reported")
+        return
+    }
+    print("limits, fetched \(usage.fetchedAt.map { "\(Int(Date().timeIntervalSince($0) / 60)) min ago" } ?? "?"):")
+    for window in usage.windows {
+        print("  \(window.id): \(String(format: "%.1f", window.percent))%")
+    }
+    switch usage.extra {
+    case .noData: print("extra: no data")
+    case .off: print("extra: off")
+    case .on(let used, let limit, _): print("extra: on, \(limit.map { String(format: "%.1f%% of the limit", used / $0 * 100) } ?? "no limit")")
+    }
 }
 
 func describe(_ node: WorkNode, depth: Int) {
@@ -62,8 +84,7 @@ func work() async {
         let age = usage.fetchedAt.map { "\(Int(Date().timeIntervalSince($0) / 60)) min ago" } ?? "?"
         print("limits, fetched \(age):")
         for window in usage.windows {
-            let dollars = window.usedDollars.map { String(format: " · $%.2f of $%.2f", $0, window.limitDollars ?? 0) } ?? ""
-            print("  \(window.id): \(String(format: "%.1f", window.percent))%\(dollars)")
+            print("  \(window.id): \(String(format: "%.1f", window.percent))%")
         }
     }
     if !output.world.formatIssues.isEmpty { print("format issues: \(output.world.formatIssues)") }
@@ -75,6 +96,8 @@ func work() async {
 
 if arguments.first == "tokens" {
     await tokens()
+} else if arguments.first == "limits" {
+    limits()
 } else {
     await work()
 }

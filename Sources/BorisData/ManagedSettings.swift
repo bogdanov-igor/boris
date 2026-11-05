@@ -23,6 +23,11 @@ public struct ManagedSettings: Sendable {
         sources.contains { $0["disableAllHooks"] as? Bool == true || $0["allowManagedHooksOnly"] as? Bool == true }
     }
 
+    /// The company sends Claude Code through its own gateway.
+    public var setsGateway: Bool {
+        sources.contains { ($0["env"] as? [String: Any])?["ANTHROPIC_BASE_URL"] != nil }
+    }
+
     private var sources: [[String: Any]] {
         let dropIns = folder.appendingPathComponent("managed-settings.d")
         let files = [folder.appendingPathComponent("managed-settings.json")]

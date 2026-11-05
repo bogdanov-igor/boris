@@ -63,6 +63,7 @@ public actor RunScanner {
     private var discoverNow = true
     private var lastDiscovery: Date = .distantPast
     private var usage: UsageSnapshot?
+    private var account = ClaudeAccount.unknown
     /// The main agent's last known context and model. It does not change while a session is idle, so one read is enough then.
     private var sessionContext: [String: (tokens: Int, model: String?)] = [:]
     private var usageModified: Date?
@@ -223,6 +224,7 @@ public actor RunScanner {
         let agents = singleAgentSnapshots(sessions: sessions, now: now, tokens: &agentTokens)
 
         var world = WorldSnapshot(takenAt: now, sessions: sessions, runs: snapshots, usage: usage, claudeFolderFound: folderFound, formatIssues: issues)
+        world.account = account
         world.endedSessions = ended
         world.agents = agents
         world.sessionTokenGrowth = sessionGrowth
@@ -590,6 +592,9 @@ public actor RunScanner {
         let modified = FileInfo.modified(paths.profile)
         guard modified != usageModified else { return }
         usageModified = modified
-        usage = UsageReader.read(paths.profile)
+        guard let profile = UsageReader.profile(paths.profile, settings: paths.settings) else { return }
+        // Once something is known, a failed read must not wipe it: the old value stays with its true age.
+        usage = profile.usage ?? usage
+        account = profile.account
     }
 }
