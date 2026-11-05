@@ -264,6 +264,8 @@ public enum FeedSummary {
     private static func running(_ steps: [ActivityStep], first: ActivityStep) -> String {
         if steps.count == 1, first.kind == .shell, let note = first.input.note { return note }
         if steps.count == 1, first.kind == .helper, first.tool != "Skill", let note = first.input.note { return L("A helper is working on: %@", note) }
+        // A row in a list says only that files are being read, and the feed is where the step is told in full.
+        if first.kind == .read, distinctTargets(steps) == 1, let file = first.brief.fileName { return L("Reading %@", file) }
         if steps.count > 1, distinctTargets(steps) > 1 {
             // Several at once are told without a name, as there is no one file to name.
             return WorkPhrases.step(StepBrief(kind: first.kind, tool: first.tool), mode: .simple) ?? L("Working")

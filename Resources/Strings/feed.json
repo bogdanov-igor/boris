@@ -81,6 +81,7 @@
   "one": "Прочитал %lld файл",
   "other": "Прочитал %lld файла"
  },
+ "Reading %@": "Читает %@",
  "Reading the logs…": "Чтение логов…",
  "Searched the files": "Искал в файлах",
  "Searched the files %lld times": {
