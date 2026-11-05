@@ -91,6 +91,35 @@ struct WorkEngineTests {
         #expect(measured <= 3, "шаг обновился через \(measured) с")
     }
 
+    @Test("Сессия без хуков ждёт разрешения: по одним файлам она попадает в очередь без кнопок ответа")
+    func waitingWithoutHooks() async throws {
+        let folder = TempFolder()
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let start = try #require(ProcessInspector.startTime(pid: pid))
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "EEE MMM d HH:mm:ss yyyy"
+        folder.write("sessions/\(pid).json", #"{"sessionId":"s1","pid":\#(pid),"procStart":"\#(formatter.string(from: start))","cwd":"/x/proj","entrypoint":"claude-vscode","status":"waiting","waitingFor":"approve Bash"}"#)
+        folder.write("projects/p/s1.jsonl", toolLine("Bash", file: "/x/a", message: "m1"))
+        let outputs = Outputs()
+        let engine = engine(folder, outputs: outputs)
+        await engine.start()
+        #expect(await outputs.wait(timeout: 8) { $0.model.waitingSessions.count == 1 } != nil)
+        await engine.stop()
+        let output = try #require(outputs.latest)
+
+        var queue = RequestQueue()
+        queue.note(work: output.model, now: Date())
+        guard case .waiting(let session) = try #require(queue.rows(now: Date()).first) else {
+            Issue.record("без хуков ответить нельзя, поэтому это только ожидание")
+            return
+        }
+        #expect(session.environment == .vsCode)
+        #expect(session.waitingFor == .permission(tool: "Bash"))
+        #expect(queue.open.isEmpty)
+    }
+
     @Test("Токены приходят из индекса, а дописанное учитывается не позже чем через 5 секунд")
     func tokensFlow() async throws {
         let folder = TempFolder()

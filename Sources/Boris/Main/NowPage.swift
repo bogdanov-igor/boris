@@ -70,17 +70,11 @@ struct NowPage: View {
     }
 
     private func sessions(_ digest: NowDigest) -> some View {
-        // A session with a card above still counts among those at work. One without a card has its row in the first list only.
+        // A session with a card above still counts among those at work. One without a held request has its notice among the cards only.
         let held = Set(model.hooks.pending.map(\.session))
-        let waitingRows = digest.waiting.filter { !held.contains($0.id) }
         let activeRows = digest.waiting.filter { held.contains($0.id) } + digest.active
         return VStack(alignment: .leading, spacing: 20) {
-            if model.requestCount > 0 {
-                section(L("Waiting for you · %lld", model.requestCount), color: Palette.waiting) {
-                    RequestCardList(model: model)
-                    ForEach(waitingRows) { row($0) }
-                }
-            }
+            RequestCardList(model: model)
             if !activeRows.isEmpty {
                 section(L("Active sessions · %lld", activeRows.count), color: Palette.text1) {
                     ForEach(activeRows) { row($0) }

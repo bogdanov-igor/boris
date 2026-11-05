@@ -141,6 +141,7 @@ final class AppModel {
         usageRefresher.onFinished = { [weak self] in
             Task { await self?.engine?.usageChanged() }
         }
+        hooks.onChange = { [weak self] in self?.refreshPresence() }
     }
 
     func start() {
@@ -219,6 +220,7 @@ final class AppModel {
 
     private func apply(_ output: WorkEngine.Output) {
         work = usage.book?.applied(to: output.model) ?? output.model
+        hooks.note(work: output.model, now: output.at)
         world = output.world
         runs = output.runs
         hookState = output.hooks
@@ -386,9 +388,9 @@ final class AppModel {
 
     // MARK: - What the screens ask
 
-    /// Sessions waiting for the person, together with requests that are held here.
+    /// Requests held here, together with sessions waiting for the person with nothing held.
     var requestCount: Int {
-        Set(work.waitingSessions.map(\.id)).union(hooks.pending.map(\.session)).count
+        hooks.queue.rows(now: Date()).count
     }
 
     var activeSessions: [WorkSession] {
@@ -462,6 +464,7 @@ final class AppModel {
 
     func showForSnapshot(work: WorkModel, world: WorldSnapshot, today: TokenUsage, mood: Mood, outfit: Outfit = .none, offer: Bool = false) {
         self.work = work
+        hooks.note(work: work)
         self.world = world
         self.today = today
         self.mood = mood

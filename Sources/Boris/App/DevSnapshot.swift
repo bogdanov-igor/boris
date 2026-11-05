@@ -93,9 +93,11 @@ enum DevSnapshot {
         case spendProjects, spendModels, spendPlaces, spendAgents, spendToday, spendMonth, spendEverything
         case project, projectDates, datesPicker, session, sessionTrouble, sessionPast, sessionGone, bigRun
         case feed, feedWaiting, feedChanges, feedDiff, activityCommands
+        case requestCards, requestsNoHooks, nowRequests, miniRequests
 
         var page: AppPage? {
-            DevUsageData.Scenario(rawValue: rawValue) != nil ? .spend : AppPage(rawValue: rawValue)
+            if self == .requestsNoHooks { return .requests }
+            return DevUsageData.Scenario(rawValue: rawValue) != nil ? .spend : AppPage(rawValue: rawValue)
         }
 
         var section: SettingsSection? {
@@ -119,13 +121,17 @@ enum DevSnapshot {
         DevUsageData.Scenario(rawValue: screen.rawValue)?.fill(model)
         if let page = screen.page { model.page = page }
         if let section = screen.section { model.settingsSection = section }
+        if [.requests, .requestCards, .nowRequests, .miniRequests].contains(screen) { RequestDevData.fill(model, data: data) }
 
         let view: AnyView
         var canvas = size ?? CGSize(width: 1200, height: 800)
         switch screen {
-        case .mini:
+        case .mini, .miniRequests:
             view = AnyView(MiniWindowView(model: model, openMain: {}))
             canvas = CGSize(width: 360, height: 0)
+        case .requestCards:
+            view = AnyView(RequestCardsSheet(model: model))
+            canvas = size ?? CGSize(width: 1320, height: 0)
         case .load:
             view = AnyView(LoadGallery(model: model))
             canvas = CGSize(width: size?.width ?? 1060, height: 0)

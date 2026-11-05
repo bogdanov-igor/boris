@@ -27,6 +27,8 @@ final class AppSettings {
     var keepAwake: Bool { didSet { defaults?.set(keepAwake, forKey: "keepAwake") } }
     var hotKeyEnabled: Bool { didSet { defaults?.set(hotKeyEnabled, forKey: "hotKeyEnabled") } }
     var hotKey: HotKeyCombo { didSet { save(hotKey, "hotKey") } }
+    var allowKey: HotKeyCombo { didSet { save(allowKey, "allowKey") } }
+    var denyKey: HotKeyCombo { didSet { save(denyKey, "denyKey") } }
     /// The person connected the hooks and has not disconnected them.
     var hooksWanted: Bool { didSet { defaults?.set(hooksWanted, forKey: "hooksWanted") } }
     /// How long Claude waits for an answer given in Boris.
@@ -54,6 +56,8 @@ final class AppSettings {
         keepAwake = defaults?.bool(forKey: "keepAwake") ?? false
         hotKeyEnabled = defaults?.object(forKey: "hotKeyEnabled") as? Bool ?? true
         hotKey = Self.load(defaults, "hotKey") ?? .standard
+        allowKey = (Self.load(defaults, "allowKey") as HotKeyCombo?).flatMap { $0.canAnswer ? $0 : nil } ?? .allowStandard
+        denyKey = (Self.load(defaults, "denyKey") as HotKeyCombo?).flatMap { $0.canAnswer ? $0 : nil } ?? .denyStandard
         hooksWanted = defaults?.bool(forKey: "hooksWanted") ?? false
         permissionWaitSeconds = defaults?.object(forKey: "permissionWaitSeconds") as? Int ?? 120
         claudeFolder = defaults?.string(forKey: "claudeFolder") ?? ""

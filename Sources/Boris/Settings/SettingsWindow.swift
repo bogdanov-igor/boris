@@ -282,6 +282,7 @@ private struct ConnectionSettings: View {
     var body: some View {
         SettingsGroup(title: L("Answers to requests (hooks)")) {
             hooksRow
+            RequestSettingsRows(model: model)
         }
         if let problem {
             Text(problem).font(.system(size: 11.5)).foregroundStyle(Palette.redText)

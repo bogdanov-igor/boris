@@ -159,7 +159,7 @@ private struct PageContent: View {
                     Text(model.page.title).font(.system(size: 18, weight: .semibold))
                     Text(subtitle).font(.system(size: 12)).foregroundStyle(Palette.text2).lineLimit(1)
                     if model.page == .walrus { WalrusPageTabs(model: model) }
-                    Spacer(minLength: 0)
+                    if model.page == .requests { RequestsHeader(model: model) } else { Spacer(minLength: 0) }
                     if model.page == .walrus { WalrusImportButton(model: model) }
                     if model.page == .losses { LossPeriodBar(store: model.losses) }
                     if model.page == .spend {

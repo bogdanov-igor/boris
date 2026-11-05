@@ -1,15 +1,41 @@
 import Foundation
 import BorisCore
 
-/// A permission request held open until someone answers or the hook gives up.
+/// A request held open until someone answers, the wait runs out or the hook goes away.
 public struct PendingPermission: Identifiable, Equatable, Sendable {
     public let id: UUID
     public let session: String
-    /// The agent that asked, when it was not the session itself.
+    /// The agent that asked, by its bare id, when it was not the main agent.
     public let agent: String?
+    public let agentType: String?
     public let tool: String
     public let command: String
+    public let content: RequestContent
     public let project: String?
+    /// The session's working folder, which is what tells a file of the project from any other.
+    public let cwd: String?
+    /// Claude's permission mode at the moment of asking.
+    public let mode: String?
+    public let askedAt: Date
+    public let deadline: Date
+    /// Finds the end of this very call among the session's tools.
+    public let digest: String?
+
+    public init(id: UUID = UUID(), session: String, agent: String? = nil, agentType: String? = nil, tool: String, command: String = "", content: RequestContent, project: String? = nil, cwd: String? = nil, mode: String? = nil, askedAt: Date = Date(), deadline: Date = Date().addingTimeInterval(120), digest: String? = nil) {
+        self.id = id
+        self.session = session
+        self.agent = agent
+        self.agentType = agentType
+        self.tool = tool
+        self.command = command
+        self.content = content
+        self.project = project
+        self.cwd = cwd
+        self.mode = mode
+        self.askedAt = askedAt
+        self.deadline = deadline
+        self.digest = digest
+    }
 }
 
 /// Listens on a Unix socket only this user can reach. There is no network port, so no other process can impersonate Boris.
@@ -19,11 +45,18 @@ public final class HookServer: @unchecked Sendable {
     private var listener: Int32 = -1
     private var source: DispatchSourceRead?
     private var waiting: [UUID: (fd: Int32, source: DispatchSourceRead)] = [:]
-    private static let maxPending = 8
+    private var answerWindow: TimeInterval = 120
+    /// A guard against running out of file descriptors. A request above it stays in Claude and its session still shows as waiting.
+    private static let maxPending = 64
 
     public var onSignal: (@Sendable (HookSignal) -> Void)?
     public var onPermission: (@Sendable (PendingPermission) -> Void)?
+    /// The hook went away by itself: Claude got its answer in another way, or the session closed.
     public var onPermissionGone: (@Sendable (UUID) -> Void)?
+    /// The wait ran out, and the hook was let go without a decision.
+    public var onPermissionExpired: (@Sendable (UUID) -> Void)?
+    /// A tool with this input has finished.
+    public var onToolDone: (@Sendable (_ session: String, _ digest: String) -> Void)?
 
     public init(path: String) {
         self.path = path
@@ -31,6 +64,11 @@ public final class HookServer: @unchecked Sendable {
 
     public static var defaultPath: String {
         ProcessInfo.processInfo.environment["BORIS_HOOK_SOCKET"] ?? BorisPaths.support.appendingPathComponent("hook.sock").path
+    }
+
+    /// How long the next requests wait for an answer. Those already open keep their time.
+    public func setAnswerWindow(_ seconds: TimeInterval) {
+        queue.async { self.answerWindow = seconds }
     }
 
     public func start() -> Bool {
@@ -62,34 +100,38 @@ public final class HookServer: @unchecked Sendable {
         listener = fd
         let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)
         source.setEventHandler { [weak self] in self?.acceptClient() }
+        // The descriptor must outlive the source that watches it, or a new socket with the same number loses its events.
+        source.setCancelHandler { close(fd) }
         source.resume()
         self.source = source
         return true
     }
 
+    /// Every open hook sees its connection close and exits without a decision, so the requests stay in Claude.
     public func stop() {
         queue.sync {
             source?.cancel()
             source = nil
-            if listener >= 0 { close(listener) }
             listener = -1
             unlink(path)
-            for (_, entry) in waiting {
-                entry.source.cancel()
-                close(entry.fd)
-            }
+            for (_, entry) in waiting { entry.source.cancel() }
             waiting = [:]
         }
     }
 
     /// Sends the answer down the connection of this exact request. An answer to a closed request goes nowhere.
-    public func answer(_ id: UUID, allow: Bool) {
+    public func answer(_ id: UUID, _ answer: HookAnswer) {
         queue.async { [weak self] in
             guard let self, let entry = self.waiting.removeValue(forKey: id) else { return }
-            let text = allow ? "allow\n" : "deny\n"
-            _ = text.withCString { write(entry.fd, $0, strlen($0)) }
+            _ = answer.line.withUnsafeBytes { write(entry.fd, $0.baseAddress, $0.count) }
             entry.source.cancel()
-            close(entry.fd)
+        }
+    }
+
+    /// Lets the hook go without a decision.
+    public func release(_ id: UUID) {
+        queue.async { [weak self] in
+            self?.waiting.removeValue(forKey: id)?.source.cancel()
         }
     }
 
@@ -104,12 +146,18 @@ public final class HookServer: @unchecked Sendable {
         }
         var timeout = timeval(tv_sec: 2, tv_usec: 0)
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
+        // A hook that has just gone away must not take the whole app with it when the answer is written.
+        var noSignal: Int32 = 1
+        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &noSignal, socklen_t(MemoryLayout<Int32>.size))
         guard let payload = readMessage(fd) else {
             close(fd)
             return
         }
         guard payload["wait"] as? Bool == true else {
             close(fd)
+            if let session = payload["session_id"] as? String, let digest = payload["input_digest"] as? String {
+                onToolDone?(session, digest)
+            }
             if let signal = HookSignal(payload: payload) { onSignal?(signal) }
             return
         }
@@ -129,32 +177,54 @@ public final class HookServer: @unchecked Sendable {
     }
 
     private func hold(_ fd: Int32, payload: [String: Any]) {
-        guard waiting.count < Self.maxPending, let session = payload["session_id"] as? String else {
+        guard let session = payload["session_id"] as? String else {
             close(fd)
             return
         }
-        let id = UUID()
         let tool = payload["tool_name"] as? String ?? "?"
+        guard waiting.count < Self.maxPending else {
+            close(fd)
+            onSignal?(.permissionAsked(session: session, tool: tool))
+            return
+        }
+        let id = UUID()
+        let now = Date()
+        let window = answerWindow
+        let flat = payload["command_text"] as? String ?? ""
         let request = PendingPermission(
             id: id,
             session: session,
-            agent: payload["agent_id"] as? String,
+            agent: (payload["agent_id"] as? String).map { $0.hasPrefix("agent-") ? String($0.dropFirst(6)) : $0 },
+            agentType: payload["agent_type"] as? String,
             tool: tool,
-            command: payload["command_text"] as? String ?? "",
-            project: (payload["cwd"] as? String).map { URL(fileURLWithPath: $0).lastPathComponent }
+            command: flat,
+            content: RequestContent.parse(tool: tool, input: payload["tool_input"] as? [String: Any], flat: flat),
+            project: (payload["cwd"] as? String).map { URL(fileURLWithPath: $0).lastPathComponent },
+            cwd: payload["cwd"] as? String,
+            mode: payload["permission_mode"] as? String,
+            askedAt: now,
+            deadline: now.addingTimeInterval(window),
+            digest: payload["input_digest"] as? String
         )
-        // When the hook gives up, it closes its end, and the request disappears from the menu.
+        // When the hook goes away, it closes its end, and the request disappears from the queue.
         let closed = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)
         closed.setEventHandler { [weak self] in
             guard let self else { return }
             var byte: UInt8 = 0
-            guard read(fd, &byte, 1) <= 0, self.waiting.removeValue(forKey: id) != nil else { return }
-            closed.cancel()
-            close(fd)
+            guard read(fd, &byte, 1) <= 0, let entry = self.waiting.removeValue(forKey: id) else { return }
+            entry.source.cancel()
             self.onPermissionGone?(id)
         }
+        // Closing here and not earlier, because the descriptor must outlive the source that watches it.
+        closed.setCancelHandler { close(fd) }
         closed.resume()
         waiting[id] = (fd, closed)
+        // The clock of the wall: a Mac waking from sleep should not owe the person the hours it slept.
+        queue.asyncAfter(wallDeadline: .now() + window) { [weak self] in
+            guard let self, let entry = self.waiting.removeValue(forKey: id) else { return }
+            entry.source.cancel()
+            self.onPermissionExpired?(id)
+        }
         onPermission?(request)
         onSignal?(.permissionAsked(session: session, tool: tool))
     }
