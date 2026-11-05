@@ -114,6 +114,18 @@ struct WalrusPackTests {
         #expect(pack.problems() == [.badManifest])
     }
 
+    @Test("Имя и автор на странице не длиннее 80 знаков") func longTexts() throws {
+        let pack = try PackFolder()
+        defer { pack.cleanUp() }
+        let long = String(repeating: "а", count: 5000)
+        try pack.manifest(["name": long, "author": long, "baseLanguage": "en"])
+        let read = try WalrusPackReader.read(pack.folder).get()
+        #expect(read.name.count == 80)
+        #expect(read.author?.count == 80)
+        try pack.manifest(["name": "Набор", "author": "   ", "baseLanguage": "en"])
+        #expect(try WalrusPackReader.read(pack.folder).get().author == nil)
+    }
+
     @Test("Нет файла реплик на базовом языке") func noBaseLines() throws {
         let pack = try PackFolder()
         defer { pack.cleanUp() }
@@ -308,6 +320,18 @@ struct WalrusPackTests {
         #expect(shelf.list().map(\.id) == [second.id])
         #expect(shelf.pack(id: first.id) == nil)
         #expect(shelf.pack(id: second.id)?.poses[.happy]?.count == 1)
+    }
+
+    @Test("Удаление никогда не выходит за пределы полки", arguments: ["..", ".", "", "../..", "a/b"])
+    func removeStaysOnShelf(id: String) throws {
+        let pack = try PackFolder()
+        defer { pack.cleanUp() }
+        let shelf = WalrusPackShelf(folder: pack.root.appendingPathComponent("shelf", isDirectory: true))
+        let placed = try shelf.add(from: pack.folder).get()
+        shelf.remove(id: id)
+        #expect(shelf.pack(id: id) == nil)
+        #expect(FileManager.default.fileExists(atPath: pack.folder.path))
+        #expect(shelf.pack(id: placed.id) != nil)
     }
 
     @Test("Удалённый или испорченный набор: встроенный морж, без падения") func shelfSurvivesDamage() throws {

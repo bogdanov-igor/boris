@@ -42,7 +42,9 @@ extension AppModel {
             let result = await Task.detached { shelf.add(from: folder) }.value
             walrusPage.importing = false
             switch result {
-            case .success:
+            case .success(let pack):
+                // A new version takes the old one's place on the shelf, so he must not stay on files that are gone.
+                if WalrusArt.shared.pack?.name == pack.name { usePack(pack) }
                 refreshPacks()
                 walrusPage.tab = .packs
             case .failure(let rejection):

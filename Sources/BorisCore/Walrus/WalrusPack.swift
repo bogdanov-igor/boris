@@ -248,7 +248,7 @@ public enum WalrusPackReader {
             id: folder.lastPathComponent,
             folder: folder,
             name: name,
-            author: manifest.author,
+            author: manifest.cleanAuthor,
             baseLanguage: base,
             framesPerSecond: min(max(manifest.framesPerSecond ?? 8, 1), 24),
             baseFrames: baseFrames,
@@ -266,8 +266,12 @@ public enum WalrusPackReader {
         var baseLanguage: String?
         var framesPerSecond: Double?
 
-        var cleanName: String? {
-            let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        var cleanName: String? { Self.clean(name) }
+        var cleanAuthor: String? { Self.clean(author) }
+
+        /// Both end up on the page, and a pack's text is whatever its author wrote.
+        private static func clean(_ text: String?) -> String? {
+            let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             return trimmed.isEmpty ? nil : String(trimmed.prefix(80))
         }
     }
@@ -315,8 +319,13 @@ public struct WalrusPackShelf: Sendable {
 
     /// `nil` when the pack is gone or spoiled: the built-in walrus takes over.
     public func pack(id: String?) -> WalrusPack? {
-        guard let id, !id.isEmpty, id == URL(fileURLWithPath: id).lastPathComponent else { return nil }
+        guard let id, Self.isFolderName(id) else { return nil }
         return try? WalrusPackReader.read(folder.appendingPathComponent(id, isDirectory: true), inspectImages: false).get()
+    }
+
+    /// A folder on the shelf and nothing else: `..` would be the whole of Boris's folder.
+    private static func isFolderName(_ id: String) -> Bool {
+        !id.isEmpty && id != "." && id != ".." && !id.contains("/")
     }
 
     /// A pack with the same name is replaced: that is how a new version of it comes in.
@@ -354,7 +363,7 @@ public struct WalrusPackShelf: Sendable {
     }
 
     public func remove(id: String) {
-        guard id == URL(fileURLWithPath: id).lastPathComponent else { return }
+        guard Self.isFolderName(id) else { return }
         try? FileManager.default.removeItem(at: folder.appendingPathComponent(id, isDirectory: true))
     }
 

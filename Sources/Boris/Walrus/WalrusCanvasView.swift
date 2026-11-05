@@ -27,6 +27,10 @@ final class WalrusCanvasView: NSView {
     /// Off-screen measuring needs a walrus who believes he is seen.
     static var pretendVisible = false
     static var ticks = 0
+
+    func refreshForTest() {
+        refresh()
+    }
     #endif
 
     private static let maxKept = 48
@@ -199,8 +203,10 @@ final class WalrusCanvasView: NSView {
             }
             image = kept[source]
         }
-        picture = image
-        layer?.contents = image
+        // A pack's file can vanish or spoil while he is on screen. The built-in walrus is better than an empty place.
+        let shownImage = image ?? WalrusArt.shared.still(.drawn(WalrusFrame(name: look.pose, outfit: look.outfit)), pixels: look.pixels, simple: look.simple)
+        picture = shownImage
+        layer?.contents = shownImage
     }
 
     /// A key frame looks the same every time, so it can be shared and kept for good. The rest of a pack's frames are only kept while they move.
