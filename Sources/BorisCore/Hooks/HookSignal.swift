@@ -103,6 +103,8 @@ public struct HookState: Sendable, Equatable {
     }
 
     public private(set) var currentTool: [String: String] = [:]
+    /// What the main agent of each session is running now.
+    public private(set) var sessionTool: [String: String] = [:]
     public private(set) var waiting: [String: Date] = [:]
     public private(set) var waitingTool: [String: String] = [:]
     public private(set) var sessionEnd: [String: String] = [:]
@@ -116,21 +118,23 @@ public struct HookState: Sendable, Equatable {
 
     public mutating func apply(_ signal: HookSignal, now: Date) {
         switch signal {
-        case .toolStarted(_, let agent, let tool):
-            if let agent { currentTool[agent] = tool }
+        case .toolStarted(let session, let agent, let tool):
+            if let agent { currentTool[agent] = tool } else { sessionTool[session] = tool }
         case .toolFinished(let session, let agent, _):
-            if let agent { currentTool[agent] = nil }
+            if let agent { currentTool[agent] = nil } else { sessionTool[session] = nil }
             clearWaiting(session)
         case .agentStopped(_, let agent):
             currentTool[agent] = nil
         case .workflowLaunched(let session, _):
             clearWaiting(session)
         case .turnStopped(let session):
+            sessionTool[session] = nil
             clearWaiting(session)
         case .stopFailure(let session, let error):
             failures.append(Failure(session: session, error: error))
         case .sessionEnded(let session, let reason, let cwd):
             sessionEnd[session] = reason
+            sessionTool[session] = nil
             clearWaiting(session)
             if reason == "clear" || reason == "resume" {
                 ending = Ending(session: session, cwd: cwd, at: now)
@@ -167,8 +171,11 @@ public struct HookState: Sendable, Equatable {
     /// A session hooks know to be waiting counts as waiting, even when its file does not say so.
     public func overlay(sessions: [SessionInfo]) -> [SessionInfo] {
         sessions.map { session in
-            guard waiting[session.sessionId] != nil else { return session }
             var session = session
+            if let tool = sessionTool[session.sessionId], session.currentStep?.tool != tool {
+                session.currentStep = StepBrief(kind: StepKind(tool: tool), tool: tool)
+            }
+            guard waiting[session.sessionId] != nil else { return session }
             if session.status == "waiting" {
                 // The hook may know the tool that the file leaves out.
                 if WaitingReason(session.waitingFor) == .permission(tool: nil), let tool = waitingTool[session.sessionId] {
@@ -179,6 +186,17 @@ public struct HookState: Sendable, Equatable {
             session.status = "waiting"
             session.waitingFor = waitingTool[session.sessionId].map { "approve \($0)" } ?? "input needed"
             return session
+        }
+    }
+
+    /// An ordinary agent's tool, known at once. Nothing else about it changes.
+    public func overlay(agents: [AgentSnapshot]) -> [AgentSnapshot] {
+        guard !currentTool.isEmpty else { return agents }
+        return agents.map { agent in
+            guard agent.state == .running, let tool = currentTool[agent.id], agent.currentStep?.tool != tool else { return agent }
+            var agent = agent
+            agent.currentStep = StepBrief(kind: StepKind(tool: tool), tool: tool)
+            return agent
         }
     }
 
@@ -201,6 +219,7 @@ public struct HookState: Sendable, Equatable {
         guard agent.state == .running, let id = agent.agentId, let tool = currentTool[id] else { return agent }
         var agent = agent
         agent.currentTool = tool
+        if agent.currentStep?.tool != tool { agent.currentStep = StepBrief(kind: StepKind(tool: tool), tool: tool) }
         return agent
     }
 }

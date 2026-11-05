@@ -108,3 +108,67 @@ struct WorkEngineTests {
         #expect(measured <= 5, "токены обновились через \(measured) с")
     }
 }
+
+@Suite("Хуки поверх файлов", .serialized)
+struct HookOverlayTests {
+    private final class Box: @unchecked Sendable {
+        private let lock = NSLock()
+        private var stored: WorkEngine.Output?
+
+        func set(_ output: WorkEngine.Output) {
+            lock.lock()
+            stored = output
+            lock.unlock()
+        }
+
+        var value: WorkEngine.Output? {
+            lock.lock()
+            defer { lock.unlock() }
+            return stored
+        }
+    }
+
+    @Test("Статусы запусков одинаковы с хуками и без них", arguments: [RunStatus.running, .silent, .completed, .completedWithErrors, .allAgentsFailed, .failed, .stopped, .interrupted])
+    func statusesDoNotDepend(status: RunStatus) {
+        let agent = AgentRecord(key: "k", agentId: "a1", state: .running)
+        let run = RunState(runId: "wf", sessionId: "s1", name: "x", status: status, lastWrite: Date(), agents: [agent])
+        var hooks = HookState()
+        hooks.apply(.toolStarted(session: "s1", agent: "a1", tool: "Bash"), now: Date())
+        hooks.apply(.turnStopped(session: "s1"), now: Date())
+        hooks.apply(.stopFailure(session: "s1", error: "rate_limit"), now: Date())
+        hooks.apply(.sessionEnded(session: "s1", reason: "other", cwd: nil), now: Date())
+        #expect(hooks.overlay(runs: [run]).first?.status == status)
+    }
+
+    @Test("С хуками текущий шаг виден сразу, ещё до следующего чтения файлов")
+    func signalShowsAtOnce() async throws {
+        let folder = TempFolder()
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let start = try #require(ProcessInspector.startTime(pid: pid))
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "EEE MMM d HH:mm:ss yyyy"
+        folder.write("sessions/\(pid).json", #"{"sessionId":"s1","pid":\#(pid),"procStart":"\#(formatter.string(from: start))","cwd":"/x","status":"busy"}"#)
+        let box = Box()
+        let engine = WorkEngine(paths: ClaudePaths(root: folder.url), others: { [] }, handler: { box.set($0) })
+        await engine.start()
+        for _ in 0..<100 where box.value == nil { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(box.value?.model.sessions.first?.root.step == nil)
+
+        let began = Date()
+        await engine.receive(.toolStarted(session: "s1", agent: nil, tool: "Bash"))
+        var delay: TimeInterval?
+        for _ in 0..<600 where delay == nil {
+            if box.value?.model.sessions.first?.root.step?.tool == "Bash" {
+                delay = Date().timeIntervalSince(began)
+            }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        await engine.stop()
+        // Files have not changed here, so the step can only have come from the hook. The next timed scan is 5 s away.
+        let measured = try #require(delay, "шаг так и не появился")
+        print("hook step shown in \(Int(measured * 1000)) ms")
+        #expect(measured < 2, "шаг появился через \(measured) с")
+    }
+}

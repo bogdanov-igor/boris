@@ -41,6 +41,8 @@ public actor WorkEngine {
     private var tokensChanged = true
     private var indexing = false
     private var tokenReadPlanned = false
+    private var emitPlanned = false
+    private var scanned: (world: WorldSnapshot, runs: [RunState])?
     private var lastIndexed = Date.distantPast
 
     /// How often the logs are looked at again while they are being written.
@@ -161,7 +163,19 @@ public actor WorkEngine {
             await runScan()
             return
         }
-        await runScan()
+        emitSoon()
+        requestScan()
+    }
+
+    /// Shows what a signal added without reading anything, and only once for a burst of signals.
+    private func emitSoon() {
+        guard !emitPlanned else { return }
+        emitPlanned = true
+        Task {
+            try? await Task.sleep(for: .milliseconds(50))
+            emitPlanned = false
+            if let output = assemble(now: Date()) { handler(output) }
+        }
     }
 
     public func requestScan() {
@@ -253,10 +267,20 @@ public actor WorkEngine {
     private func makeOutput() async -> Output {
         let now = Date()
         refreshTokens(now: now)
-        var world = await scanner.scan(now: now)
+        let world = await scanner.scan(now: now)
+        let runs = tracker.resolve(world) { ProcessInspector.startTime(pid: $0) }
+        scanned = (world, runs)
+        // Just assigned, so it is always there.
+        return assemble(now: now) ?? Output(at: now, model: WorkModel(), world: world, runs: runs, hooks: hooks, runMemory: tracker.memory, tokens: tokens, tokenProgress: tokenProgress)
+    }
+
+    /// The last scan with the hooks laid over it. Statuses come from the scan, so hooks cannot change them.
+    private func assemble(now: Date) -> Output? {
+        guard var (world, runs) = scanned else { return nil }
         hooks.expire(now: now)
-        let runs = hooks.overlay(runs: tracker.resolve(world) { ProcessInspector.startTime(pid: $0) })
+        runs = hooks.overlay(runs: runs)
         world.sessions = hooks.overlay(sessions: world.sessions)
+        world.agents = hooks.overlay(agents: world.agents)
         return Output(
             at: now,
             model: WorkBuilder.build(world: world, runs: runs),
