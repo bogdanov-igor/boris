@@ -49,13 +49,18 @@ public enum FailureClassifier {
         if lower.contains("went to sleep") || lower.contains("was asleep") {
             return FailureInfo(failureClass: .sleep, text: text)
         }
-        if code == "server_error" || ["can't reach", "timed out", "connection", "econnreset", "enotfound"].contains(where: lower.contains) {
+        // An overloaded service answers with server_error too, but there is nothing wrong with the connection.
+        if lower.contains("overloaded") || lower.contains("temporarily unavailable") {
+            return FailureInfo(failureClass: .api, text: text)
+        }
+        if code == "server_error" || ["can't reach", "timed out", "connection", "econnreset", "enotfound", "no response", "stopped arriving"].contains(where: lower.contains) {
             return FailureInfo(failureClass: .network, text: text)
         }
         if lower.contains("no progress") || lower.contains("stalled") {
             return FailureInfo(failureClass: .stall, text: text)
         }
-        if record?.isApiError == true {
+        // A workflow's result gives only the text, and that is how Claude Code words what the API answered.
+        if record?.isApiError == true || lower.contains("api error") {
             return FailureInfo(failureClass: .api, text: text)
         }
         return FailureInfo(failureClass: .unknown, text: text)
@@ -69,7 +74,8 @@ public enum FailureClassifier {
 
     private static func resets(from text: String?) -> String? {
         guard let text, let range = text.range(of: "resets ") else { return nil }
-        let rest = text[range.upperBound...].trimmingCharacters(in: .whitespaces)
+        // Claude Code may add advice after the time, separated by a dot.
+        let rest = (text[range.upperBound...].components(separatedBy: " ·").first ?? "").trimmingCharacters(in: .whitespaces)
         return rest.isEmpty ? nil : rest
     }
 }

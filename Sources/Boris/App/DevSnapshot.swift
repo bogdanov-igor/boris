@@ -85,6 +85,7 @@ enum DevSnapshot {
         case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
         case walrusThemes, walrusPacks, walrusError, walrusLine, walrusSurfaces
         case notchClosed, notchOpen, panelClosed, panelOpen, surfacesLast, surfacesHotKey, surfacesGone
+        case lossesReading, lossesFiltered, lossesNothingMatches
 
         var page: AppPage? {
             AppPage(rawValue: rawValue)
@@ -159,6 +160,17 @@ enum DevSnapshot {
                 WalrusDev.prepare(screen.rawValue, model: model, long: data == .long, empty: data == .empty)
             case .walrus:
                 WalrusDev.prepare("walrus", model: model, long: data == .long, empty: data == .empty)
+            case .lossesReading:
+                model.page = .losses
+                model.losses.showProgressForSnapshot(done: 640, total: 2263)
+            case .lossesFiltered:
+                model.page = .losses
+                model.losses.kind = .toolError
+                model.losses.project = "boris"
+            case .lossesNothingMatches:
+                model.page = .losses
+                model.losses.kind = .denied
+                model.losses.project = "shop-api"
             default:
                 break
             }

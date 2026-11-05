@@ -22,6 +22,7 @@ enum DevData: String {
         let mood: Mood = self == .empty ? .sleeping : .waiting
         model.showForSnapshot(work: work(now: now), world: world, today: tokens, mood: mood, offer: offer)
         model.load.showForSnapshot(macLoad)
+        fillLosses(model, now: now)
     }
 
     private func work(now: Date) -> WorkModel {

@@ -22,6 +22,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     }
 
     func show() {
+        model.mainWindowIsOpen = true
         if window == nil {
             let host = NSHostingController(rootView: MainWindowView(model: model, connect: connect, openSettings: { [weak self] section in
                 self?.onOpenSettings?(section)
@@ -50,6 +51,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        model.mainWindowIsOpen = false
         model.setLookingClosely(false)
     }
 }
@@ -158,6 +160,7 @@ private struct PageContent: View {
                 if model.page == .walrus { WalrusPageTabs(model: model) }
                 Spacer(minLength: 0)
                 if model.page == .walrus { WalrusImportButton(model: model) }
+                if model.page == .losses { LossPeriodBar(store: model.losses) }
             }
             .padding(.horizontal, 24)
             .frame(height: 52)

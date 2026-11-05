@@ -3,7 +3,7 @@ import BorisData
 import Foundation
 
 // Prints what Boris sees right now, without any interface. The text of prompts, commands and results is never printed.
-// `boris-dump` looks at the work, `boris-dump tokens` adds up the logs, using the cache in `BORIS_STATE_DIR` if it is set,
+// `boris-dump` looks at the work, `boris-dump tokens` adds up the logs, `boris-dump losses` adds up what went wrong, using the cache in `BORIS_STATE_DIR` if it is set,
 // `boris-dump load` shows the load on this Mac by group, and with a number takes that many readings 3 seconds apart.
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -24,6 +24,30 @@ func tokens() async {
     print("total \(total.total): input \(total.input), output \(total.output), cache read \(total.cacheRead), cache write \(total.cacheWrite)")
     let byDay = Dictionary(grouping: records, by: \.day).mapValues { $0.reduce(0) { $0 + $1.usage.total } }
     for day in byDay.keys.sorted().suffix(5) { print("  \(day): \(byDay[day] ?? 0)") }
+}
+
+func losses() async {
+    let index = LossIndex(cacheFile: BorisPaths.support.appendingPathComponent(LossIndex.cacheName))
+    let roots = [paths] + others()
+    let clock = ContinuousClock()
+    let began = clock.now
+    await index.update(roots: roots)
+    let first = clock.now - began
+    let secondBegan = clock.now
+    await index.update(roots: roots)
+    let second = clock.now - secondBegan
+    let tokens = TokenIndex(cacheFile: BorisPaths.tokenIndex)
+    await tokens.update(roots: roots)
+    let live = Set(roots.filter(\.processesAreHere).flatMap { SessionReader.read($0).sessions }.filter { SessionReader.isLive($0) }.map(\.sessionId))
+    print("update \(first), next update \(second)")
+    for period in LossPeriod.allCases {
+        let book = await index.book(period: period, tokens: await tokens.records(), live: live, now: Date())
+        print("\(period.rawValue): \(book.entries.count) rows")
+        print("  kinds: \(LossKind.allCases.map { "\($0.rawValue) \(book.kinds[$0] ?? 0)" }.joined(separator: ", "))")
+        print("  reasons: \(book.reasons.map { "\($0.reason.rawValue) \($0.count)" }.joined(separator: ", "))")
+        print("  lost tokens \(book.lostTokens.map(String.init) ?? "unknown")")
+        print("  skills \(book.skillCalls), tokens \(book.skillTokens); searches \(book.searches), page loads \(book.fetches), tokens \(book.webTokens)")
+    }
 }
 
 func describe(_ node: WorkNode, depth: Int) {
@@ -97,6 +121,8 @@ if arguments.first == "tokens" {
     await tokens()
 } else if arguments.first == "load" {
     await load()
+} else if arguments.first == "losses" {
+    await losses()
 } else {
     await work()
 }
