@@ -322,6 +322,30 @@ struct SurfaceBehaviorTests {
         #expect(!behavior.isOpen)
     }
 
+    @Test("С последней карточкой исчезает и поле: уже убранный курсор больше ничего не держит")
+    func typingEndsWithLastCard() {
+        var behavior = SurfaceBehavior()
+        behavior.requestsChanged(to: 1, quiet: false)
+        behavior.pointerEntered()
+        behavior.typingChanged(true)
+        behavior.pointerLeft()
+        #expect(behavior.isOpen)
+        behavior.requestsChanged(to: 0, quiet: false)
+        #expect(!behavior.isOpen)
+    }
+
+    @Test("Последняя карточка ушла под курсором: чёлка открыта, пока он не уйдёт")
+    func typingEndsWithLastCardUnderPointer() {
+        var behavior = SurfaceBehavior()
+        behavior.requestsChanged(to: 1, quiet: false)
+        behavior.pointerEntered()
+        behavior.typingChanged(true)
+        behavior.requestsChanged(to: 0, quiet: false)
+        #expect(behavior.isOpen)
+        behavior.pointerLeft()
+        #expect(!behavior.isOpen)
+    }
+
     @Test("Конец ввода под курсором не сворачивает")
     func typingEndsWhilePointing() {
         var behavior = SurfaceBehavior()
@@ -388,6 +412,15 @@ struct SurfaceWordsTests {
         #expect(parts[2] == "Week 34%")
         #expect(parts[3] == "Context boris 128K")
         #expect(SurfaceWords.numbersRow(SurfaceNumbers(), now: now).isEmpty)
+    }
+
+    @Test("Длинное имя сессии не съедает число контекста")
+    func longContextName() {
+        let name = String(repeating: "Отчёт за квартал ", count: 8)
+        let parts = SurfaceWords.numbersRow(SurfaceNumbers(context: .init(name: name, tokens: 128_000)), now: now, timeZone: utc)
+        #expect(parts.count == 1)
+        #expect(parts[0].hasSuffix(" 128K"))
+        #expect(parts[0].count < 50)
     }
 
     @Test("Ширина из макета по состоянию")
@@ -497,6 +530,42 @@ struct SurfaceWordsTests {
         ]))
         let what = SurfaceWords.lastFailure(in: work(session), mode: mode, now: now)?.what
         #expect(what == (mode == .simple ? "Did not work out: the limit ran out" : "Limit reached"))
+    }
+
+    private func workflow(_ status: RunStatus, state: WorkState, agents: [WorkNode] = []) -> WorkSession {
+        let run = RunState(runId: "r", sessionId: "a", name: "Data", status: status, lastWrite: now, topFailure: .limit)
+        return WorkSession(id: "a", state: .finished, lastActivity: now, root: WorkNode(id: "a", kind: .main, state: .finished, children: [
+            WorkNode(id: "r", kind: .workflow, title: "Data", state: state, workflow: WorkflowDetails(run), children: agents),
+        ]))
+    }
+
+    private let limitAgent = WorkNode(id: "r1", kind: .workflowAgent, state: .failed, failure: FailureInfo(failureClass: .limit, resets: "18:40"))
+
+    @Test("Когда сбросится лимит, у workflow знают его агенты")
+    func workflowResets() {
+        let session = workflow(.allAgentsFailed, state: .failed, agents: [limitAgent])
+        #expect(SurfaceWords.lastFailure(in: work(session), mode: .simple, now: now)?.what == "Did not work out: the limit ran out, resets 18:40")
+        #expect(SurfaceWords.lastFailure(in: work(session), mode: .technical, now: now)?.what == "Limit reached, resets 18:40")
+    }
+
+    @Test("Workflow, где упала только часть агентов, не называется неудавшимся целиком")
+    func workflowPartlyDone() {
+        let session = workflow(.completedWithErrors, state: .failed, agents: [limitAgent])
+        #expect(SurfaceWords.lastFailure(in: work(session), mode: .simple, now: now)?.what == "Partly done: the limit ran out, resets 18:40")
+        let unknownReset = workflow(.completedWithErrors, state: .failed)
+        #expect(SurfaceWords.lastFailure(in: work(unknownReset), mode: .simple, now: now)?.what == "Partly done: the limit ran out")
+        #expect(SurfaceWords.lastFailure(in: work(session), mode: .technical, now: now)?.what == "Limit reached, resets 18:40")
+    }
+
+    @Test("Оборвавшийся workflow виден, даже если сессия числится завершённой")
+    func workflowInterrupted() {
+        let session = workflow(.interrupted, state: .interrupted)
+        let simple = SurfaceWords.lastFailure(in: work(session), mode: .simple, now: now)
+        #expect(simple?.what == "Cut off: Claude Code closed")
+        #expect(simple?.who == "Data")
+        let technical = SurfaceWords.lastFailure(in: work(session), mode: .technical, now: now)
+        #expect(technical?.what == "Interrupted: the process closed")
+        #expect(technical?.who == "workflow “Data”")
     }
 
     @Test("Текст ошибки в слова не попадает, он только различает перегрузку")

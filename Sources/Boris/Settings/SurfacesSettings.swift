@@ -13,7 +13,7 @@ struct SurfacesSettings: View {
         SettingsGroup {
             row(.icon, title: L("Menu bar icon"))
             row(.notch, title: L("Notch"), detail: L("On a Mac without a notch and on an external monitor, a panel at the top edge takes its place."))
-            row(.mini, title: L("Mini window"), detail: switches.icon ? "" : L("Without the icon it opens with %@.", settings.hotKey.label))
+            row(.mini, title: L("Mini window"), detail: !switches.icon && switches.mini && model.hotKeyWorks ? L("Without the icon it opens with %@.", settings.hotKey.label) : "")
         }
         SettingsGroup(footer: L("The main screen, a particular monitor, or wherever the cursor is.")) {
             SettingsRow(title: L("Screen"), warning: screenGone.map { L("%@ is not connected. Until it returns, the notch or panel is on the main screen.", $0) } ?? "", warningIsProblem: false) {

@@ -76,7 +76,11 @@ public struct SurfaceBehavior: Sendable, Equatable {
     /// A new request opens the surface, unless the person asked for quiet: it then waits in the counter and the queue.
     public mutating func requestsChanged(to count: Int, quiet: Bool) {
         if count > requests, !quiet { isOpen = true }
-        if count == 0, requests > 0, !hovering, !typing { isOpen = false }
+        if count == 0, requests > 0 {
+            // Text fields live on cards, so with the last card there is nothing left to type in.
+            typing = false
+            if !hovering { isOpen = false }
+        }
         requests = count
     }
 

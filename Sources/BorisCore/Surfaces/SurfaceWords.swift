@@ -125,8 +125,13 @@ public enum SurfaceWords {
                 break
             }
         }
-        if let context = numbers.context { parts.append(L("Context %@ %@", context.name, WorkFormat.tokens(context.tokens))) }
+        if let context = numbers.context { parts.append(L("Context %@ %@", shortened(context.name), WorkFormat.tokens(context.tokens))) }
         return parts
+    }
+
+    /// A long name would push the number out of the row, and the number is what the row is for.
+    private static func shortened(_ name: String) -> String {
+        name.count > 24 ? "\(name.prefix(23))…" : name
     }
 
     /// `VS Code · ждёт вас`: where the session runs and what it does, after its name on one line.
@@ -153,11 +158,13 @@ public enum SurfaceWords {
         var latest: SurfaceFailure?
         for session in work.sessions {
             guard let at = session.lastActivity, now.timeIntervalSince(at) < failureFreshFor, at > latest?.at ?? .distantPast else { continue }
-            if let node = session.root.flattened.first(where: { $0.state == .failed }) {
+            let nodes = session.root.flattened
+            if let node = nodes.first(where: { $0.state == .failed }) {
                 latest = SurfaceFailure(name: session.displayName, nameIsFolder: session.nameIsFolder, who: who(node, mode: mode), what: what(node, mode: mode), at: at)
-            } else if session.state == .interrupted {
+            } else if let node = nodes.first(where: { $0.state == .interrupted }) {
+                // A workflow can be cut off while its session counts as finished.
                 let what = mode == .simple ? L("Cut off: Claude Code closed") : L("Interrupted: the process closed")
-                latest = SurfaceFailure(name: session.displayName, nameIsFolder: session.nameIsFolder, who: "", what: what, at: at)
+                latest = SurfaceFailure(name: session.displayName, nameIsFolder: session.nameIsFolder, who: who(node, mode: mode), what: what, at: at)
             }
         }
         return latest
@@ -179,10 +186,13 @@ public enum SurfaceWords {
         let failure = node.failure
         switch failure?.failureClass ?? node.workflow?.topFailure ?? .unknown {
         case .limit:
-            if let resets = failure?.resets {
-                return simple ? L("Did not work out: the limit ran out, resets %@", resets) : L("Limit reached, resets %@", resets)
+            // A workflow's own node knows only the cause: when the limit resets, its agents know.
+            let resets = node.flattened.lazy.compactMap { $0.failure?.resets }.first
+            guard simple else { return resets.map { L("Limit reached, resets %@", $0) } ?? L("Limit reached") }
+            if node.workflow?.status == .completedWithErrors {
+                return resets.map { L("Partly done: the limit ran out, resets %@", $0) } ?? L("Partly done: the limit ran out")
             }
-            return simple ? L("Did not work out: the limit ran out") : L("Limit reached")
+            return resets.map { L("Did not work out: the limit ran out, resets %@", $0) } ?? L("Did not work out: the limit ran out")
         case .network:
             return simple ? L("No connection to Claude") : L("Network error")
         case .sleep:

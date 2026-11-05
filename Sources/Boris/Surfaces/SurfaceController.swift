@@ -91,6 +91,7 @@ final class SurfaceController {
     private var speechTask: Task<Void, Never>?
     private var contentHeight: CGFloat = 240
     private var mouseMonitor: Any?
+    private var pointerWatch: Timer?
     private var observers: [NSObjectProtocol] = []
 
     var onOpenMain: (() -> Void)?
@@ -126,7 +127,23 @@ final class SurfaceController {
         mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
             MainActor.assumeIsolated { self?.pointerMovedElsewhere() }
         }
+        // That monitor hears nothing while Boris itself is active, with Settings open for example.
+        observers.append(NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.watchPointer(true) }
+        })
+        observers.append(NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.watchPointer(false) }
+        })
         follow()
+    }
+
+    private func watchPointer(_ on: Bool) {
+        pointerWatch?.invalidate()
+        pointerWatch = nil
+        guard on else { return }
+        pointerWatch = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.pointerMovedElsewhere() }
+        }
     }
 
     private func follow() {
@@ -137,9 +154,16 @@ final class SurfaceController {
         }
         guard inputs != self.inputs else { return }
         if self.inputs?.switches.notch == true, !inputs.switches.notch { behavior = SurfaceBehavior() }
+        let cardWent = inputs.requests < (self.inputs?.requests ?? 0)
         self.inputs = inputs
         behavior.requestsChanged(to: inputs.requests, quiet: inputs.quiet)
         arrange(animated: true)
+        guard cardWent else { return }
+        // SwiftUI takes the card and its field away only after this moment.
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(100))
+            self?.returnKeyboardIfNoField()
+        }
     }
 
     private func arrange(animated: Bool) {
@@ -166,12 +190,9 @@ final class SurfaceController {
     }
 
     private func place(_ frame: CGRect, animated: Bool) {
-        guard animated, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
-            panel.setFrame(frame, display: true)
-            return
-        }
+        // Through the animator even without animation: a frame set directly is overwritten by a resize still under way.
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.16
+            context.duration = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0.16 : 0
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().setFrame(frame, display: true)
         }
@@ -182,6 +203,11 @@ final class SurfaceController {
         guard panel.isKeyWindow else { return }
         panel.orderOut(nil)
         panel.orderFrontRegardless()
+    }
+
+    /// The field can go away with its card, answered here or anywhere else, or when the person steps back from the form.
+    private func returnKeyboardIfNoField() {
+        if !panel.isTyping { returnKeyboard() }
     }
 
     private func contentHeightChanged(_ height: CGFloat) {
@@ -200,7 +226,12 @@ final class SurfaceController {
             guard !Task.isCancelled, let self else { return }
             let really = SurfaceGeometry.contains(self.panel.frame, NSEvent.mouseLocation)
             guard really == inside else { return }
-            if inside { self.behavior.pointerEntered() } else { self.behavior.pointerLeft() }
+            if inside {
+                self.behavior.pointerEntered()
+            } else {
+                self.returnKeyboardIfNoField()
+                self.behavior.pointerLeft()
+            }
             self.arrange(animated: true)
         }
     }

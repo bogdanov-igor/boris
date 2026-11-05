@@ -50,6 +50,8 @@ struct SurfaceView: View {
                 closedPill
             }
         }
+        // A row whose values stay the same would otherwise keep the old language while the surface is open.
+        .id(model.settings.language)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .foregroundStyle(Palette.text1)
         .contextMenu {
@@ -97,8 +99,9 @@ struct SurfaceView: View {
         .padding(.leading, 6)
         .padding(.trailing, 14)
         .frame(height: SurfaceGeometry.closedPillHeight)
-        .background(Capsule().fill(Palette.panel))
-        .overlay(Capsule().strokeBorder(Palette.separator, lineWidth: 0.5))
+        // The continuous style leaves a stray piece of the outline beyond the rounded end.
+        .background(Capsule(style: .circular).fill(Palette.panel))
+        .overlay(Capsule(style: .circular).strokeBorder(Palette.separator, lineWidth: 0.5))
     }
 
     private func lineText(_ line: SurfaceLine, size: CGFloat, waitingWeight: Font.Weight) -> some View {
@@ -135,7 +138,7 @@ struct SurfaceView: View {
                 }
             }
             // Room for what is around the list, so that the whole surface fits on the screen.
-            .frame(maxHeight: max(stage.maximumHeight - 130, 80))
+            .frame(maxHeight: max(stage.maximumHeight - 140, 80))
             .fixedSize(horizontal: false, vertical: true)
             HStack {
                 Spacer(minLength: 0)
@@ -165,15 +168,20 @@ struct SurfaceView: View {
     @ViewBuilder private var header: some View {
         let line = stage.headerLine
         if stage.hasNotch {
-            // The middle stays empty: the cutout is there.
+            // The middle stays empty: the cutout is there. What he says can be longer than the room beside it, so it takes a second line.
             HStack(spacing: 0) {
                 walrus(SurfaceMetrics.notchWalrus)
                 Spacer(minLength: 8)
-                if line.waiting.isEmpty {
-                    Text(line.main).font(.system(size: 12)).foregroundStyle(Palette.text2).lineLimit(1)
-                } else {
-                    Text(line.waiting).font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.waiting).lineLimit(1)
+                Group {
+                    if line.waiting.isEmpty {
+                        Text(line.main).font(.system(size: 12)).foregroundStyle(Palette.text2)
+                    } else {
+                        Text(line.waiting).font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.waiting)
+                    }
                 }
+                .lineLimit(2)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: max((stage.openWidth - stage.closedNotch.cutout) / 2 - 24, 0), alignment: .trailing)
             }
             .padding(.horizontal, 4)
             .frame(height: stage.closedNotch.frame.height)
@@ -368,7 +376,7 @@ extension DevData {
         var work = model.work
         for project in work.projects.indices {
             for session in work.projects[project].sessions.indices where work.projects[project].sessions[session].state == .running {
-                work.projects[project].sessions[session].root.contextTokens = 128_000
+                work.projects[project].sessions[session].root.contextTokens = self == .long && work.projects[project].sessions[session].id == "c1" ? 150_000 : 128_000
             }
         }
         work.projects.append(WorkProject(path: "/x/old-shop-api", sessions: [failed]))

@@ -3,9 +3,12 @@ import BorisCore
 import SwiftUI
 
 /// The window of the notch and of the panel. Showing it or clicking its buttons leaves the active app as it is.
-/// Only a click into a text field of a card takes the keyboard, without making Boris the active app.
+/// Only a text field of a card takes the keyboard, and the keyboard goes back when the field or the surface goes.
 final class SurfacePanel: NSPanel {
     var onKeyChange: ((Bool) -> Void)?
+
+    /// The window stays key when the field in it goes away, so being key does not mean the person can type here.
+    var isTyping: Bool { isKeyWindow && firstResponder is NSText }
 
     init() {
         super.init(contentRect: NSRect(x: 0, y: 0, width: 300, height: 34), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
@@ -26,6 +29,13 @@ final class SurfacePanel: NSPanel {
     /// `becomesKeyOnlyIfNeeded` keeps this to text fields. A borderless window would refuse even them.
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    /// A card can focus its field by itself after a click on "Deny". The field then looks ready, and without this the letters would go to the active app, which may be a terminal.
+    override func makeFirstResponder(_ responder: NSResponder?) -> Bool {
+        let made = super.makeFirstResponder(responder)
+        if made, firstResponder is NSText, !isKeyWindow { makeKey() }
+        return made
+    }
 
     override func becomeKey() {
         super.becomeKey()
