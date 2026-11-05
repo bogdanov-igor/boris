@@ -42,6 +42,7 @@ enum DevSnapshot {
         let environment = ProcessInfo.processInfo.environment
         if WalrusDev.measureIfRequested() { return true }
         guard let folder = environment["BORIS_SNAPSHOT"] else { return false }
+        if LoadMeasure.runIfRequested() { return true }
         try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
         func list(_ key: String, _ all: [String]) -> [String] {
             environment[key].map { $0.split(separator: ",").map(String.init) } ?? all
@@ -79,7 +80,7 @@ enum DevSnapshot {
 
     #if DEBUG
     private enum Screen: String, CaseIterable {
-        case now, projects, spend, requests, activity, losses, walrus, mini
+        case now, projects, spend, requests, activity, losses, walrus, mini, load
         case general, sources, surfaces, notifications, connections, about
         case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
         case walrusThemes, walrusPacks, walrusError, walrusLine, walrusSurfaces
@@ -114,6 +115,9 @@ enum DevSnapshot {
         case .mini:
             view = AnyView(MiniWindowView(model: model, openMain: {}))
             canvas = CGSize(width: 360, height: 0)
+        case .load:
+            view = AnyView(LoadGallery(model: model))
+            canvas = CGSize(width: size?.width ?? 1060, height: 0)
         case .walrusSurfaces:
             view = AnyView(WalrusDev.surfaces(model))
             canvas = CGSize(width: 720, height: 280)

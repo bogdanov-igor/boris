@@ -66,6 +66,8 @@ struct MiniWindowView: View {
                     breakdown(L("cache w. %@", WorkFormat.tokens(model.today.cacheWrite)))
                 }
             }
+            Rectangle().fill(Palette.separator).frame(height: 1).padding(.top, 1)
+            MacLoadBlock(model: model, kind: mode == .technical ? .miniTechnical : .miniSimple)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
