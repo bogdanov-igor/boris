@@ -4,3 +4,4 @@ build/
 .swiftpm/
 *.xcuserstate
 .claude/settings.local.json
+.claude/worktrees/

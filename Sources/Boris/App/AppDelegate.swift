@@ -1,35 +1,120 @@
 import AppKit
 import BorisCore
-import SwiftUI
+import BorisData
+import ServiceManagement
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private lazy var settings = AppSettings()
-    private var statusItem: NSStatusItem?
-    private var window: NSWindow?
+    private let launch: LaunchCoordinator
+    private var model: AppModel?
+    private var statusBar: StatusBarController?
+    private var mainWindow: MainWindowController?
+    private var settingsWindow: SettingsWindowController?
+    private let actions = SettingsActions()
+    private let connect = ConnectFlow()
+    private let power = PowerGuard()
+    private let hotKey = HotKeyController()
+    private var tickTimer: Timer?
+    private var hiddenFor: TimeInterval = 0
+    private var observers: [NSObjectProtocol] = []
+
+    private var isBundled: Bool { Bundle.main.bundleURL.pathExtension == "app" }
+
+    /// A developer's copy must not take the launch agent's place from the installed app.
+    private var managesAutostart: Bool {
+        #if DEBUG
+        false
+        #else
+        isBundled
+        #endif
+    }
+
+    init(launch: LaunchCoordinator) {
+        self.launch = launch
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if DevSnapshot.runIfRequested() { return }
+        registerAutostartOnce()
+        if managesAutostart, launch.handOverToAgentIfNeeded() {
+            NSApp.terminate(nil)
+            return
+        }
 
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(systemSymbolName: "circle.dashed", accessibilityDescription: "Boris")
-        item.button?.target = self
-        item.button?.action = #selector(openWindow)
-        statusItem = item
+        let model = AppModel()
+        self.model = model
+        let statusBar = StatusBarController(model: model)
+        self.statusBar = statusBar
+        let main = MainWindowController(model: model, connect: connect)
+        mainWindow = main
+        let settings = SettingsWindowController(model: model, connect: connect, actions: actions)
+        settingsWindow = settings
 
-        DevSnapshot.smokeIfRequested(item: item)
+        statusBar.onOpenMain = { [weak main] in main?.show() }
+        statusBar.onOpenSettings = { [weak settings] section in settings?.show(section) }
+        main.onOpenSettings = { [weak settings] section in settings?.show(section) }
+        actions.applyHotKey = { [weak self] in self?.registerHotKey() }
+        actions.isAutostartAvailable = { [weak self] in self?.managesAutostart ?? false }
+        actions.isAutostartOn = { [weak self] in self?.launch.agent.status == .enabled }
+        actions.setAutostart = { [weak self] on in
+            guard let self, self.managesAutostart else { return }
+            if on { try? self.launch.agent.register() } else { try? self.launch.agent.unregister() }
+        }
+        model.onPresenceChange = { [weak self, weak statusBar, weak model] in
+            statusBar?.update()
+            guard let model else { return }
+            self?.power.update(shouldHold: model.settings.keepAwake && model.work.isWorking)
+        }
+
+        let center = NSWorkspace.shared.notificationCenter
+        observers.append(center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak model] _ in
+            MainActor.assumeIsolated { model?.noteWake() }
+        })
+        launch.listen { [weak statusBar] in statusBar?.toggleMiniWindow() }
+        registerHotKey()
+        model.start()
+        startTicking()
+        if model.isFirstLaunch, !DevSnapshot.isSmoke { main.show() }
+        DevSnapshot.smokeIfRequested(statusBar: statusBar, model: model)
     }
 
-    @objc private func openWindow() {
-        if window == nil {
-            let host = NSHostingController(rootView: TokenPage(settings: settings))
-            let created = NSWindow(contentViewController: host)
-            created.title = "Boris"
-            created.setContentSize(NSSize(width: 520, height: 560))
-            created.isReleasedWhenClosed = false
-            window = created
+    func applicationWillTerminate(_ notification: Notification) {
+        model?.hooks.stopServer()
+        model?.persistNow()
+    }
+
+    private func registerAutostartOnce() {
+        let key = "autostartConfigured"
+        guard managesAutostart, !UserDefaults.standard.bool(forKey: key) else { return }
+        try? launch.agent.register()
+        UserDefaults.standard.set(true, forKey: key)
+    }
+
+    private func startTicking() {
+        tickTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.tick(seconds: 30) }
         }
-        NSApp.activate(ignoringOtherApps: true)
-        window?.makeKeyAndOrderFront(nil)
+    }
+
+    private func tick(seconds: TimeInterval) {
+        guard let model, let statusBar else { return }
+        // Moods with an end time need redrawing even when no file changes, and another program may have edited the settings.
+        model.hooks.refresh()
+        model.refreshPresence()
+        hiddenFor = statusBar.isIconVisible ? 0 : hiddenFor + seconds
+        if hiddenFor >= 60 { model.noteIconHidden() }
+        if model.showIconNotice { mainWindow?.show() }
+    }
+
+    private func registerHotKey() {
+        guard let model else { return }
+        hotKey.unregister()
+        model.hotKeyTaken = false
+        guard model.settings.hotKeyEnabled else { return }
+        do {
+            try hotKey.register(model.settings.hotKey) { [weak self] in self?.statusBar?.toggleMiniWindow() }
+        } catch {
+            model.hotKeyTaken = true
+        }
     }
 }

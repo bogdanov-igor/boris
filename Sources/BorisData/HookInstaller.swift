@@ -31,6 +31,11 @@ public enum HookInstaller {
         public var lines: [String]
         /// The layout of the file changes as well, while what is in it stays the same.
         public var reformats: Bool
+
+        public init(lines: [String], reformats: Bool) {
+            self.lines = lines
+            self.reformats = reformats
+        }
     }
 
     static let events = ["SessionStart", "SessionEnd", "PreToolUse", "PostToolUse", "PostToolUseFailure", "SubagentStart", "SubagentStop", "Stop", "StopFailure", "Notification"]

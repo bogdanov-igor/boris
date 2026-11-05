@@ -19,8 +19,12 @@ cp "$BIN/Boris" "$BIN/boris-hook" "$APP/Contents/MacOS/"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/app.boris.Boris.agent.plist "$APP/Contents/Library/LaunchAgents/"
 
-if [ -f Resources/Localizable.xcstrings ]; then
-    xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "$APP/Contents/Resources"
+mkdir -p build
+python3 scripts/build-strings.py build/Localizable.xcstrings
+xcrun xcstringstool compile build/Localizable.xcstrings --output-directory "$APP/Contents/Resources"
+cp LICENSE "$APP/Contents/Resources/LICENSE.txt"
+if [ -f THIRD_PARTY_LICENSES.txt ]; then
+    cp THIRD_PARTY_LICENSES.txt "$APP/Contents/Resources/"
 fi
 if [ -d Resources/Sounds ]; then
     cp -R Resources/Sounds/. "$APP/Contents/Resources/"

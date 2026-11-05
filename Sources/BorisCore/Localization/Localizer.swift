@@ -26,12 +26,19 @@ public enum AppLanguage: String, CaseIterable, Sendable {
 /// Finds a string in the chosen language's table, so switching needs no restart.
 public enum Localizer {
     private static let table = OSAllocatedUnfairLock<Bundle?>(initialState: nil)
+    private static let chosen = OSAllocatedUnfairLock(initialState: AppLanguage.en)
+
+    /// Numbers, dates and plurals follow the chosen language, not the system one.
+    public static var locale: Locale {
+        Locale(identifier: chosen.withLock { $0 }.rawValue)
+    }
 
     /// English is the source language and has no table: its text is the key itself.
     /// Falling back to the main bundle here would pick the system language instead of the chosen one.
     public static func use(_ language: AppLanguage, in main: Bundle = .main) {
         let bundle = main.path(forResource: language.rawValue, ofType: "lproj").flatMap(Bundle.init(path:))
         table.withLock { $0 = bundle }
+        chosen.withLock { $0 = language }
     }
 
     public static func string(_ key: String) -> String {
@@ -44,5 +51,5 @@ public enum Localizer {
 public func L(_ key: String, _ args: CVarArg...) -> String {
     let format = Localizer.string(key)
     guard !args.isEmpty else { return format }
-    return withVaList(args) { NSString(format: format, locale: Locale.current, arguments: $0) as String }
+    return withVaList(args) { NSString(format: format, locale: Localizer.locale, arguments: $0) as String }
 }

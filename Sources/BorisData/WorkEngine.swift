@@ -10,6 +10,11 @@ public actor WorkEngine {
         public var runs: [RunState]
         public var hooks: HookState
         public var runMemory: [String: RunMemory]
+        /// What happened since the last scan. Empty when only hooks spoke.
+        public var events: [BorisEvent]
+        public var detectorMemory: DetectorMemory
+        /// Changes whenever `tokens` does, so nobody has to compare them to find out.
+        public var tokensVersion: Int
         /// Real spend from every log. Empty until the first pass over the logs is done.
         public var tokens: [TokenRecord]
         /// How far the pass over the logs has come, while it is going.
@@ -24,6 +29,8 @@ public actor WorkEngine {
     private let paths: ClaudePaths
     private let scanner: RunScanner
     private var tracker: RunTracker
+    private var detector: EventDetector
+    private var tokensVersion = 0
     private var gate = ScanGate()
     private var hooks = HookState()
     private let handler: @Sendable (Output) -> Void
@@ -51,12 +58,13 @@ public actor WorkEngine {
     private static let indexFallback: TimeInterval = 60
 
     /// - Parameter tokenCache: nil keeps the token index in memory.
-    public init(paths: ClaudePaths, runs: [String: RunMemory] = [:], status: StatusConfig = StatusConfig(), tokenCache: URL? = nil, others: @escaping @Sendable () -> [ClaudePaths], handler: @escaping @Sendable (Output) -> Void) {
+    public init(paths: ClaudePaths, runs: [String: RunMemory] = [:], detector: DetectorMemory = DetectorMemory(), status: StatusConfig = StatusConfig(), events: DetectorConfig = DetectorConfig(), tokenCache: URL? = nil, others: @escaping @Sendable () -> [ClaudePaths], handler: @escaping @Sendable (Output) -> Void) {
         self.paths = paths
         self.index = TokenIndex(cacheFile: tokenCache)
         self.others = others
         self.scanner = RunScanner(paths: paths, others: others)
         self.tracker = RunTracker(memory: runs, config: status)
+        self.detector = EventDetector(memory: detector, config: events)
         self.handler = handler
         let box = WatcherBox()
         self.box = box
@@ -98,8 +106,9 @@ public actor WorkEngine {
         }
     }
 
-    public func configure(status: StatusConfig) {
+    public func configure(status: StatusConfig, events: DetectorConfig) {
         tracker.config = status
+        detector.config = events
     }
 
     public func noteWake(at date: Date) {
@@ -175,7 +184,7 @@ public actor WorkEngine {
         Task {
             try? await Task.sleep(for: .milliseconds(50))
             emitPlanned = false
-            if let output = assemble(now: Date()) { handler(output) }
+            if let output = assemble(now: Date(), events: []) { handler(output) }
         }
     }
 
@@ -258,6 +267,7 @@ public actor WorkEngine {
 
     private func tokensRead(_ records: [TokenRecord]) {
         tokens = records
+        tokensVersion += 1
         tokenProgress = nil
         indexing = false
         if tokensChanged { planTokenRead(after: Self.indexInterval) }
@@ -271,27 +281,26 @@ public actor WorkEngine {
         let world = await scanner.scan(now: now)
         let runs = tracker.resolve(world) { ProcessInspector.startTime(pid: $0) }
         scanned = (world, runs)
+        hooks.expire(now: now)
+        let events = detector.detect(runs: hooks.overlay(runs: runs), sessions: hooks.overlay(sessions: world.sessions), usage: world.usage, now: now, failures: hooks.drainFailures())
         // Just assigned, so it is always there.
-        return assemble(now: now) ?? Output(at: now, model: WorkModel(), world: world, runs: runs, hooks: hooks, runMemory: tracker.memory, tokens: tokens, tokenProgress: tokenProgress)
+        return assemble(now: now, events: events) ?? emptyOutput(now: now, world: world, runs: runs, events: events)
+    }
+
+    private func emptyOutput(now: Date, world: WorldSnapshot, runs: [RunState], events: [BorisEvent]) -> Output {
+        Output(at: now, model: WorkModel(), world: world, runs: runs, hooks: hooks, runMemory: tracker.memory, events: events, detectorMemory: detector.memory, tokensVersion: tokensVersion, tokens: tokens, tokenProgress: tokenProgress)
     }
 
     /// The last scan with the hooks laid over it. Statuses come from the scan, so hooks cannot change them.
-    private func assemble(now: Date) -> Output? {
+    private func assemble(now: Date, events: [BorisEvent]) -> Output? {
         guard var (world, runs) = scanned else { return nil }
         hooks.expire(now: now)
         runs = hooks.overlay(runs: runs)
         world.sessions = hooks.overlay(sessions: world.sessions)
         world.agents = hooks.overlay(agents: world.agents)
-        return Output(
-            at: now,
-            model: WorkBuilder.build(world: world, runs: runs),
-            world: world,
-            runs: runs,
-            hooks: hooks,
-            runMemory: tracker.memory,
-            tokens: tokens,
-            tokenProgress: tokenProgress
-        )
+        var output = emptyOutput(now: now, world: world, runs: runs, events: events)
+        output.model = WorkBuilder.build(world: world, runs: runs)
+        return output
     }
 }
 

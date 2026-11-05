@@ -1,37 +1,72 @@
 import AppKit
 import BorisCore
+import BorisData
 import SwiftUI
 
 /// For checking screens without clicking. It exists only in debug builds.
 @MainActor
 enum DevSnapshot {
-    /// `BORIS_SNAPSHOT=/path/out.png` renders the page and quits.
+    static var isRequested: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["BORIS_SNAPSHOT"] != nil
+        #else
+        false
+        #endif
+    }
+
+    static var isSmoke: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["BORIS_SMOKE"] != nil
+        #else
+        false
+        #endif
+    }
+
+    /// `BORIS_SMOKE=1` reports whether the app came up, and quits.
+    static func smokeIfRequested(statusBar: StatusBarController, model: AppModel) {
+        #if DEBUG
+        guard ProcessInfo.processInfo.environment["BORIS_SMOKE"] != nil else { return }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            print("icon visible: \(statusBar.isIconVisible), loaded: \(model.loaded), sessions: \(model.work.sessions.count), mood: \(model.mood), hooks: \(model.hooks.connection), bundle: \(Bundle.main.bundleIdentifier ?? "none")")
+            exit(model.loaded ? 0 : 1)
+        }
+        #endif
+    }
+
+    /// `BORIS_SNAPSHOT=/folder` renders the screens and quits. Each of `BORIS_SCREEN`, `BORIS_THEME`, `BORIS_MODE`, `BORIS_LANGUAGE`
+    /// and `BORIS_DATA` takes a comma-separated list. Without one, every screen goes in both themes, modes and languages on the busy data.
+    /// `BORIS_SIZE=WIDTHxHEIGHT` sets the size of the windows that have one.
     static func runIfRequested() -> Bool {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
-        guard let path = environment["BORIS_SNAPSHOT"] else { return false }
-        let settings = AppSettings(defaults: nil)
-        if let theme = environment["BORIS_THEME"].flatMap(ThemeMode.init(rawValue:)) { settings.theme = theme }
-        if let language = environment["BORIS_LANGUAGE"].flatMap(AppLanguage.init(rawValue:)) { settings.language = language }
+        guard let folder = environment["BORIS_SNAPSHOT"] else { return false }
+        try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
+        func list(_ key: String, _ all: [String]) -> [String] {
+            environment[key].map { $0.split(separator: ",").map(String.init) } ?? all
+        }
+        let screens = list("BORIS_SCREEN", Screen.allCases.map(\.rawValue)).compactMap(Screen.init(rawValue:))
+        let themes = list("BORIS_THEME", ["dark", "light"]).compactMap(ThemeMode.init(rawValue:))
+        let modes = list("BORIS_MODE", ["simple", "technical"]).compactMap(DisplayMode.init(rawValue:))
+        let languages = list("BORIS_LANGUAGE", ["ru", "en"]).compactMap(AppLanguage.init(rawValue:))
+        let sets = list("BORIS_DATA", ["busy"]).compactMap(DevData.init(rawValue:))
+        let size = environment["BORIS_SIZE"].flatMap { text -> CGSize? in
+            let parts = text.split(separator: "x").compactMap { Double($0) }
+            return parts.count == 2 ? CGSize(width: parts[0], height: parts[1]) : nil
+        }
 
-        let host = NSHostingView(rootView: TokenPage(settings: settings).frame(width: 520))
-        host.appearance = settings.theme.appearance
-        let window = NSWindow(contentRect: NSRect(origin: .zero, size: host.fittingSize), styleMask: [.borderless], backing: .buffered, defer: false)
-        window.appearance = host.appearance
-        window.contentView = host
-        window.setFrameOrigin(NSPoint(x: -5000, y: -5000))
-        window.orderBack(nil)
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(0.5))
-            // Switches while the page is on screen, to see that it follows without a restart.
-            if let language = environment["BORIS_SWITCH_LANGUAGE"].flatMap(AppLanguage.init(rawValue:)) {
-                settings.language = language
-                try? await Task.sleep(for: .seconds(0.5))
-            }
-            host.layoutSubtreeIfNeeded()
-            if let picture = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
-                host.cacheDisplay(in: host.bounds, to: picture)
-                try? picture.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+            for screen in screens {
+                for theme in themes {
+                    for mode in modes {
+                        for language in languages {
+                            for data in sets {
+                                let name = [screen.rawValue, theme.rawValue, mode.rawValue, language.rawValue, data.rawValue].joined(separator: "-")
+                                await capture(screen, theme: theme, mode: mode, language: language, data: data, size: size, to: "\(folder)/\(name).png")
+                            }
+                        }
+                    }
+                }
             }
             exit(0)
         }
@@ -41,16 +76,86 @@ enum DevSnapshot {
         #endif
     }
 
-    /// `BORIS_SMOKE=1` reports whether the status item came up and quits.
-    static func smokeIfRequested(item: NSStatusItem) {
-        #if DEBUG
-        guard ProcessInfo.processInfo.environment["BORIS_SMOKE"] != nil else { return }
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(0.5))
-            let shown = item.button?.window != nil && item.button?.image != nil
-            print("status item: \(shown ? "shown" : "missing"), bundle: \(Bundle.main.bundleIdentifier ?? "none")")
-            exit(shown ? 0 : 1)
+    #if DEBUG
+    private enum Screen: String, CaseIterable {
+        case now, projects, spend, requests, activity, losses, walrus, mini
+        case general, sources, surfaces, notifications, connections, about
+        case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
+
+        var page: AppPage? {
+            AppPage(rawValue: rawValue)
         }
-        #endif
+
+        var section: SettingsSection? {
+            if self == .license { return .about }
+            return SettingsSection(rawValue: rawValue)
+        }
     }
+
+    private static func capture(_ screen: Screen, theme: ThemeMode, mode: DisplayMode, language: AppLanguage, data: DevData, size: CGSize?, to path: String) async {
+        let settings = AppSettings(defaults: nil)
+        settings.theme = theme
+        settings.language = language
+        settings.displayMode = mode
+        let model = AppModel(settings: settings, store: nil, live: false)
+        let connect = ConnectFlow()
+        data.fill(model)
+        if let page = screen.page { model.page = page }
+        if let section = screen.section { model.settingsSection = section }
+
+        let view: AnyView
+        var canvas = size ?? CGSize(width: 1200, height: 800)
+        switch screen {
+        case .mini:
+            view = AnyView(MiniWindowView(model: model, openMain: {}))
+            canvas = CGSize(width: 360, height: 0)
+        case .general, .sources, .surfaces, .notifications, .connections, .about, .license:
+            view = AnyView(SettingsView(model: model, connect: connect, actions: SettingsActions()))
+            canvas = size ?? CGSize(width: 760, height: 720)
+        default:
+            switch screen {
+            case .offer:
+                data.fill(model, offer: true)
+            case .preview:
+                connect.stage = .preview(HookInstaller.Preview(lines: ["+   \"hooks\" : {", "+     \"PermissionRequest\" : [ … boris-hook … ],", "+     \"PreToolUse\" : [ … boris-hook … ],", "+   }"], reformats: true))
+            case .waiting:
+                connect.stage = .waiting(since: Date())
+            case .connected:
+                connect.stage = .connected
+            case .iconNotice:
+                model.showIconNotice = true
+            case .repair:
+                settings.hooksWanted = true
+                model.hooks.showForSnapshot(status: .notInstalled)
+            case .policy:
+                model.hooks.showForSnapshot(status: .disabledByPolicy)
+            case .formatChanged:
+                data.fill(model, issues: [.unknownJournalEvent("x")])
+            case .folderMissing:
+                data.fill(model, folderFound: false)
+            default:
+                break
+            }
+            view = AnyView(MainWindowView(model: model, connect: connect, openSettings: { _ in }))
+        }
+
+        let host = NSHostingView(rootView: view.frame(width: canvas.width, height: canvas.height > 0 ? canvas.height : nil))
+        host.appearance = theme.appearance
+        let fitting = host.fittingSize
+        let bounds = NSRect(x: 0, y: 0, width: canvas.width, height: canvas.height > 0 ? canvas.height : fitting.height)
+        let window = NSWindow(contentRect: bounds, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.appearance = host.appearance
+        window.contentView = host
+        host.frame = bounds
+        window.setFrameOrigin(NSPoint(x: -5000, y: -5000))
+        window.orderBack(nil)
+        try? await Task.sleep(for: .seconds(0.25))
+        host.layoutSubtreeIfNeeded()
+        if let picture = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+            host.cacheDisplay(in: host.bounds, to: picture)
+            try? picture.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+        }
+        window.orderOut(nil)
+    }
+    #endif
 }

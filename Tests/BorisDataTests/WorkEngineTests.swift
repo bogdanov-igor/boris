@@ -172,3 +172,42 @@ struct HookOverlayTests {
         #expect(measured < 2, "шаг появился через \(measured) с")
     }
 }
+
+@Suite("События из движка")
+struct EngineEventTests {
+    private final class Events: @unchecked Sendable {
+        private let lock = NSLock()
+        private var stored: [BorisEvent] = []
+
+        func add(_ more: [BorisEvent]) {
+            lock.lock()
+            stored += more
+            lock.unlock()
+        }
+
+        var all: [BorisEvent] {
+            lock.lock()
+            defer { lock.unlock() }
+            return stored
+        }
+    }
+
+    @Test("Сбой из хука доходит до событий ровно один раз")
+    func hookFailure() async throws {
+        let folder = TempFolder()
+        folder.write("sessions/.keep", "")
+        let events = Events()
+        let engine = WorkEngine(paths: ClaudePaths(root: folder.url), others: { [] }, handler: { events.add($0.events) })
+        await engine.start()
+        await engine.receive(.stopFailure(session: "s1", error: "billing_error"))
+        var failures: [BorisEvent] = []
+        for _ in 0..<300 where failures.isEmpty {
+            await engine.requestScan()
+            try await Task.sleep(for: .milliseconds(20))
+            failures = events.all.filter { $0.sessionId == "s1" }
+        }
+        try await Task.sleep(for: .milliseconds(200))
+        await engine.stop()
+        #expect(events.all.filter { $0.sessionId == "s1" }.count == 1)
+    }
+}
