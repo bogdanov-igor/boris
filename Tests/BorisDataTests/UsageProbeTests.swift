@@ -57,6 +57,7 @@ struct UsageProbeTests {
         #!/bin/sh
         pwd > '\(place.logs.path)/cwd'
         echo "$@" > '\(place.logs.path)/arguments'
+        echo Welcome
         read line
         echo "$line" > '\(place.logs.path)/typed'
         \(place.writesFresh)
@@ -85,6 +86,7 @@ struct UsageProbeTests {
         try """
         #!/bin/sh
         env > '\(place.logs.path)/env'
+        echo Welcome
         read line
         \(place.writesFresh)
         """.write(to: place.script, atomically: true, encoding: .utf8)
@@ -101,6 +103,7 @@ struct UsageProbeTests {
         try """
         #!/bin/sh
         env > '\(place.logs.path)/env'
+        echo Welcome
         read line
         \(place.writesFresh)
         """.write(to: place.script, atomically: true, encoding: .utf8)
@@ -118,17 +121,52 @@ struct UsageProbeTests {
         printf 'Do you trust the files in this folder?\\n'
         read answer
         printf '%s' "$answer" | od -c > '\(place.logs.path)/answer'
+        echo Welcome
         read line
         echo "$line" > '\(place.logs.path)/typed'
         \(place.writesFresh)
         """.write(to: place.script, atomically: true, encoding: .utf8)
-        // Time for the question to show up first, on a busy machine too.
-        var probe = place.probe
-        probe.askAfter = 2.5
-        #expect(await run(probe) == .refreshed)
+        #expect(await run(place.probe) == .refreshed)
         // The arrow down to «Yes» and then Enter.
         #expect(place.log("answer")?.contains("033") == true)
         #expect(place.log("typed")?.contains("/usage") == true)
+    }
+
+    @Test("Вопрос о доверии появился позже обычного: /usage и Enter не уходят в него и не выбирают «нет»")
+    func slowTrustQuestion() async throws {
+        let place = try Place(body: "")
+        // Terminal settings and a window title come first and are not a screen yet.
+        try """
+        #!/bin/sh
+        printf '\\033[?2004h\\033]0;claude code\\007'
+        sleep 1.2
+        printf 'Do you trust the files in this folder?\\n'
+        read answer
+        printf '%s' "$answer" | od -c > '\(place.logs.path)/answer'
+        echo Welcome
+        read line
+        echo "$line" > '\(place.logs.path)/typed'
+        \(place.writesFresh)
+        """.write(to: place.script, atomically: true, encoding: .utf8)
+        #expect(await run(place.probe) == .refreshed)
+        #expect(place.log("answer")?.contains("033") == true)
+        #expect(place.log("answer")?.contains("u   s   a") == false)
+        #expect(place.log("typed")?.contains("/usage") == true)
+    }
+
+    @Test("Программа ещё ничего не показала: команда не набирается вслепую")
+    func nothingOnScreen() async throws {
+        let place = try Place(body: "")
+        try """
+        #!/bin/sh
+        read line
+        touch '\(place.logs.path)/typed'
+        sleep 30
+        """.write(to: place.script, atomically: true, encoding: .utf8)
+        var probe = place.probe
+        probe.timeout = 1.5
+        #expect(await run(probe) == .failed)
+        #expect(place.log("typed") == nil)
     }
 
     @Test("Сбой: Claude Code закрылся сразу. Старое значение на месте с настоящим возрастом", arguments: ["exit 1", "exit 0"])
@@ -141,7 +179,7 @@ struct UsageProbeTests {
 
     @Test("Нет интернета: команда не обновляет кэш, и по истечении времени всё кончается сбоем")
     func noInternet() async throws {
-        let place = try Place(body: "read line\nsleep 30")
+        let place = try Place(body: "echo Welcome\nread line\nsleep 30")
         let before = try #require(UsageReader.read(place.profile))
         var probe = place.probe
         probe.timeout = 1.5
@@ -157,6 +195,7 @@ struct UsageProbeTests {
         let same = try String(contentsOf: place.profile, encoding: .utf8)
         try """
         #!/bin/sh
+        echo Welcome
         read line
         cat > '\(place.profile.path)' <<'JSON'
         \(same)
@@ -350,6 +389,22 @@ struct UsageKeptTests {
         let fresh = try #require(await usage())
         #expect(fresh.windows.first?.percent == 47)
         #expect(fresh.fetchedAt == newer)
+    }
+
+    @Test("Вход пропал: чужие лимиты не остаются на экране как свои")
+    func signedOut() async throws {
+        let folder = TempFolder()
+        let file = folder.write(".claude.json", profile(fetchedAt: Date(timeIntervalSince1970: 1_793_880_000), percent: 34))
+        let scanner = RunScanner(paths: ClaudePaths(root: folder.url))
+        await scanner.markUsageChanged()
+        #expect(await scanner.scan(now: Date()).usage != nil)
+
+        try? await Task.sleep(for: .milliseconds(20))
+        try #"{"primaryApiKey":"k"}"#.write(to: file, atomically: false, encoding: .utf8)
+        await scanner.markUsageChanged()
+        let world = await scanner.scan(now: Date())
+        #expect(world.account == .apiKey)
+        #expect(world.usage == nil)
     }
 
     @Test("Сбой обновления не трогает то, что видят экраны")

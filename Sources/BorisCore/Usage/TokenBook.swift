@@ -143,7 +143,8 @@ public struct TokenBook: Sendable {
                 (TokenBreakdown.days, TokenLine.Key.day(record.day)),
                 (.environments, .environment(WorkEnvironment(entrypoint: record.entrypoint ?? entrypoints[record.sessionId], unlisted: false))),
                 (.projects, .project(record.cwd ?? cwds[record.sessionId])),
-                (.models, .model(record.model)),
+                // The logs may spell one model in several ways, and its price does not depend on that.
+                (.models, .model(record.model.map { ModelName.canonical($0) ?? $0 })),
                 (.agents, .agents(record.agentId == nil ? .main : record.runId == nil ? .subagents : .workflow)),
             ]
             tallies[.all, default: Tally()].add(keys, usage, cost)

@@ -147,6 +147,19 @@ struct TokenBookTests {
         #expect(abs(report.estimate.dollars - 4) < 0.000001)
     }
 
+    @Test("Разные написания одной модели это одна строка разбивки")
+    func oneRowPerModel() {
+        let report = book([
+            record(day: "2026-11-05", tokens: 1, model: "claude-sonnet-4-5-20250929"),
+            record(day: "2026-11-05", tokens: 2, model: "us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
+            record(day: "2026-11-05", tokens: 4, model: "claude-sonnet-4-5[1m]"),
+            record(day: "2026-11-05", tokens: 8, model: "some-gateway-model"),
+        ]).report(.today)
+        let rows = report.lines(.models)
+        #expect(rows.map(\.key) == [.model("some-gateway-model"), .model("claude-sonnet-4-5")])
+        #expect(rows.map(\.usage.total) == [8, 7])
+    }
+
     @Test("Агенты делятся на главных, помощников и агентов workflow")
     func agentGroups() {
         let report = book([

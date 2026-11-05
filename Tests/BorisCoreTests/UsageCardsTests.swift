@@ -48,6 +48,13 @@ struct EstimateWordingTests {
         #expect(UsageFormat.estimate(tiny, locale: en) == "≈ $0.01")
     }
 
+    @Test("Пока логи не прочитаны, токены сегодня неизвестны, а настоящий ноль остаётся нулём")
+    func todayIsNotZeroUntilRead() {
+        #expect(UsageFormat.total(nil) == "no data")
+        #expect(UsageFormat.total(TokenUsage()) == "0")
+        #expect(UsageFormat.total(TokenUsage(input: 1500)) == WorkFormat.tokens(1500))
+    }
+
     @Test("Деньги в валюте аккаунта, а ноль остаётся нулём")
     func money() {
         #expect(UsageFormat.money(12.4, locale: en) == "$12.40")
@@ -88,6 +95,12 @@ struct UsageCardsTests {
     @Test("Шлюз показывает окна, если Claude их сообщил")
     func gatewayWithWindows() {
         #expect(UsageCards.limits(usage: UsageSnapshot(windows: [week]), account: .gateway) == .windows([week]))
+    }
+
+    @Test("Шлюз показывает сумму и лимит, если Claude их сообщил")
+    func gatewayWithMoney() {
+        let usage = UsageSnapshot(extra: .on(used: 314, limit: 500, currency: "USD"))
+        #expect(UsageCards.extra(usage: usage, account: .gateway) == .spent(used: 314, limit: 500, currency: "USD"))
     }
 
     @Test("API-ключ: без блоков лимитов и доплат")

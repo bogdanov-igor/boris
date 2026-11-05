@@ -13,7 +13,7 @@ struct SpendCardsColumn: View {
         VStack(alignment: .leading, spacing: 14) {
             SpendLimitsCard(model: model)
             estimate
-            SpendExtraCard(card: UsageCards.extra(usage: usage, account: account))
+            SpendExtraCard(card: UsageCards.extra(usage: usage, account: account), isGateway: account == .gateway)
             SpendCard {
                 MacLoadBlock(model: model, kind: mode == .technical ? .pageTechnical : .pageSimple)
             }
@@ -97,7 +97,7 @@ private struct SpendLimitsCard: View {
             SpendCard(spacing: 8) {
                 title
                 Text(L("no data")).font(.system(size: 12).italic()).foregroundStyle(Palette.text3)
-                Text(model.world.account == .gateway ? L("Claude does not report the gateway's budget in its files.") : L("Claude has not reported limits for this account."))
+                Text(model.world.account == .gateway ? L("Claude does not report it in its files.") : L("Claude has not reported limits for this account."))
                     .font(.system(size: 11))
                     .foregroundStyle(Palette.text3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -108,7 +108,7 @@ private struct SpendLimitsCard: View {
     }
 
     private var title: some View {
-        Text(L("Limits")).font(.system(size: 12.5, weight: .semibold))
+        Text(model.world.account == .gateway ? L("Gateway budget") : L("Limits")).font(.system(size: 12.5, weight: .semibold))
     }
 
     private func row(_ window: UsageWindow) -> some View {
@@ -147,9 +147,12 @@ private struct SpendLimitsCard: View {
                     .foregroundStyle(Palette.text3)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Button(L("Refresh")) { model.usageRefresher.refreshNow() }
-                .buttonStyle(SpendSmallButton())
-                .disabled(model.usageRefresher.refreshing)
+            // Its numbers do not come from a plan that Claude Code could be asked about.
+            if model.world.account != .gateway {
+                Button(L("Refresh")) { model.usageRefresher.refreshNow() }
+                    .buttonStyle(SpendSmallButton())
+                    .disabled(model.usageRefresher.refreshing)
+            }
         }
     }
 
@@ -182,6 +185,7 @@ private struct SpendSmallButton: ButtonStyle {
 
 private struct SpendExtraCard: View {
     var card: ExtraCard
+    var isGateway = false
 
     var body: some View {
         switch card {
@@ -201,7 +205,7 @@ private struct SpendExtraCard: View {
                 if let limit {
                     Meter(percent: used / limit * 100)
                 }
-                Text(L("Money really charged beyond the plan."))
+                Text(isGateway ? L("What Claude reports as spent through the gateway.") : L("Money really charged beyond the plan."))
                     .font(.system(size: 11.5))
                     .foregroundStyle(Palette.text2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -235,6 +239,6 @@ private struct SpendExtraCard: View {
     }
 
     private var title: some View {
-        Text(L("Real extra spend")).font(.system(size: 12.5, weight: .semibold))
+        Text(isGateway ? L("Spent through the gateway") : L("Real extra spend")).font(.system(size: 12.5, weight: .semibold))
     }
 }

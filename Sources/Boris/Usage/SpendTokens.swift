@@ -258,10 +258,13 @@ private struct SpendTable: View {
         }
     }
 
-    /// The whole path, for those who have several folders with the same name.
+    /// The whole path, for those who have several folders with the same name, and the whole name of a model that did not fit.
     private func fullName(_ line: TokenLine) -> String? {
-        if case .project(let path?) = line.key { return path }
-        return nil
+        switch line.key {
+        case .project(let path?): return path
+        case .model(let model?): return model
+        default: return nil
+        }
     }
 
     private func row(first: String, cells: [String], last: String, isHead: Bool, fullName: String? = nil) -> some View {

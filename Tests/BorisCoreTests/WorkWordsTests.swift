@@ -29,6 +29,14 @@ struct WorkWordsTests {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         #expect(WorkFormat.resets(now.addingTimeInterval(600), now: now, timeZone: utc).hasPrefix("resets at "))
         #expect(!WorkFormat.resets(now.addingTimeInterval(3 * 86400), now: now, timeZone: utc).contains(" at "))
+        // 2026-11-05 is a Thursday.
+        let thursday = Date(timeIntervalSince1970: 1_793_880_000)
+        let days = ["resets Friday", "resets Saturday", "resets Sunday", "resets Monday", "resets Tuesday"]
+        for (offset, day) in days.enumerated() {
+            #expect(WorkFormat.resets(thursday.addingTimeInterval(Double(offset + 1) * 86400), now: thursday, timeZone: utc) == day)
+        }
+        #expect(WorkFormat.resets(thursday.addingTimeInterval(8 * 86400), now: thursday, timeZone: utc).hasPrefix("resets "))
+        #expect(!WorkFormat.resets(thursday.addingTimeInterval(8 * 86400), now: thursday, timeZone: utc).contains("Friday"))
     }
 
     @Test("У каждого состояния есть слова для обоих режимов")

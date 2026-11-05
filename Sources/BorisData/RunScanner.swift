@@ -593,7 +593,8 @@ public actor RunScanner {
         usageModified = modified
         guard let profile = UsageReader.profile(paths.profile, settings: paths.settings) else { return }
         // Once something is known, a failed read must not wipe it: the old value stays with its true age.
-        usage = profile.usage ?? usage
+        // Without a sign-in it is someone else's limits, and they go.
+        usage = profile.usage ?? (profile.account == .signedIn ? usage : nil)
         account = profile.account
     }
 }

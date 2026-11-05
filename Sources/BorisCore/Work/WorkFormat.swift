@@ -49,7 +49,17 @@ public enum WorkFormat {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         if calendar.isDate(date, inSameDayAs: now) { return L("resets at %@", time(date, timeZone: timeZone)) }
-        return L("resets %@", format(date, date.timeIntervalSince(now) < 6 * 24 * 3600 ? "EEEE" : "d MMMM", timeZone: timeZone))
+        guard date.timeIntervalSince(now) < 6 * 24 * 3600 else { return L("resets %@", format(date, "d MMMM", timeZone: timeZone)) }
+        // Whole phrases, since a weekday changes its form in Russian: «в среду», «во вторник».
+        switch calendar.component(.weekday, from: date) {
+        case 1: return L("resets Sunday")
+        case 2: return L("resets Monday")
+        case 3: return L("resets Tuesday")
+        case 4: return L("resets Wednesday")
+        case 5: return L("resets Thursday")
+        case 6: return L("resets Friday")
+        default: return L("resets Saturday")
+        }
     }
 
     /// `четверг, 5 ноября · 16:21`.

@@ -48,7 +48,7 @@ enum DevUsageData {
     /// The accounts and states the page has to get right, on invented data.
     @MainActor
     enum Scenario: String {
-        case spendUltra, spendTeam, spendGateway, spendApiKey, spendExtraOff, spendExtraNoLimit, spendFilling, spendFailed, spendZero, spendAncient
+        case spendUltra, spendTeam, spendGateway, spendGatewayBudget, spendApiKey, spendExtraOff, spendExtraNoLimit, spendFilling, spendFailed, spendZero, spendAncient
         case spendProjects, spendModels, spendPlaces, spendAgents, spendToday, spendMonth, spendEverything
 
         func fill(_ model: AppModel, now: Date = Date()) {
@@ -67,6 +67,11 @@ enum DevUsageData {
             case .spendGateway:
                 world.account = .gateway
                 world.usage = nil
+            case .spendGatewayBudget:
+                world.account = .gateway
+                world.usage = UsageSnapshot(fetchedAt: now.addingTimeInterval(-720), windows: [
+                    UsageWindow(id: "seven_day", kind: .week, percent: 63, resetsAt: now.addingTimeInterval(3 * 86400)),
+                ], extra: .on(used: 314, limit: 500, currency: "USD"))
             case .spendApiKey:
                 world.account = .apiKey
                 world.usage = nil

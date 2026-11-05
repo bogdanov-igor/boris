@@ -41,11 +41,11 @@ public enum UsageReader {
         guard let cache = root["cachedUsageUtilization"] as? [String: Any],
               let utilization = cache["utilization"] as? [String: Any]
         else { return nil }
-        let fetched = (cache["fetchedAtMs"] as? NSNumber).map { Date(timeIntervalSince1970: $0.doubleValue / 1000) }
+        let fetched = number(cache["fetchedAtMs"], below: 1e15).map { Date(timeIntervalSince1970: $0 / 1000) }
 
         var windows: [UsageWindow] = []
         for (id, kind) in [("five_hour", UsageWindow.Kind.fiveHour), ("seven_day", .week), ("seven_day_opus", .weekModel("Opus")), ("seven_day_sonnet", .weekModel("Sonnet"))] {
-            if let entry = utilization[id] as? [String: Any], let percent = (entry["utilization"] as? NSNumber)?.doubleValue {
+            if let entry = utilization[id] as? [String: Any], let percent = number(entry["utilization"], below: maxPercent) {
                 windows.append(UsageWindow(id: id, kind: kind, percent: percent, resetsAt: date(entry["resets_at"] as? String)))
             }
         }
@@ -62,11 +62,11 @@ public enum UsageReader {
     private static func extra(_ extra: [String: Any]?) -> ExtraSpend {
         guard let extra, let enabled = extra["is_enabled"] as? Bool else { return .noData }
         guard enabled else { return .off }
-        guard let used = (extra["used_credits"] as? NSNumber)?.doubleValue,
-              let places = (extra["decimal_places"] as? NSNumber)?.doubleValue
+        guard let used = number(extra["used_credits"], below: maxCredits),
+              let places = number(extra["decimal_places"], below: maxDecimalPlaces), places >= 0
         else { return .noData }
         let scale = pow(10, places)
-        let limit = (extra["monthly_limit"] as? NSNumber)?.doubleValue ?? 0
+        let limit = number(extra["monthly_limit"], below: maxCredits) ?? 0
         let currency = (extra["currency"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "USD"
         return .on(used: used / scale, limit: limit > 0 ? limit / scale : nil, currency: currency)
     }
@@ -76,7 +76,7 @@ public enum UsageReader {
             guard limit["kind"] as? String == "weekly_scoped",
                   let scope = limit["scope"] as? [String: Any],
                   let model = (scope["model"] as? [String: Any])?["display_name"] as? String,
-                  let percent = (limit["percent"] as? NSNumber)?.doubleValue,
+                  let percent = number(limit["percent"], below: maxPercent),
                   limit["is_active"] as? Bool == true || percent > 0,
                   !known.contains(where: { $0.kind == .weekModel(model) })
             else { return nil }
@@ -86,11 +86,23 @@ public enum UsageReader {
 
     private static func extraSpend(_ extra: [String: Any]?) -> UsageWindow? {
         guard let extra, extra["is_enabled"] as? Bool == true,
-              let limit = (extra["monthly_limit"] as? NSNumber)?.doubleValue, limit > 0,
-              let used = (extra["used_credits"] as? NSNumber)?.doubleValue
+              let limit = number(extra["monthly_limit"], below: maxCredits), limit > 0,
+              let used = number(extra["used_credits"], below: maxCredits)
         else { return nil }
-        let scale = pow(10, (extra["decimal_places"] as? NSNumber)?.doubleValue ?? 0)
-        return UsageWindow(id: "extra_usage", kind: .extraSpend, percent: used / limit * 100, usedDollars: used / scale, limitDollars: limit / scale)
+        let percent = used / limit * 100
+        guard abs(percent) < maxPercent else { return nil }
+        let scale = pow(10, number(extra["decimal_places"], below: maxDecimalPlaces) ?? 0)
+        return UsageWindow(id: "extra_usage", kind: .extraSpend, percent: percent, usedDollars: used / scale, limitDollars: limit / scale)
+    }
+
+    private static let maxPercent = 1_000_000.0
+    private static let maxCredits = 1e15
+    private static let maxDecimalPlaces = 9.0
+
+    /// JSON holds any number, and one that no real value could be would crash the screens that turn it into text.
+    private static func number(_ value: Any?, below limit: Double) -> Double? {
+        guard let number = (value as? NSNumber)?.doubleValue, abs(number) < limit else { return nil }
+        return number
     }
 
     private static func rank(_ kind: UsageWindow.Kind) -> Int {

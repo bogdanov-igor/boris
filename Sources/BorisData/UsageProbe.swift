@@ -86,6 +86,8 @@ public struct UsageProbe: Sendable {
         var screen = [UInt8]()
         var answeredTrust = false
         var asked = false
+        // An answer to the trust question moves this: the screen behind it needs its own time to come up.
+        var askFrom = began.addingTimeInterval(askAfter)
         func send(_ text: String) {
             _ = text.withCString { write(master, $0, strlen($0)) }
         }
@@ -104,9 +106,11 @@ public struct UsageProbe: Sendable {
                 usleep(500_000)
                 send("\r")
                 screen.removeAll()
+                askFrom = Date().addingTimeInterval(askAfter)
                 continue
             }
-            if !asked, elapsed > askAfter {
+            // Typed earlier, the command and its Enter would answer whatever comes up first, and the trust question starts on «No, exit».
+            if !asked, Date() > askFrom, Self.showsText(screen) {
                 asked = true
                 send("/usage")
                 usleep(800_000)
@@ -121,6 +125,15 @@ public struct UsageProbe: Sendable {
         }
         // It may have written the cache and quit between two looks.
         return fetchedAt() != before ? .refreshed : .failed
+    }
+
+    /// Whether the program has drawn anything yet. Terminal settings and a window title come before that and are not a screen.
+    static func showsText(_ screen: [UInt8]) -> Bool {
+        var text = String(decoding: screen, as: UTF8.self)
+        for sequence in ["\u{1B}\\][^\u{07}\u{1B}]*(\u{07}|\u{1B}\\\\)?", "\u{1B}\\[[0-9;?>=<]*[ -/]*[@-~]"] {
+            text = text.replacingOccurrences(of: sequence, with: "", options: .regularExpression)
+        }
+        return text.range(of: "[A-Za-z]{3}", options: .regularExpression) != nil
     }
 
     private func fetchedAt() -> Double {

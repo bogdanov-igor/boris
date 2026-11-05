@@ -97,6 +97,23 @@ struct UsageReaderTests {
         #expect(try usage(body).windows.isEmpty)
     }
 
+    @Test("Число, которое не может быть процентом, не доходит до экранов: там оно обрушило бы приложение", arguments: [
+        #""seven_day":{"utilization":1e308}"#,
+        #""seven_day":{"utilization":-1e300}"#,
+        #""limits":[{"kind":"weekly_scoped","percent":1e308,"is_active":true,"scope":{"model":{"display_name":"Fable"}}}]"#,
+    ])
+    func impossiblePercent(body: String) throws {
+        let found = try usage(body)
+        #expect(found.windows.isEmpty)
+    }
+
+    @Test("Невозможное время обновления считается неизвестным", arguments: ["1e300", "-1e300", "1e16"])
+    func impossibleTime(ms: String) throws {
+        let found = try #require(UsageReader.parse(Data(#"{"cachedUsageUtilization":{"fetchedAtMs":\#(ms),"utilization":{"seven_day":{"utilization":5}}}}"#.utf8)))
+        #expect(found.fetchedAt == nil)
+        #expect(found.windows.count == 1)
+    }
+
     @Test("Учётная запись и идентификаторы отброшены")
     func nothingPersonal() throws {
         let json = #"{"oauthAccount":{"emailAddress":"secret@x"},"primaryApiKey":"secret","cachedUsageUtilization":{"fetchedAtMs":1000,"accountUuid":"secret","utilization":{"seven_day":{"utilization":16}}}}"#
@@ -146,6 +163,10 @@ struct UsageReaderTests {
         // A sum whose scale is unknown could be a hundred times off.
         #""extra_usage":{"is_enabled":true,"monthly_limit":5000,"used_credits":1240}"#,
         #""extra_usage":{"is_enabled":true,"decimal_places":2}"#,
+        // Numbers no bill can hold.
+        #""extra_usage":{"is_enabled":true,"monthly_limit":5000,"used_credits":1240,"decimal_places":400}"#,
+        #""extra_usage":{"is_enabled":true,"monthly_limit":5000,"used_credits":1240,"decimal_places":-3}"#,
+        #""extra_usage":{"is_enabled":true,"monthly_limit":5000,"used_credits":1e308,"decimal_places":2}"#,
     ])
     func extraNoData(body: String) throws {
         #expect(try usage(body).extra == .noData)

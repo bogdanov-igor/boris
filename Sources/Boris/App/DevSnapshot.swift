@@ -81,7 +81,7 @@ enum DevSnapshot {
         case now, projects, spend, requests, activity, losses, walrus, mini
         case general, sources, surfaces, notifications, connections, about
         case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
-        case spendUltra, spendTeam, spendGateway, spendApiKey, spendExtraOff, spendExtraNoLimit, spendFilling, spendFailed, spendZero, spendAncient
+        case spendUltra, spendTeam, spendGateway, spendGatewayBudget, spendApiKey, spendExtraOff, spendExtraNoLimit, spendFilling, spendFailed, spendZero, spendAncient
         case spendProjects, spendModels, spendPlaces, spendAgents, spendToday, spendMonth, spendEverything
 
         var page: AppPage? {

@@ -8,6 +8,11 @@ public enum UsageFormat {
         return value.formatted(.currency(code: currency).locale(locale).precision(.fractionLength(cents)))
     }
 
+    /// The total of a sum that may not be known yet: before the first pass over the logs there is no number, and zero would be a wrong one.
+    public static func total(_ usage: TokenUsage?) -> String {
+        usage.map { WorkFormat.tokens($0.total) } ?? L("no data")
+    }
+
     /// Always with the sign that says it is not a measured sum.
     public static func estimate(_ estimate: SpendEstimate, locale: Locale = Localizer.locale) -> String {
         guard estimate.isKnown else { return L("no data") }

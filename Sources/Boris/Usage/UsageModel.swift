@@ -35,6 +35,11 @@ final class UsageModel {
         book?.spent(onDay: Self.dayKey(now)) ?? TokenUsage()
     }
 
+    /// Today's total for a screen. Nothing is known until the first pass over the logs is done, which is not the same as zero.
+    func todayText(_ spent: TokenUsage) -> String {
+        UsageFormat.total(book == nil ? nil : spent)
+    }
+
     private func build() {
         guard !building else {
             buildAgain = true
