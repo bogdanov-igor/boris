@@ -193,8 +193,7 @@ public actor LossIndex {
         }
 
         // Boris's own hidden sessions are not the person's work.
-        let ownFolder = BorisPaths.usageProbeFolder.path
-        return LossHistory(entries: entries.filter { $0.cwd != ownFolder }, calls: calls)
+        return LossHistory(entries: entries.filter { !BorisPaths.isUsageProbe(cwd: $0.cwd) }, calls: calls)
     }
 
     /// What the page shows. All the adding up happens here, off the main thread.
