@@ -93,6 +93,8 @@ public enum RequestContent: Sendable, Equatable {
                 guard let label = option["label"] as? String else { return nil }
                 parsed.append(RequestQuestion.Option(label: label, detail: (option["description"] as? String).flatMap { $0.isEmpty ? nil : $0 }))
             }
+            // The answer is the label, so two with the same words could not be told apart.
+            guard Set(parsed.map(\.label)).count == parsed.count else { return nil }
             result.append(RequestQuestion(text: text, multiple: item["multiSelect"] as? Bool == true, options: parsed))
         }
         return Set(result.map(\.text)).count == result.count ? result : nil
@@ -109,16 +111,29 @@ public enum RequestContent: Sendable, Equatable {
         lines(text).map { RequestDiffLine(added: true, text: $0) }
     }
 
+    /// Lines as the file has them: nothing but a line feed ends one, and a line ending stays part of its line.
+    private static func exactLines(_ text: String) -> [String] {
+        text.unicodeScalars.split(separator: "\n", omittingEmptySubsequences: false).map { String($0) }
+    }
+
+    private static func shown(_ line: String) -> String {
+        line.hasSuffix("\r") ? String(line.dropLast()) : line
+    }
+
     /// Only what changes. The same lines around the change say nothing about what is being agreed to.
+    /// Compared exactly, so a change of line endings or of the last line feed is still something the person sees.
     static func diff(old: String, new: String) -> [RequestDiffLine] {
-        let before = lines(old)
-        let after = lines(new)
+        guard !old.isEmpty, !new.isEmpty else {
+            return lines(old).map { RequestDiffLine(added: false, text: $0) } + added(new)
+        }
+        let before = exactLines(old)
+        let after = exactLines(new)
         var start = 0
         while start < before.count, start < after.count, before[start] == after[start] { start += 1 }
         var tail = 0
         while tail < before.count - start, tail < after.count - start, before[before.count - 1 - tail] == after[after.count - 1 - tail] { tail += 1 }
-        let removed = before[start..<(before.count - tail)].map { RequestDiffLine(added: false, text: $0) }
-        let added = after[start..<(after.count - tail)].map { RequestDiffLine(added: true, text: $0) }
+        let removed = before[start..<(before.count - tail)].map { RequestDiffLine(added: false, text: shown($0)) }
+        let added = after[start..<(after.count - tail)].map { RequestDiffLine(added: true, text: shown($0)) }
         return removed + added
     }
 

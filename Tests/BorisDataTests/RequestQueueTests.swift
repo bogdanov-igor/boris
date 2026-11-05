@@ -108,6 +108,40 @@ struct RequestQueueTests {
         #expect(queue.decisions.isEmpty)
     }
 
+    @Test("Время вышло, а весть об этом ещё в пути: ответ не принимается и в историю не идёт") func noAnswerAtDeadline() {
+        var queue = RequestQueue()
+        let asked = request()
+        queue.add(asked)
+        for answer in [HookAnswer.allow, .deny(reason: "")] {
+            let accepted = queue.answered(asked.id, with: answer, place: .window, now: asked.deadline)
+            #expect(!accepted)
+        }
+        #expect(queue.open == [asked], "посредника уже отпустили, и карточка сейчас станет истёкшей")
+        #expect(queue.decisions.isEmpty)
+    }
+
+    @Test("Разрешить можно только то, что можно прочитать, а вопрос принимает только ответы") func answerMustFit() {
+        let question = RequestContent.questions([RequestQuestion(text: "q", options: [.init(label: "a")])])
+        let cases: [(RequestContent, HookAnswer, Bool)] = [
+            (.unreadable("x"), .allow, false),
+            (.unreadable("x"), .answers(["q": "a"]), false),
+            (.unreadable("x"), .deny(reason: ""), true),
+            (question, .allow, false),
+            (question, .deny(reason: ""), true),
+            (.command("x", unsandboxed: false), .answers(["q": "a"]), false),
+            (.plan("p"), .answers(["q": "a"]), false),
+        ]
+        for (content, answer, fits) in cases {
+            var queue = RequestQueue()
+            let asked = request(content: content)
+            queue.add(asked)
+            let accepted = queue.answered(asked.id, with: answer, place: .window, now: t0)
+            #expect(accepted == fits, "\(content) \(answer)")
+            #expect(queue.decisions.count == (fits ? 1 : 0))
+            #expect(queue.open.count == (fits ? 0 : 1), "непринятый ответ не убирает запрос")
+        }
+    }
+
     @Test("Ответили в Claude после истечения: карточка исчезает", arguments: [
         HookSignal.turnStopped(session: "s1"),
         .sessionEnded(session: "s1", reason: "other", cwd: nil),

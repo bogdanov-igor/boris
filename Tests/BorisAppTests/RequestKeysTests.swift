@@ -37,6 +37,17 @@ private func command(_ session: String = "s1", at ago: TimeInterval = 30) -> Pen
 
 private let oneQuestion = RequestQuestion(text: "Какую базу?", options: [.init(label: "SQLite")])
 
+/// Settings that live only in memory: a real store leaves a file in the person's preferences folder on every run, even after it is removed.
+private final class MemoryDefaults: UserDefaults, @unchecked Sendable {
+    private var values: [String: Any] = [:]
+
+    override func set(_ value: Any?, forKey key: String) { values[key] = value }
+    override func object(forKey key: String) -> Any? { values[key] }
+    override func data(forKey key: String) -> Data? { values[key] as? Data }
+    override func string(forKey key: String) -> String? { values[key] as? String }
+    override func bool(forKey key: String) -> Bool { values[key] as? Bool ?? false }
+}
+
 @MainActor
 private func controller(keys: RequestHotKeys? = nil) -> (HookController, AppSettings) {
     let settings = AppSettings(defaults: nil)
@@ -260,12 +271,97 @@ struct RequestKeysTests {
         #expect(hooks.pending == [asked], "карточка появилась только что")
     }
 
+    @Test("Новая карточка рядом с уже видимой защищена, хотя клавиши всё ещё указывают на старую")
+    func settleWhenAnotherCardAppears() async throws {
+        let (hooks, _) = controller()
+        let first = command("s1", at: 30)
+        hooks.showRequestsForSnapshot(open: [first], expired: [], decisions: [])
+        hooks.noteCard(UUID(), request: first.id, windowShows: true)
+        try await Task.sleep(for: .seconds(HookController.settleTime + 0.1))
+
+        // It lands above the notices of the list, so what was under the cursor is now its Allow.
+        let second = command("s2", at: 1)
+        hooks.showRequestsForSnapshot(open: [first, second], expired: [], decisions: [])
+        hooks.noteCard(UUID(), request: second.id, windowShows: true)
+        #expect(hooks.hotKeyTarget == first)
+        hooks.answer(second.id, .allow, via: .window)
+        #expect(hooks.pending == [first, second], "нажатие пришлось на карточку, которая только что появилась")
+
+        try await Task.sleep(for: .seconds(HookController.settleTime + 0.1))
+        hooks.answer(second.id, .allow, via: .window)
+        #expect(hooks.pending == [first])
+    }
+
+    @Test("Сессия ждёт, пока ждёт хоть один её запрос")
+    func sessionWaitsForItsLastRequest() {
+        let (hooks, _) = controller()
+        var signals: [HookSignal] = []
+        hooks.onSignal = { signals.append($0) }
+
+        let main = command("s1", at: 30)
+        let helper = PendingPermission(session: "s1", agent: "h1", tool: "Bash", content: .command("b", unsandboxed: false))
+        let other = command("s2", at: 5)
+        hooks.showRequestsForSnapshot(open: [main, helper, other], expired: [], decisions: [])
+        hooks.answer(main.id, .deny(reason: ""), via: .window)
+        #expect(signals.isEmpty, "помощник этой сессии всё ещё ждёт")
+        hooks.answer(other.id, .deny(reason: ""), via: .window)
+        #expect(signals == [.permissionAnswered(session: "s2")], "другая сессия отпускается сразу")
+        signals = []
+        hooks.answer(helper.id, .deny(reason: ""), via: .window)
+        #expect(signals == [.permissionAnswered(session: "s1")])
+
+        signals = []
+        let overTime = command("s3", at: 200)
+        let open = command("s3", at: 5)
+        hooks.showRequestsForSnapshot(open: [open], expired: [overTime], decisions: [])
+        hooks.answer(open.id, .deny(reason: ""), via: .window)
+        #expect(signals.isEmpty, "истёкший запрос всё ещё ждёт в Claude")
+    }
+
+    @Test("Boris закрывается: открытое становится истёкшим, и ответить уже нечем")
+    func stoppingLeavesNothingToAnswer() {
+        let (hooks, _) = controller(keys: RequestHotKeys())
+        let asked = command()
+        hooks.showRequestsForSnapshot(open: [asked], expired: [], decisions: [])
+        hooks.noteCard(UUID(), request: asked.id, windowShows: true)
+        hooks.updateDraft(asked.id) { $0.reason = "причина" }
+        #expect(!isFree(rareAllow))
+
+        hooks.stopServer()
+        #expect(hooks.pending.isEmpty)
+        #expect(hooks.queue.expired.map(\.id) == [asked.id])
+        #expect(hooks.drafts.isEmpty, "написанное уходит из памяти")
+        #expect(hooks.hotKeyTarget == nil)
+        #expect(isFree(rareAllow))
+        #expect(isFree(rareDeny))
+        hooks.answer(asked.id, .allow, via: .window, now: Date().addingTimeInterval(10))
+        #expect(hooks.queue.decisions.isEmpty)
+        #expect(hooks.queue.expired.count == 1)
+    }
+
     @Test("Enter нельзя назначить ни с каким модификатором")
     func enterIsRefused() {
         #expect(HotKeyCombo(keyCode: UInt32(kVK_Return), carbonModifiers: UInt32(cmdKey)).isEnter)
         #expect(HotKeyCombo(keyCode: UInt32(kVK_ANSI_KeypadEnter), carbonModifiers: UInt32(optionKey)).isEnter)
         #expect(!HotKeyCombo.allowStandard.isEnter)
         #expect(!HotKeyCombo.denyStandard.isEnter)
+    }
+
+    @Test("Enter или клавиша без модификатора из сохранённых настроек не становятся клавишей ответа", arguments: [
+        HotKeyCombo(keyCode: UInt32(kVK_Return), carbonModifiers: UInt32(cmdKey)),
+        HotKeyCombo(keyCode: UInt32(kVK_ANSI_KeypadEnter), carbonModifiers: UInt32(optionKey)),
+        HotKeyCombo(keyCode: UInt32(kVK_ANSI_Y), carbonModifiers: 0),
+        HotKeyCombo(keyCode: UInt32(kVK_ANSI_Y), carbonModifiers: UInt32(shiftKey)),
+    ])
+    func storedKeyIsChecked(combo: HotKeyCombo) {
+        let defaults = MemoryDefaults()
+        let first = AppSettings(defaults: defaults)
+        first.allowKey = combo
+        first.denyKey = combo
+        #expect(first.allowKey == combo, "значение действительно сохранено, так что проверка ниже не пустая")
+        let second = AppSettings(defaults: defaults)
+        #expect(second.allowKey == .allowStandard)
+        #expect(second.denyKey == .denyStandard)
     }
 
     @Test("Клавиши по умолчанию: ⌥⌘Y и ⌥⌘N, отдельно от клавиши мини-окна")
@@ -278,8 +374,8 @@ struct RequestKeysTests {
     }
 
     @Test("Выбранные клавиши сохраняются между запусками")
-    func keysPersist() throws {
-        let defaults = try #require(UserDefaults(suiteName: "boris-tests-\(UUID().uuidString)"))
+    func keysPersist() {
+        let defaults = MemoryDefaults()
         let first = AppSettings(defaults: defaults)
         first.allowKey = rareAllow
         first.denyKey = rareDeny

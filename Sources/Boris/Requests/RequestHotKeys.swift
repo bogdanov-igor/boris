@@ -13,6 +13,11 @@ extension HotKeyCombo {
     var isEnter: Bool {
         keyCode == UInt32(kVK_Return) || keyCode == UInt32(kVK_ANSI_KeypadEnter)
     }
+
+    /// Stored settings can hold anything, so this is asked when they are read as well as when a key is chosen.
+    var canAnswer: Bool {
+        !isEnter && carbonModifiers & UInt32(cmdKey | optionKey | controlKey) != 0
+    }
 }
 
 /// The two keys for answering. They are held only while there is a card they can act on, and at any other moment the combination belongs to the active app.

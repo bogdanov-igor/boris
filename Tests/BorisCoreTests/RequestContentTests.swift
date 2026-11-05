@@ -82,11 +82,21 @@ struct RequestContentTests {
         ("a\nb", "a\n  b", 1, 1),
         ("a\r\nb", "a\r\nc", 1, 1),
         ("x\nx\nx", "x\nx", 1, 0),
+        ("a\n", "a", 1, 0),
+        ("a", "a\n", 0, 1),
+        ("a\r\nb", "a\nb", 1, 1),
+        ("# note\u{2028}rm -rf x", "# note\nrm -rf x", 1, 2),
+        ("", "new\n", 0, 1),
     ])
     func diffCounts(old: String, new: String, removed: Int, added: Int) {
         let lines = RequestContent.diff(old: old, new: new)
         #expect(lines.filter { !$0.added }.count == removed)
         #expect(lines.filter(\.added).count == added)
+    }
+
+    @Test("Конец строки сравнивается, но в показанный текст не попадает") func lineEndingsAreNotShown() {
+        #expect(RequestContent.diff(old: "a\r\nb", new: "a\nb") == [RequestDiffLine(added: false, text: "a"), RequestDiffLine(added: true, text: "a")])
+        #expect(RequestContent.diff(old: "keep\r\nold\r\n", new: "keep\r\nnew\r\n") == [RequestDiffLine(added: false, text: "old"), RequestDiffLine(added: true, text: "new")])
     }
 
     @Test("Запись файла показывает всё, что будет записано") func write() {
@@ -149,6 +159,7 @@ struct RequestContentTests {
             ["questions": [["question": "Без вариантов"]]],
             ["questions": [["question": "Без подписи", "options": [["description": "нет label"]]]]],
             ["questions": [["question": "Два раза", "options": [["label": "a"]]], ["question": "Два раза", "options": [["label": "b"]]]]],
+            ["questions": [["question": "Одинаковые варианты", "options": [["label": "a"], ["label": "a"]]]]],
         ]
         for input in inputs {
             #expect(RequestContent.parse(tool: "AskUserQuestion", input: input, flat: "f") == .unreadable("f"))

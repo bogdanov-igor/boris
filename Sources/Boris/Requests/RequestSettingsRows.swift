@@ -81,7 +81,7 @@ private struct RequestKeyField: View {
                 return nil
             }
             guard let combo = HotKeyCombo(event: event) else { return nil }
-            guard !combo.isEnter, choose(combo) else {
+            guard combo.canAnswer, choose(combo) else {
                 refused = true
                 return nil
             }

@@ -35,6 +35,51 @@ private struct MoreButton: View {
     }
 }
 
+/// Laying out one text costs more with every line added: 30 KB holds the whole app for seconds, and 250 KB for minutes.
+/// So what is longer than this is laid out a line at a time, and only where it can be seen.
+enum RequestLines {
+    static let limit = 4 * 1024
+
+    static func split(_ text: String) -> [String] {
+        text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline).map(String.init)
+    }
+}
+
+/// All of a command or other text, as "Show all" opens it.
+struct RequestWholeText: View {
+    var text: String
+
+    private var font: Font { .system(size: 12, design: .monospaced) }
+
+    var body: some View {
+        if text.utf8.count > RequestLines.limit {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 3) {
+                    ForEach(Array(RequestLines.split(text).enumerated()), id: \.offset) { _, line in
+                        Text(line.isEmpty ? " " : line).font(font).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .textSelection(.enabled)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 7)
+            }
+            .frame(height: 320)
+        } else {
+            ScrollView {
+                Text(text)
+                    .font(font)
+                    .lineSpacing(3)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 7)
+            }
+            .frame(maxHeight: 320)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
 /// A command or other text, folded to two lines until asked. The folded lines are the start of it, so nothing is implied about the rest.
 struct RequestTextBox: View {
     var text: String
@@ -69,17 +114,7 @@ struct RequestTextBox: View {
     var body: some View {
         ContentFrame {
             if expanded {
-                ScrollView {
-                    Text(text)
-                        .font(.system(size: 12, design: .monospaced))
-                        .lineSpacing(3)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 7)
-                }
-                .frame(maxHeight: 320)
-                .fixedSize(horizontal: false, vertical: true)
+                RequestWholeText(text: text)
             } else {
                 folded
                     .padding(.horizontal, 9)
@@ -99,6 +134,8 @@ struct RequestDiffBox: View {
     @State private var expanded = false
 
     private static let foldedLines = 4
+    /// As many unwrapped lines as fill the open box.
+    private static let linesInOpenBox = 18
 
     private var overflows: Bool {
         // A long line is cut while folded, so it needs the same way to be read in full as a line out of sight.
@@ -140,13 +177,25 @@ struct RequestDiffBox: View {
             .padding(.vertical, 4)
             .overlay(alignment: .bottom) { Rectangle().fill(Palette.separator).frame(height: 1) }
             if expanded {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(lines.enumerated()), id: \.offset) { _, line in row(line, wraps: true) }
+                if lines.count > Self.linesInOpenBox {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in row(line, wraps: true) }
+                        }
+                        .textSelection(.enabled)
                     }
-                    .textSelection(.enabled)
+                    .frame(height: 320)
+                } else {
+                    // A few lines take only the room they need. A box of this height stands half empty otherwise.
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in row(line, wraps: true) }
+                        }
+                        .textSelection(.enabled)
+                    }
+                    .frame(maxHeight: 320)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
-                .frame(maxHeight: 320)
             } else {
                 ForEach(Array(lines.prefix(Self.foldedLines).enumerated()), id: \.offset) { _, line in row(line, wraps: false) }
             }
@@ -219,24 +268,40 @@ struct RequestPlanBox: View {
     var plan: String
     var maxHeight: CGFloat
 
-    private var rendered: AttributedString {
+    private func rendered(_ text: String) -> AttributedString {
         let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        return (try? AttributedString(markdown: plan, options: options)) ?? AttributedString(plan)
+        return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
     }
 
     var body: some View {
         ContentFrame {
-            ScrollView {
-                Text(rendered)
-                    .font(.system(size: 12.5))
-                    .lineSpacing(3)
+            if plan.utf8.count > RequestLines.limit {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 3) {
+                        ForEach(Array(RequestLines.split(plan).enumerated()), id: \.offset) { _, line in
+                            Text(line.isEmpty ? AttributedString(" ") : rendered(line))
+                                .font(.system(size: 12.5))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
                     .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
+                }
+                .frame(height: maxHeight)
+            } else {
+                ScrollView {
+                    Text(rendered(plan))
+                        .font(.system(size: 12.5))
+                        .lineSpacing(3)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                }
+                .frame(maxHeight: maxHeight)
+                .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxHeight: maxHeight)
-            .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

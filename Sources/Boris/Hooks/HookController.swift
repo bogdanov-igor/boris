@@ -35,6 +35,8 @@ final class HookController {
         var request: UUID
         var windowShows = false
         var inView = true
+
+        var isSeen: Bool { windowShows && inView }
     }
 
     var onSignal: ((HookSignal) -> Void)?
@@ -209,7 +211,9 @@ final class HookController {
         drafts[id] = nil
         server?.answer(id, answer)
         settledAt = now
-        onSignal?(.permissionAnswered(session: session))
+        // The session goes on waiting for as long as another of its requests does.
+        let stillAsks = queue.open.contains { $0.session == session } || queue.expired.contains { $0.session == session }
+        if !stillAsks { onSignal?(.permissionAnswered(session: session)) }
         settle(savingFrom: before)
     }
 
@@ -233,12 +237,15 @@ final class HookController {
 
     /// Each card reports where it stands. A key can act only on a request whose card someone can see.
     func noteCard(_ token: UUID, request: UUID, windowShows: Bool? = nil, inView: Bool? = nil) {
-        var sighting = sightings[token] ?? Sighting(request: request)
+        let before = sightings[token]
+        var sighting = before ?? Sighting(request: request)
         sighting.request = request
         // A snapshot draws off screen, where no window ever counts as shown.
         if let windowShows { sighting.windowShows = windowShows || (!live && keys == nil) }
         if let inView { sighting.inView = inView }
         sightings[token] = sighting
+        // A card that has just come into sight may be under the cursor, even while the keys still point at another one.
+        if sighting.isSeen, before?.isSeen != true { settledAt = Date() }
         syncKeys()
     }
 
@@ -249,7 +256,7 @@ final class HookController {
 
     /// The card the keys act on: the chosen one if it can be seen, otherwise the oldest that can.
     var hotKeyTarget: PendingPermission? {
-        let seen = Set(sightings.values.filter { $0.windowShows && $0.inView }.map(\.request))
+        let seen = Set(sightings.values.filter(\.isSeen).map(\.request))
         let open = queue.open.sorted { $0.askedAt < $1.askedAt }.filter { seen.contains($0.id) }
         return open.first { $0.id.uuidString == selectedRow } ?? open.first
     }

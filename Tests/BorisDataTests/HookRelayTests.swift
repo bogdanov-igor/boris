@@ -703,6 +703,45 @@ struct HookRelayTests {
         #expect(result.output.isEmpty)
     }
 
+    @Test("Решение есть, только когда пришла целая и понятная строка", arguments: [
+        (#"{"behavior":"allow"}"# + "\n", true),
+        (#"{"behavior":"allow"}"#, false),
+        (#"{"behavior":"al"#, false),
+        (#"{"behavior":"always"}"# + "\n", false),
+        ("allow\n", false),
+    ])
+    func wholeLineDecides(line: String, decides: Bool) async throws {
+        let path = socketPath()
+        let listener = socket(AF_UNIX, SOCK_STREAM, 0)
+        var address = sockaddr_un()
+        address.sun_family = sa_family_t(AF_UNIX)
+        withUnsafeMutableBytes(of: &address.sun_path) { $0.copyBytes(from: Array(path.utf8)) }
+        let bound = withUnsafePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(listener, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) }
+        }
+        #expect(bound == 0)
+        #expect(listen(listener, 1) == 0)
+        defer {
+            close(listener)
+            unlink(path)
+        }
+        let task = ask(path, permission, limit: 20)
+        let client = accept(listener, nil, nil)
+        // The whole request first: closing on an unread message would end the hook before it ever got to the answer.
+        var byte: UInt8 = 0
+        while read(client, &byte, 1) == 1, byte != 0x0A {}
+        _ = line.withCString { write(client, $0, strlen($0)) }
+        close(client)
+        let result = try await task.value
+        #expect(result.status == 0)
+        if decides {
+            #expect(try decision(result)["behavior"] as? String == "allow")
+        } else {
+            #expect(result.output.isEmpty)
+        }
+        #expect(result.seconds < 10, "обрыв связи заметен сразу, без ожидания предела")
+    }
+
     @Test("Запрос, который не дочитать в Boris, виден как нечитаемый")
     func tooLongToRead() async throws {
         let path = socketPath()

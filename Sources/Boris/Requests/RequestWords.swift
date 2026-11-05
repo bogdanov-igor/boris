@@ -85,7 +85,8 @@ enum RequestWords {
 
     /// `1:42`.
     static func clock(_ seconds: TimeInterval) -> String {
-        let whole = max(0, Int(seconds.rounded(.up)))
+        // Bounded before it becomes a whole number: a damaged history file must not bring the app down.
+        let whole = Int(min(max(seconds, 0), 86_400).rounded(.up))
         return "\(whole / 60):" + String(format: "%02d", whole % 60)
     }
 

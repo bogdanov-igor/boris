@@ -1,4 +1,5 @@
 import BorisCore
+import Foundation
 import Testing
 
 @Suite("Токены дизайна")
@@ -45,7 +46,8 @@ struct LocalizationTests {
 
     @Test("Без таблицы перевода остаётся ключ на английском")
     func missingTable() {
-        Localizer.use(.ru)
+        // Without `use(.ru)`: the language is one for the whole process, and it would change the numbers in a test running next to this one.
+        #expect(Bundle.main.path(forResource: "ru", ofType: "lproj") == nil)
         #expect(L("Hello from a test") == "Hello from a test")
     }
 

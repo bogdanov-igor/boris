@@ -317,7 +317,8 @@ private struct RequestHistory: View {
                 environment.frame(width: 104, alignment: .leading)
                 agent.frame(width: 104, alignment: .leading)
             }
-            action.frame(maxWidth: .infinity, alignment: .leading)
+            // In a narrow table the tool's long name would otherwise push out what it was asked to do.
+            action.lineLimit(wide ? 1 : 2).frame(maxWidth: .infinity, alignment: .leading)
             decision.frame(width: 150, alignment: .leading)
             place.frame(width: 122, alignment: .leading)
             waited.frame(width: 44, alignment: .trailing)
@@ -355,6 +356,7 @@ private struct RequestHistory: View {
             waited: Text(RequestWords.clock(item.waited)).monospacedDigit().foregroundStyle(Palette.text2)
         )
         .font(.system(size: 12))
+        .padding(.vertical, wide ? 0 : 3)
         .frame(minHeight: 30)
         .overlay(alignment: .top) { Rectangle().fill(Palette.separator).frame(height: 1) }
         .accessibilityElement(children: .combine)

@@ -177,8 +177,9 @@ public struct RequestQueue: Sendable, Equatable {
     }
 
     /// Takes the request out of the queue. Returns false when it has already gone, so an answer can never reach another one.
+    /// Also false when the time is up, even if word of that is still on its way here: the hook has been let go, and nothing would reach Claude.
     public mutating func answered(_ id: UUID, with answer: HookAnswer, place: RequestPlace, now: Date) -> Bool {
-        guard let request = take(id) else { return false }
+        guard let held = open.first(where: { $0.id == id }), now < held.deadline, Self.fits(answer, held.content), let request = take(id) else { return false }
         let outcome: RequestOutcome
         switch (answer, request.content) {
         case (.answers, _): outcome = .answered
@@ -189,6 +190,15 @@ public struct RequestQueue: Sendable, Equatable {
         }
         record(request, outcome: outcome, place: place, waited: now.timeIntervalSince(request.askedAt), now: now)
         return true
+    }
+
+    /// The buttons and keys offer only these. Checked here too, because allowing what cannot be read is the one mistake that must not get through.
+    private static func fits(_ answer: HookAnswer, _ content: RequestContent) -> Bool {
+        switch (answer, content) {
+        case (.deny, _), (.answers, .questions): return true
+        case (.answers, _), (.allow, .questions): return false
+        case (.allow, _): return content.canAllow
+        }
     }
 
     /// The wait is over and the request stays in Claude, so the card says so and offers the session.

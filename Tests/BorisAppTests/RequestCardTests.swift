@@ -59,6 +59,19 @@ private func model() -> AppModel {
     }
 }
 
+/// Named, so that a test's report does not carry a quarter of a megabyte of text.
+enum LongRequest: CaseIterable {
+    case lines, windowsLines, oneLine
+
+    var text: String {
+        switch self {
+        case .lines: return String(repeating: "abcdefgh abcdefgh abcdefgh\n", count: 9_000)
+        case .windowsLines: return String(repeating: "abcdefgh abcdefgh abcdefgh\r\n", count: 9_000)
+        case .oneLine: return String(repeating: "abcdefgh ", count: 28_000)
+        }
+    }
+}
+
 private let contents: [RequestContent] = [
     .command("make deploy", unsandboxed: false),
     .file(path: "/x/a.swift", lines: [RequestDiffLine(added: true, text: "line")], whole: false, everyOccurrence: false),
@@ -237,6 +250,33 @@ struct RequestCardTests {
         #expect(RequestWords.clock(120) == "2:00")
         #expect(RequestWords.clock(0.4) == "0:01")
         #expect(RequestWords.clock(-5) == "0:00")
+        #expect(RequestWords.clock(1e300) == "1440:00", "странное число из повреждённой истории не роняет приложение")
+    }
+
+    /// As much as a request can hold and still be allowed. These stood the whole app still: over ten seconds for the command, and minutes for the plan.
+    @Test("Самый длинный запрос не останавливает приложение", arguments: LongRequest.allCases)
+    func longestRequestStaysQuick(shape: LongRequest) async {
+        let lines = RequestLines.split(shape.text).map { RequestDiffLine(added: true, text: $0) }
+        let views: [(String, AnyView)] = [
+            ("plan", AnyView(RequestPlanBox(plan: shape.text, maxHeight: 320))),
+            ("whole text", AnyView(RequestWholeText(text: shape.text))),
+            ("folded text", AnyView(RequestTextBox(text: shape.text))),
+            ("diff", AnyView(RequestDiffBox(path: "/x/a", lines: lines))),
+        ]
+        for (name, view) in views {
+            let began = Date()
+            let screen = OffScreen(view, size: CGSize(width: 420, height: 400))
+            screen.window.contentView?.layoutSubtreeIfNeeded()
+            screen.window.contentView?.display()
+            screen.close()
+            #expect(Date().timeIntervalSince(began) < 5, "\(name)")
+        }
+    }
+
+    @Test("Длинный план и длинная команда не теряют ни строки")
+    func longTextKeepsEveryLine() {
+        let text = "первая\n\nтретья\r\nчетвёртая\u{2028}пятая"
+        #expect(RequestLines.split(text) == ["первая", "", "третья", "четвёртая", "пятая"])
     }
 
     @Test("Открыть можно только то, куда есть куда идти")
