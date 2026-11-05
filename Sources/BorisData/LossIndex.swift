@@ -4,7 +4,7 @@ import Foundation
 /// Everything that went wrong, and the calls of skills and web tools, from every transcript and workflow Claude still keeps.
 ///
 /// Like `TokenIndex`, it reads only what was added since last time and remembers that in a cache file, and nothing is lost without it.
-/// The file holds ids, numbers and the names of tools and skills. Names of agents and the text of errors are taken from Claude's files when needed and stay in memory.
+/// The file holds ids, numbers, project folders, the names of tools and skills and the time a limit resets. Names of agents and the text of errors are taken from Claude's files when needed and stay in memory.
 public actor LossIndex {
     private struct AwaitedCall: Codable {
         var kind: LossCallKind
@@ -557,19 +557,25 @@ public actor LossIndex {
         // A final file older than the journal belongs to an earlier attempt.
         let stale = finalModified.flatMap { final in journalModified.map { final < $0 } } ?? false
         let final = stale ? nil : FinalReader.read(finalURL)
+        var journal = JournalReader()
+        journal.read(journalURL)
         var agents: [AgentRecord]
         if let final, !final.entries.isEmpty {
             agents = final.entries.map(\.record)
-        } else {
-            var journal = JournalReader()
-            journal.read(journalURL)
-            agents = journal.tally.agents
-            for index in agents.indices where agents[index].state == .failed {
-                guard let agent = agents[index].agentId else { continue }
-                // Only an error message of Claude Code's can be trusted to say why: whatever else came last may be a result.
-                let last = TranscriptReader.tail(runDir.appendingPathComponent("agent-\(agent).jsonl")).last
-                agents[index].failure = FailureClassifier.classify(last?.isApiError == true ? last : nil)
+            // The result lists only the attempts it kept, so an agent that fell in an earlier one is left in the journal alone.
+            // One that never got to start has an empty id in the journal and is listed in the result without one.
+            let listed = Set(agents.compactMap(\.agentId))
+            agents += journal.tally.agents.filter { agent in
+                agent.state == .failed && agent.agentId.map { !$0.isEmpty && !listed.contains($0) } == true
             }
+        } else {
+            agents = journal.tally.agents
+        }
+        for index in agents.indices where agents[index].state == .failed && agents[index].failure == nil {
+            guard let agent = agents[index].agentId else { continue }
+            // Only an error message of Claude Code's can be trusted to say why: whatever else came last may be a result.
+            let last = TranscriptReader.tail(runDir.appendingPathComponent("agent-\(agent).jsonl")).last
+            agents[index].failure = FailureClassifier.classify(last?.isApiError == true ? last : nil)
         }
 
         let ended = finalEnd(final) ?? finalModified ?? journalModified ?? Date()
@@ -586,8 +592,11 @@ public actor LossIndex {
         for agent in agents {
             if let agentId = agent.agentId, let label = agent.label { run.labels[agentId] = label }
         }
-        // Agents at work when a run was stopped were stopped with it, and an abort is that same stop as told by the agent.
-        let fallen = agents.filter { $0.state == .failed && $0.failure?.text?.lowercased().contains("aborted") != true }
+        // Agents at work when a run was stopped were stopped with it. An abort is that same stop as told by the agent, and an agent with no error of its own has nothing else to tell.
+        let wasStopped = final?.status == "killed"
+        let fallen = agents.filter { agent in
+            agent.state == .failed && !Self.isRunStop(agent.failure?.text) && !(wasStopped && agent.failure?.text == nil)
+        }
         run.failed = Set(fallen.compactMap(\.agentId))
         let byReason = Dictionary(grouping: fallen) { LossReason($0.failure?.failureClass ?? .unknown) }
         for reason in LossReason.allCases {
@@ -608,9 +617,14 @@ public actor LossIndex {
         return true
     }
 
+    /// Only these words mean the run was stopped. Something else that was aborted, such as a request on a timeout, is a real failure.
+    private static func isRunStop(_ text: String?) -> Bool {
+        text?.lowercased().contains("workflow aborted") == true
+    }
+
     /// A failed run's own error. When its agents failed, that error is usually just theirs, and only something else is worth a row.
     private func scriptRow(_ final: FinalReport?, template: LossEntry, anyFallen: Bool) -> LossEntry? {
-        guard let final, final.status == "failed", final.errorFirstLine?.lowercased().contains("aborted") != true else { return nil }
+        guard let final, final.status == "failed", !Self.isRunStop(final.errorFirstLine) else { return nil }
         let failure = FailureClassifier.classify(nil, reason: final.errorFirstLine).failureClass
         guard failure == .unknown || !anyFallen else { return nil }
         var row = template

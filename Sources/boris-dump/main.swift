@@ -34,10 +34,11 @@ func losses() async {
     let first = clock.now - began
     let secondBegan = clock.now
     await index.update(roots: roots)
+    let second = clock.now - secondBegan
     let tokens = TokenIndex(cacheFile: BorisPaths.tokenIndex)
     await tokens.update(roots: roots)
     let live = Set(roots.filter(\.processesAreHere).flatMap { SessionReader.read($0).sessions }.filter { SessionReader.isLive($0) }.map(\.sessionId))
-    print("update \(first), next update \(clock.now - secondBegan)")
+    print("update \(first), next update \(second)")
     for period in LossPeriod.allCases {
         let book = await index.book(period: period, tokens: await tokens.records(), live: live, now: Date())
         print("\(period.rawValue): \(book.entries.count) rows")

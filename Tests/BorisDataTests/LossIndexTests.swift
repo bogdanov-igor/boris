@@ -227,6 +227,18 @@ struct LossIndexTests {
         #expect(await history(folder).entries.isEmpty)
     }
 
+    @Test("Остановкой считается только прерванный запуск: другое «aborted» остаётся сбоем со своим текстом")
+    func otherAborts() async throws {
+        let folder = TempFolder()
+        folder.write("projects/p/s1/workflows/wf_1.json", #"{"status":"completed","workflowProgress":[{"type":"workflow_agent","agentId":"a1","state":"error","error":"The operation was aborted due to timeout"}]}"#)
+        folder.write("projects/p/s1/workflows/wf_2.json", #"{"status":"failed","error":"Script aborted: x is missing","workflowProgress":[{"type":"workflow_agent","agentId":"a2","state":"done"}]}"#)
+        let found = await history(folder).entries
+        let agent = try #require(found.first { $0.runId == "wf_1" })
+        #expect(agent.reason == .unknown)
+        #expect(agent.rawText == "The operation was aborted due to timeout")
+        #expect(found.first { $0.runId == "wf_2" }?.reason == .script)
+    }
+
     @Test("Агент, упавший от своей причины до остановки запуска, остаётся сбоем")
     func fellBeforeTheStop() async throws {
         let folder = TempFolder()
@@ -282,6 +294,66 @@ struct LossIndexTests {
         #expect(!found.contains { $0.kind == .apiError })
         let tool = try #require(found.first { $0.kind == .toolError })
         #expect(tool.title == "step")
+    }
+
+    @Test("Агент, упавший в прошлой попытке, есть только в журнале, и он тоже упал, один раз и со своими токенами")
+    func fellInAnEarlierAttempt() async throws {
+        let folder = TempFolder()
+        let run = "projects/p/s1/subagents/workflows/wf_1"
+        folder.write("\(run)/journal.jsonl", [
+            #"{"type":"started","key":"k1","agentId":"a1","label":"one"}"#,
+            #"{"type":"failed","key":"k1","agentId":"a1"}"#,
+            #"{"type":"started","key":"k2","agentId":"a2","label":"two"}"#,
+            #"{"type":"result","key":"k2","agentId":"a2"}"#,
+        ].joined(separator: "\n") + "\n")
+        folder.write("\(run)/agent-a1.jsonl", Log.apiError(text: "You've hit your session limit · resets 2pm"))
+        folder.write("projects/p/s1/workflows/wf_1.json", #"{"status":"completed","workflowProgress":[{"type":"workflow_agent","agentId":"a2","state":"done"}]}"#)
+
+        let index = LossIndex(cacheFile: nil, timeZone: utc)
+        await index.update(roots: [ClaudePaths(root: folder.url)])
+        let found = await index.history(live: []).entries
+        let crash = try #require(found.first { $0.kind == .crash })
+        #expect(crash.reason == .limit)
+        #expect(crash.agents == ["a1"])
+        #expect(crash.count == 1)
+        #expect(crash.total == 2)
+        #expect(!found.contains { $0.kind == .apiError })
+
+        let tokens = [TokenRecord(sessionId: "s1", agentId: "a1", day: "2026-11-05", usage: TokenUsage(input: 70))]
+        #expect(await index.book(period: .all, tokens: tokens, live: [], now: Date()).lostTokens == 70)
+    }
+
+    @Test("Агент, который не успел появиться, в итоге без номера, а в журнале с пустым номером, и считается один раз")
+    func agentThatNeverStarted() async throws {
+        let folder = TempFolder()
+        let failed = #"{"type":"failed","key":"k%d","agentId":""}"#
+        folder.write("projects/p/s1/subagents/workflows/wf_1/journal.jsonl", (1...3).map { failed.replacingOccurrences(of: "%d", with: "\($0)") }.joined(separator: "\n") + "\n")
+        let entry = #"{"type":"workflow_agent","label":"step","state":"error","error":"Cannot create agent worktree","promptPreview":"SECRET-PROMPT"}"#
+        folder.write("projects/p/s1/workflows/wf_1.json", #"{"status":"completed","workflowProgress":[\#([entry, entry, entry].joined(separator: ","))]}"#)
+        let found = await history(folder).entries
+        #expect(found.count == 1)
+        let row = try #require(found.first)
+        #expect(row.reason == .unknown)
+        #expect(row.count == 3)
+        #expect(row.total == 3)
+        #expect(!String(describing: found).contains("SECRET"))
+    }
+
+    @Test("В остановленном запуске агент только из журнала и без своей ошибки остановлен, а с ошибкой упал")
+    func journalOnlyInStoppedRun() async throws {
+        let folder = TempFolder()
+        let run = "projects/p/s1/subagents/workflows/wf_1"
+        folder.write("\(run)/journal.jsonl", [
+            #"{"type":"failed","key":"k1","agentId":"a1"}"#,
+            #"{"type":"failed","key":"k2","agentId":"a2"}"#,
+            #"{"type":"result","key":"k3","agentId":"a3"}"#,
+        ].joined(separator: "\n") + "\n")
+        folder.write("\(run)/agent-a1.jsonl", Log.say("m1"))
+        folder.write("\(run)/agent-a2.jsonl", Log.apiError(code: "server_error", text: "API Error: Can't reach the API server"))
+        folder.write("projects/p/s1/workflows/wf_1.json", #"{"status":"killed","workflowProgress":[{"type":"workflow_agent","agentId":"a3","state":"done"}]}"#)
+        let crashes = await history(folder).entries.filter { $0.kind == .crash }
+        #expect(crashes.map(\.agents) == [["a2"]])
+        #expect(crashes.map(\.reason) == [.network])
     }
 
     @Test("Запуск без итога: упавшие считаются сразу, работающие пропали, только если сессии больше нет")
@@ -553,6 +625,25 @@ struct LossIndexTests {
         #expect(await index.history(live: []).entries.count == 1)
     }
 
+    @Test("Уход со страницы останавливает чтение: прочитанное сохранено, а в следующий раз читается только остальное")
+    func stoppedReading() async throws {
+        let folder = TempFolder()
+        let cache = folder.url.appendingPathComponent("losses.json")
+        for file in 0..<3 { folder.write("projects/p/s\(file).jsonl", Log.apiError("e\(file)", text: "API Error: x")) }
+        let roots = [ClaudePaths(root: folder.url)]
+
+        // Its own task, as a cancelled one stays cancelled. The page does the same by cancelling the reader.
+        let stopped = LossIndex(cacheFile: cache, timeZone: utc)
+        await Task {
+            await stopped.update(roots: roots) { _ in withUnsafeCurrentTask { $0?.cancel() } }
+        }.value
+
+        let resumed = LossIndex(cacheFile: cache, timeZone: utc)
+        #expect(await resumed.history(live: []).entries.count == 1)
+        await resumed.update(roots: roots)
+        #expect(await resumed.history(live: []).entries.map(\.id).sorted() == ["e0", "e1", "e2"])
+    }
+
     @Test("Недописанная строка ждёт конца записи")
     func unfinishedLine() async {
         let folder = TempFolder()
@@ -632,17 +723,24 @@ struct LossFixtureTests {
         return await index.book(period: .all, tokens: [], live: [], now: Date())
     }
 
-    @Test("Причины падений совпадают с независимым подсчётом, главная это лимит")
+    @Test("Причины падений совпадают с независимым подсчётом и с эталоном всего приложения, главная это лимит")
     func reasons() async throws {
         let book = try await book()
         var histogram: [String: Int] = [:]
         for row in book.reasons { histogram[row.reason.rawValue] = row.count }
-        #expect(histogram == ["limit": 597, "stall": 17, "network": 16, "closed": 5, "sleep": 4, "script": 1])
-        #expect(book.crashed == 640)
+        #expect(histogram == ["limit": 606, "stall": 17, "network": 19, "closed": 5, "sleep": 4, "script": 1])
+        #expect(book.crashed == 652)
         #expect(book.reasons.first?.reason == .limit)
+
+        // The other screens must tell the same story. The golden file knows no stalls by name, and neither closed Claude Code nor a broken script, which are not failed agents there.
+        let golden = try Fixtures.expected().failureClass
+        #expect(histogram["limit"] == golden["limit"])
+        #expect(histogram["network"] == golden["network"])
+        #expect(histogram["sleep"] == golden["sleep"])
+        #expect(histogram["stall"] == golden["unknown"])
     }
 
-    @Test("От семи остановленных запусков остаются только двое упавших сами по себе, а 28 работавших не считаются")
+    @Test("От семи остановленных запусков остаются только трое упавших сами по себе, а 28 работавших не считаются")
     func stoppedRuns() async throws {
         let folder = TempFolder()
         let paths = try Fixtures.world(into: folder)
@@ -654,7 +752,8 @@ struct LossFixtureTests {
         await index.update(roots: [paths])
         let ids = Set(stopped.map(\.run.runId))
         let rows = await index.history(live: []).entries.filter { $0.kind == .crash && ids.contains($0.runId ?? "") }
-        #expect(rows.reduce(0) { $0 + $1.count } == 2)
-        #expect(rows.allSatisfy { $0.reason == .sleep })
+        #expect(rows.reduce(0) { $0 + $1.count } == 3)
+        #expect(rows.filter { $0.reason == .sleep }.reduce(0) { $0 + $1.count } == 2)
+        #expect(rows.filter { $0.reason == .network }.reduce(0) { $0 + $1.count } == 1)
     }
 }
