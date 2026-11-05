@@ -39,6 +39,8 @@ final class AppSettings {
     var longTurnMinutes: Int { didSet { defaults?.set(longTurnMinutes, forKey: "longTurnMinutes") } }
     var usageLow: Int { didSet { defaults?.set(usageLow, forKey: "usageLow") } }
     var usageHigh: Int { didSet { defaults?.set(usageHigh, forKey: "usageHigh") } }
+    var surfaces: SurfaceSwitches { didSet { save(surfaces, "surfaces") } }
+    var surfaceScreen: SurfaceScreenChoice { didSet { save(surfaceScreen, "surfaceScreen") } }
 
     init(defaults: UserDefaults? = .standard) {
         self.defaults = defaults
@@ -57,6 +59,8 @@ final class AppSettings {
         longTurnMinutes = defaults?.object(forKey: "longTurnMinutes") as? Int ?? 5
         usageLow = defaults?.object(forKey: "usageLow") as? Int ?? 80
         usageHigh = defaults?.object(forKey: "usageHigh") as? Int ?? 95
+        surfaces = Self.load(defaults, "surfaces") ?? SurfaceSwitches()
+        surfaceScreen = Self.load(defaults, "surfaceScreen") ?? .followCursor
         Localizer.use(language)
         NSApp?.appearance = theme.appearance
     }

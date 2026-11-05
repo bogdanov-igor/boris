@@ -48,6 +48,8 @@ enum Palette {
     static let grey = Color(DesignTokens.statusGrey)
     static let waitingSoft = Color(DesignTokens.statusWaitingSoft)
     static let limitSoft = Color(DesignTokens.statusLimitSoft)
+    static let notch = Color(DesignTokens.notch)
+    static let panel = Color(DesignTokens.panel)
     static let brandRed = Color(DesignTokens.brandRed)
     static let brandGold = Color(DesignTokens.brandGold)
 }
