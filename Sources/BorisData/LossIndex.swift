@@ -575,7 +575,11 @@ public actor LossIndex {
         let ended = finalEnd(final) ?? finalModified ?? journalModified ?? Date()
         let needsOrigin = final == nil || final?.status == "failed" || agents.contains { $0.state == .failed }
         let origin = needsOrigin ? TranscriptReader.origin(in: parent) : (cwd: nil, entrypoint: nil)
-        let name = final?.workflowName ?? ScriptReader.read(scripts: sessionDir.appendingPathComponent("workflows/scripts"), runId: id)?.name
+        // A run started from a file has no script copy here, and only its launch in the parent transcript names it.
+        let name = final?.workflowName
+            ?? runs[id]?.template.title
+            ?? ScriptReader.read(scripts: sessionDir.appendingPathComponent("workflows/scripts"), runId: id)?.name
+            ?? (needsOrigin ? TranscriptReader.launchInfo(in: parent, runId: id)?.workflowName : nil)
         let template = LossEntry(id: id, at: ended, kind: .crash, sessionId: session, runId: id, cwd: origin.cwd, entrypoint: origin.entrypoint, title: name, total: agents.count)
 
         var run = Run(sessionId: session, finalModified: finalModified, journalModified: journalModified, template: template)

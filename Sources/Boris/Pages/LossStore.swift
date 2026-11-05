@@ -24,8 +24,8 @@ final class LossStore {
     func follow(_ model: AppModel) async {
         guard !frozen else { return }
         while !Task.isCancelled {
-            // A closed window keeps its page alive, and it must cost nothing.
-            if model.mainWindowIsOpen { await update(model) }
+            // A closed window keeps its page alive, and it must cost nothing. Before the first scan every session looks gone, and with it all their running agents.
+            if model.mainWindowIsOpen, model.loaded { await update(model) }
             try? await Task.sleep(for: Self.interval)
         }
     }

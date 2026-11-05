@@ -311,6 +311,17 @@ struct LossIndexTests {
         #expect(dead.contains { $0.reason == .network })
     }
 
+    @Test("Запуск из файла называется так, как записано при его старте")
+    func runNamedAtLaunch() async throws {
+        let folder = TempFolder()
+        folder.write("projects/p/s1.jsonl", #"{"type":"user","cwd":"/x/shop-api","entrypoint":"cli","toolUseResult":{"runId":"wf_1","workflowName":"Миграция данных"},"message":{"content":"x"}}"# + "\n")
+        folder.write("projects/p/s1/subagents/workflows/wf_1/journal.jsonl", #"{"type":"started","key":"k1","agentId":"a1"}"# + "\n")
+        let found = try #require(await history(folder).entries.first { $0.reason == .closed })
+        #expect(found.title == "Миграция данных")
+        #expect(found.project == "shop-api")
+        #expect(found.environment == .terminal)
+    }
+
     @Test("Ошибка самого скрипта это одно падение с её текстом. Ошибка из-за агентов не считается ещё раз")
     func scriptError() async throws {
         let folder = TempFolder()
