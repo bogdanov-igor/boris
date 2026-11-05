@@ -1,0 +1,17 @@
+{"type": "launched"}
+{"type": "started", "key": "d4e9faf61106", "agentId": "a4648dbe51445f919", "label": "label-1", "phase": "phase-1"}
+{"type": "started", "key": "69322eb32c1b", "agentId": "ae3a6dec34e3be679", "label": "label-2", "phase": "phase-1"}
+{"type": "started", "key": "c95ff5db8c36", "agentId": "a084849631d950463", "label": "label-3", "phase": "phase-1"}
+{"type": "started", "key": "7bdf7835d25d", "agentId": "afcab91ad2a7e1067", "label": "label-4", "phase": "phase-1"}
+{"type": "result", "key": "69322eb32c1b", "agentId": "ae3a6dec34e3be679", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "started", "key": "bfed509ecaf2", "agentId": "a52a255de457ed43e", "label": "label-5", "phase": "phase-2"}
+{"type": "result", "key": "7bdf7835d25d", "agentId": "afcab91ad2a7e1067", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "started", "key": "676249d377e6", "agentId": "a414ba5a488d62596", "label": "label-6", "phase": "phase-2"}
+{"type": "result", "key": "c95ff5db8c36", "agentId": "a084849631d950463", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "started", "key": "215ff61b38db", "agentId": "a31c21d8c391c40e1", "label": "label-7", "phase": "phase-2"}
+{"type": "result", "key": "676249d377e6", "agentId": "a414ba5a488d62596", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "result", "key": "d4e9faf61106", "agentId": "a4648dbe51445f919", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "started", "key": "b09f653874ff", "agentId": "a753cb560c4f649ed", "label": "label-8", "phase": "phase-2"}
+{"type": "result", "key": "bfed509ecaf2", "agentId": "a52a255de457ed43e", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "result", "key": "215ff61b38db", "agentId": "a31c21d8c391c40e1", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "result", "key": "b09f653874ff", "agentId": "a753cb560c4f649ed", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}

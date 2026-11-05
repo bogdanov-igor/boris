@@ -1,0 +1,18 @@
+{"type": "launched"}
+{"type": "started", "key": "5733708caca4", "agentId": "a29e77bfb4ca0f160", "label": "label-1", "phase": "phase-1"}
+{"type": "result", "key": "5733708caca4", "agentId": "a29e77bfb4ca0f160", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write", "Edit"]}
+{"type": "started", "key": "f85915b51e3b", "agentId": "a2d565d97e3d8dfdb", "label": "label-2", "phase": "phase-2"}
+{"type": "started", "key": "bebe9834a96e", "agentId": "ab3abe70f7590761b", "label": "label-3", "phase": "phase-2"}
+{"type": "started", "key": "1f642403da89", "agentId": "a4dbb939d2d3d4a4c", "label": "label-4", "phase": "phase-2"}
+{"type": "started", "key": "c694134519b2", "agentId": "a1675e5947ac3e6d9", "label": "label-5", "phase": "phase-2"}
+{"type": "started", "key": "9be9c0e1c4a1", "agentId": "a0d9d03e6f36ae7fd", "label": "label-6", "phase": "phase-2"}
+{"type": "started", "key": "699b85e952ee", "agentId": "ab1c991e8652e6a7f", "label": "label-7", "phase": "phase-2"}
+{"type": "result", "key": "1f642403da89", "agentId": "a4dbb939d2d3d4a4c", "result": "RESULT", "toolsUsed": ["Bash", "Read", "ToolSearch", "Monitor", "StructuredOutput"]}
+{"type": "result", "key": "f85915b51e3b", "agentId": "a2d565d97e3d8dfdb", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write", "Edit", "StructuredOutput"]}
+{"type": "result", "key": "9be9c0e1c4a1", "agentId": "a0d9d03e6f36ae7fd", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "result", "key": "bebe9834a96e", "agentId": "ab3abe70f7590761b", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "result", "key": "c694134519b2", "agentId": "a1675e5947ac3e6d9", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write", "StructuredOutput"]}
+{"type": "result", "key": "699b85e952ee", "agentId": "ab1c991e8652e6a7f", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write", "StructuredOutput"]}
+{"type": "started", "key": "884ea68e7bb2", "agentId": "a73be6e4d31a6e627", "label": "label-8", "phase": "phase-3"}
+{"type": "result", "key": "884ea68e7bb2", "agentId": "a73be6e4d31a6e627", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "started", "key": "f6e8609a9135", "agentId": "a7fd135e33b6b3f36", "label": "label-9", "phase": "phase-4"}

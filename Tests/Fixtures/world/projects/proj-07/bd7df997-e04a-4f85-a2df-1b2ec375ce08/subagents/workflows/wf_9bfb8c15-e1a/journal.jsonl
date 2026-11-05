@@ -1,0 +1,17 @@
+{"type": "launched"}
+{"type": "started", "key": "3476a3a8515e", "agentId": "a39c0463de86cb76e", "label": "label-1", "phase": "phase-1"}
+{"type": "started", "key": "03e7b8a0ccaf", "agentId": "a5fc893c05f22a2b2", "label": "label-2", "phase": "phase-1"}
+{"type": "started", "key": "e934d4cbb977", "agentId": "af14cfbd4dbfd7794", "label": "label-3", "phase": "phase-1"}
+{"type": "result", "key": "03e7b8a0ccaf", "agentId": "a5fc893c05f22a2b2", "result": "RESULT", "toolsUsed": ["ToolSearch", "WebSearch", "WebFetch", "StructuredOutput"]}
+{"type": "result", "key": "e934d4cbb977", "agentId": "af14cfbd4dbfd7794", "result": "RESULT", "toolsUsed": ["ToolSearch", "WebSearch", "WebFetch", "StructuredOutput"]}
+{"type": "result", "key": "3476a3a8515e", "agentId": "a39c0463de86cb76e", "result": "RESULT", "toolsUsed": ["ToolSearch", "WebSearch", "WebFetch", "Bash", "StructuredOutput"]}
+{"type": "started", "key": "c8d0adae6c45", "agentId": "a8ea5878b65a4e4ce", "label": "label-4", "phase": "phase-2"}
+{"type": "started", "key": "2fe765baeade", "agentId": "ae853e28a4a3dd8dc", "label": "label-5", "phase": "phase-2"}
+{"type": "started", "key": "e9f5fd50d826", "agentId": "aefbc23da8681c28c", "label": "label-6", "phase": "phase-2"}
+{"type": "started", "key": "20c7c7d84017", "agentId": "a41c2010e206ce267", "label": "label-7", "phase": "phase-2"}
+{"type": "started", "key": "1e8ede0094b1", "agentId": "a82efbde730d56318", "label": "label-8", "phase": "phase-2"}
+{"type": "result", "key": "e9f5fd50d826", "agentId": "aefbc23da8681c28c", "result": "RESULT", "toolsUsed": ["ToolSearch", "WebFetch", "WebSearch", "StructuredOutput"]}
+{"type": "result", "key": "2fe765baeade", "agentId": "ae853e28a4a3dd8dc", "result": "RESULT", "toolsUsed": ["ToolSearch", "WebFetch", "WebSearch", "StructuredOutput"]}
+{"type": "result", "key": "20c7c7d84017", "agentId": "a41c2010e206ce267", "result": "RESULT", "toolsUsed": ["ToolSearch", "WebFetch", "Bash", "Read", "StructuredOutput"]}
+{"type": "result", "key": "c8d0adae6c45", "agentId": "a8ea5878b65a4e4ce", "result": "RESULT", "toolsUsed": ["ToolSearch", "WebFetch", "Bash", "StructuredOutput"]}
+{"type": "result", "key": "1e8ede0094b1", "agentId": "a82efbde730d56318", "result": "RESULT", "toolsUsed": ["ToolSearch", "WebFetch", "Bash", "Read", "StructuredOutput"]}

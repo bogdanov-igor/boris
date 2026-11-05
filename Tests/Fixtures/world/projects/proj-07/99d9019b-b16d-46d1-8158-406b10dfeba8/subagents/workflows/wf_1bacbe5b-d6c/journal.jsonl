@@ -1,0 +1,7 @@
+{"type": "launched"}
+{"type": "started", "key": "17ec67767f44", "agentId": "a80cb0d3b228ff16f", "label": "label-1", "phase": "phase-1"}
+{"type": "started", "key": "271de9e4bfdf", "agentId": "ab2208f4cbfe08cb4", "label": "label-2", "phase": "phase-1"}
+{"type": "result", "key": "17ec67767f44", "agentId": "a80cb0d3b228ff16f", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Edit"]}
+{"type": "result", "key": "271de9e4bfdf", "agentId": "ab2208f4cbfe08cb4", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write", "Edit"]}
+{"type": "started", "key": "d1b91551a2e3", "agentId": "a4ce5b7725c993e03", "label": "label-3", "phase": "phase-2"}
+{"type": "result", "key": "d1b91551a2e3", "agentId": "a4ce5b7725c993e03", "result": "RESULT", "toolsUsed": ["Read", "Bash", "Write", "Edit"]}

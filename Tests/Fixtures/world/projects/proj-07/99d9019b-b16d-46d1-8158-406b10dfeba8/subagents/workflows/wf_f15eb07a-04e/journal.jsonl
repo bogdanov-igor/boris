@@ -1,0 +1,15 @@
+{"type": "launched"}
+{"type": "started", "key": "ea39a2d9875e", "agentId": "a84ba5aba9072cb05", "label": "label-1", "phase": "phase-1"}
+{"type": "result", "key": "ea39a2d9875e", "agentId": "a84ba5aba9072cb05", "result": "RESULT", "toolsUsed": ["Bash", "Skill", "Read", "Edit", "Write"]}
+{"type": "started", "key": "1d32e47a6d2f", "agentId": "acbb6b40f9ea644c5", "label": "label-2", "phase": "phase-2"}
+{"type": "started", "key": "876aba161238", "agentId": "a1d6a4e01aa7e31fe", "label": "label-3", "phase": "phase-2"}
+{"type": "failed", "key": "876aba161238", "agentId": "a1d6a4e01aa7e31fe"}
+{"type": "started", "key": "1d32e47a6d2f", "agentId": "a998350267a91d314", "label": "label-2", "phase": "phase-2"}
+{"type": "started", "key": "b80bb1438e4d", "agentId": "a115404a5deaa09aa", "label": "label-1", "phase": "phase-1"}
+{"type": "result", "key": "b80bb1438e4d", "agentId": "a115404a5deaa09aa", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Edit"]}
+{"type": "started", "key": "d08aef26b16a", "agentId": "a708a597231ab9162", "label": "label-2", "phase": "phase-2"}
+{"type": "started", "key": "8ef74523eead", "agentId": "a4384c6c51a283f3d", "label": "label-3", "phase": "phase-2"}
+{"type": "failed", "key": "8ef74523eead", "agentId": "a4384c6c51a283f3d"}
+{"type": "failed", "key": "d08aef26b16a", "agentId": "a708a597231ab9162"}
+{"type": "started", "key": "1efd80aa1032", "agentId": "a1c7338be1d7e684b", "label": "label-4", "phase": "phase-3"}
+{"type": "started", "key": "643e79f4d75d", "agentId": "a17e236a3a62457b9", "label": "label-5", "phase": "phase-3"}

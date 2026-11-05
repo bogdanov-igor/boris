@@ -1,0 +1,51 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Brand, only next to the walrus" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Бренд, только рядом с моржом" } } }
+    },
+    "Dark" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Тёмная" } } }
+    },
+    "Done" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Готово" } } }
+    },
+    "Failed" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сбой" } } }
+    },
+    "Language" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Язык" } } }
+    },
+    "Language and theme" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Язык и тема" } } }
+    },
+    "Light" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Светлая" } } }
+    },
+    "Limit" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Лимит" } } }
+    },
+    "Primary text" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Основной текст" } } }
+    },
+    "Quiet text" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Тихий текст" } } }
+    },
+    "Running" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Работает" } } }
+    },
+    "Secondary text" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Второстепенный текст" } } }
+    },
+    "System" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Как в системе" } } }
+    },
+    "Theme" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Тема" } } }
+    },
+    "Waiting" : {
+      "localizations" : { "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ждёт" } } }
+    }
+  },
+  "version" : "1.0"
+}

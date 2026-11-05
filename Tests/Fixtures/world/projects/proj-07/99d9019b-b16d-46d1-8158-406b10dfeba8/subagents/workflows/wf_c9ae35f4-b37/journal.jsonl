@@ -1,0 +1,86 @@
+{"type": "launched"}
+{"type": "started", "key": "1eb398242b8a", "agentId": "a79172a054d141308", "label": "label-1", "phase": "phase-1"}
+{"type": "started", "key": "c2331dfee4f2", "agentId": "a2b1ccf54e3d7b194", "label": "label-2", "phase": "phase-1"}
+{"type": "started", "key": "ff17db242214", "agentId": "abbb3234ee49a817a", "label": "label-3", "phase": "phase-1"}
+{"type": "result", "key": "ff17db242214", "agentId": "abbb3234ee49a817a", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Edit", "Write"]}
+{"type": "result", "key": "c2331dfee4f2", "agentId": "a2b1ccf54e3d7b194", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write", "ToolSearch", "TaskStop"]}
+{"type": "started", "key": "6927fbf419f9", "agentId": "a4d91c141ab8397df", "label": "label-4", "phase": "phase-1"}
+{"type": "result", "key": "1eb398242b8a", "agentId": "a79172a054d141308", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write", "Edit"]}
+{"type": "result", "key": "6927fbf419f9", "agentId": "a4d91c141ab8397df", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write"]}
+{"type": "started", "key": "d05506f86790", "agentId": "a7e15adccd4b0a74f", "label": "label-5", "phase": "phase-2"}
+{"type": "result", "key": "d05506f86790", "agentId": "a7e15adccd4b0a74f", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Edit"]}
+{"type": "started", "key": "038125eeac60", "agentId": "abb2c80006143e1cc", "label": "label-6", "phase": "phase-3"}
+{"type": "started", "key": "0f6c797e3e83", "agentId": "a542d98267456cbed", "label": "label-7", "phase": "phase-3"}
+{"type": "started", "key": "d651b1311cf3", "agentId": "a767e427e6a5ddacb", "label": "label-8", "phase": "phase-3"}
+{"type": "started", "key": "2a9154a6163b", "agentId": "ac1ee6681d4a5a468", "label": "label-9", "phase": "phase-3"}
+{"type": "started", "key": "0ebb1262b8a8", "agentId": "a28651c1a850d8003", "label": "label-10", "phase": "phase-3"}
+{"type": "started", "key": "cd39f8e82d57", "agentId": "a42e4d24371d74d13", "label": "label-11", "phase": "phase-3"}
+{"type": "started", "key": "79327768d372", "agentId": "ae0c29ac3a1eb0382", "label": "label-12", "phase": "phase-4"}
+{"type": "result", "key": "79327768d372", "agentId": "ae0c29ac3a1eb0382", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write", "ToolSearch", "TaskStop", "Edit"]}
+{"type": "started", "key": "d14707390c54", "agentId": "a749d201bafdb4437", "label": "label-6", "phase": "phase-3"}
+{"type": "started", "key": "b75ffdc30e7e", "agentId": "aa324c6b961e881ae", "label": "label-7", "phase": "phase-3"}
+{"type": "started", "key": "1a9b67d5e4fb", "agentId": "a2862e8ace9c63b9b", "label": "label-8", "phase": "phase-3"}
+{"type": "started", "key": "cf057f95ea20", "agentId": "a6c33c85414a68792", "label": "label-9", "phase": "phase-3"}
+{"type": "started", "key": "6b858f2820e4", "agentId": "ad04c299ee514d3f8", "label": "label-10", "phase": "phase-3"}
+{"type": "started", "key": "43990983ef0c", "agentId": "ab51261224be4ab84", "label": "label-11", "phase": "phase-3"}
+{"type": "started", "key": "bfd028dd6eca", "agentId": "aa51983e26d1e30c9", "label": "label-13", "phase": "phase-5"}
+{"type": "result", "key": "bfd028dd6eca", "agentId": "aa51983e26d1e30c9", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write", "Edit", "TaskStop"]}
+{"type": "started", "key": "b9052b4222e7", "agentId": "a2a1aef85fc1b274d", "label": "label-6", "phase": "phase-3"}
+{"type": "started", "key": "813a0c20b7d8", "agentId": "a8346bd610f7a3f3b", "label": "label-7", "phase": "phase-3"}
+{"type": "started", "key": "2416bc9a6a23", "agentId": "aa8f34a6650351eb0", "label": "label-8", "phase": "phase-3"}
+{"type": "started", "key": "2b3e39f53957", "agentId": "a713000e4bd93b517", "label": "label-9", "phase": "phase-3"}
+{"type": "started", "key": "89e841d91437", "agentId": "ae84ba8adb49f3010", "label": "label-10", "phase": "phase-3"}
+{"type": "started", "key": "4c69a50f7187", "agentId": "a3d9f7ceee7323ee0", "label": "label-14", "phase": "phase-3"}
+{"type": "started", "key": "5ed1ce259093", "agentId": "acf7b3ca9c3201434", "label": "label-11", "phase": "phase-3"}
+{"type": "started", "key": "079dc9eb1192", "agentId": "ad544e8c2992577c0", "label": "label-14", "phase": "phase-3"}
+{"type": "started", "key": "2c49999821d0", "agentId": "a7629e3ecd94f25ba", "label": "label-11", "phase": "phase-3"}
+{"type": "started", "key": "5551a49ad937", "agentId": "a6e8c140ebbe21a47", "label": "label-15", "phase": "phase-3"}
+{"type": "result", "key": "5551a49ad937", "agentId": "a6e8c140ebbe21a47", "result": "RESULT", "toolsUsed": ["Bash", "Read", "ToolSearch", "TaskStop", "StructuredOutput"]}
+{"type": "result", "key": "2c49999821d0", "agentId": "a7629e3ecd94f25ba", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write", "StructuredOutput"]}
+{"type": "result", "key": "079dc9eb1192", "agentId": "ad544e8c2992577c0", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "started", "key": "f1a5b2b97a6b", "agentId": "abf628416888a77dc", "label": "label-16", "phase": "phase-6"}
+{"type": "started", "key": "91e6a09ae622", "agentId": "a59173142465d4215", "label": "label-17", "phase": "phase-6"}
+{"type": "started", "key": "9ffc2af7d87e", "agentId": "a574db4193a910235", "label": "label-18", "phase": "phase-6"}
+{"type": "started", "key": "773150cf0a60", "agentId": "a7d7f534b8e242014", "label": "label-19", "phase": "phase-6"}
+{"type": "started", "key": "8146b8f10fa3", "agentId": "a40e4b06ac44ed024", "label": "label-20", "phase": "phase-6"}
+{"type": "started", "key": "5c559c423efb", "agentId": "a5d5f1acdddb72b0c", "label": "label-21", "phase": "phase-6"}
+{"type": "started", "key": "24fa0fffb38a", "agentId": "a8b8344464c3887c3", "label": "label-22", "phase": "phase-6"}
+{"type": "started", "key": "3fcbad721255", "agentId": "a6f99799ed016e311", "label": "label-23", "phase": "phase-6"}
+{"type": "started", "key": "012b78475a36", "agentId": "a1b7a06940b7290ae", "label": "label-24", "phase": "phase-6"}
+{"type": "started", "key": "8b22a4d0ac87", "agentId": "a024484ad730e8310", "label": "label-25", "phase": "phase-6"}
+{"type": "result", "key": "773150cf0a60", "agentId": "a7d7f534b8e242014", "result": "RESULT", "toolsUsed": ["Bash", "StructuredOutput"]}
+{"type": "started", "key": "112616569209", "agentId": "a2219b1a56f83bc16", "label": "label-26", "phase": "phase-6"}
+{"type": "result", "key": "8146b8f10fa3", "agentId": "a40e4b06ac44ed024", "result": "RESULT", "toolsUsed": ["Read", "Bash", "StructuredOutput"]}
+{"type": "started", "key": "145a0599193a", "agentId": "a66b677f3a56735d6", "label": "label-27", "phase": "phase-6"}
+{"type": "result", "key": "5c559c423efb", "agentId": "a5d5f1acdddb72b0c", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "started", "key": "7006ac16b4d8", "agentId": "aaa255d4bafaedbcb", "label": "label-28", "phase": "phase-6"}
+{"type": "result", "key": "9ffc2af7d87e", "agentId": "a574db4193a910235", "result": "RESULT", "toolsUsed": ["Read", "Bash", "StructuredOutput"]}
+{"type": "started", "key": "52f92cd634a0", "agentId": "abac8924143369b11", "label": "label-29", "phase": "phase-6"}
+{"type": "result", "key": "91e6a09ae622", "agentId": "a59173142465d4215", "result": "RESULT", "toolsUsed": ["Bash", "StructuredOutput"]}
+{"type": "started", "key": "bc021abae2cb", "agentId": "abc1543e27cd04b3e", "label": "label-30", "phase": "phase-6"}
+{"type": "result", "key": "012b78475a36", "agentId": "a1b7a06940b7290ae", "result": "RESULT", "toolsUsed": ["Bash", "StructuredOutput"]}
+{"type": "started", "key": "c413a8d0eaaf", "agentId": "a9ffecea0a43e5caf", "label": "label-31", "phase": "phase-6"}
+{"type": "result", "key": "112616569209", "agentId": "a2219b1a56f83bc16", "result": "RESULT", "toolsUsed": ["Bash", "StructuredOutput"]}
+{"type": "started", "key": "0ef19b2c2f62", "agentId": "a1e01ac20133135d7", "label": "label-32", "phase": "phase-6"}
+{"type": "result", "key": "3fcbad721255", "agentId": "a6f99799ed016e311", "result": "RESULT", "toolsUsed": ["Read", "Bash", "StructuredOutput"]}
+{"type": "started", "key": "f3fe7f2b96cd", "agentId": "a7c0ea8edddc191d9", "label": "label-33", "phase": "phase-6"}
+{"type": "result", "key": "145a0599193a", "agentId": "a66b677f3a56735d6", "result": "RESULT", "toolsUsed": ["Read", "Bash", "StructuredOutput"]}
+{"type": "started", "key": "eab476a3ec72", "agentId": "a3fb212f4477c405c", "label": "label-34", "phase": "phase-6"}
+{"type": "result", "key": "24fa0fffb38a", "agentId": "a8b8344464c3887c3", "result": "RESULT", "toolsUsed": ["Bash", "StructuredOutput"]}
+{"type": "started", "key": "f4115de8f523", "agentId": "a9709baf5da28a00a", "label": "label-35", "phase": "phase-6"}
+{"type": "result", "key": "7006ac16b4d8", "agentId": "aaa255d4bafaedbcb", "result": "RESULT", "toolsUsed": ["Bash", "StructuredOutput"]}
+{"type": "started", "key": "9cec2f167ba8", "agentId": "ac77abec7c1751d0d", "label": "label-36", "phase": "phase-6"}
+{"type": "result", "key": "c413a8d0eaaf", "agentId": "a9ffecea0a43e5caf", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "started", "key": "f799e0e1d6c5", "agentId": "aade12339e9155813", "label": "label-37", "phase": "phase-6"}
+{"type": "result", "key": "bc021abae2cb", "agentId": "abc1543e27cd04b3e", "result": "RESULT", "toolsUsed": ["Read", "Bash", "StructuredOutput"]}
+{"type": "result", "key": "f1a5b2b97a6b", "agentId": "abf628416888a77dc", "result": "RESULT", "toolsUsed": ["Bash", "StructuredOutput"]}
+{"type": "result", "key": "52f92cd634a0", "agentId": "abac8924143369b11", "result": "RESULT", "toolsUsed": ["Bash", "StructuredOutput"]}
+{"type": "result", "key": "f3fe7f2b96cd", "agentId": "a7c0ea8edddc191d9", "result": "RESULT", "toolsUsed": ["Bash", "StructuredOutput"]}
+{"type": "result", "key": "f4115de8f523", "agentId": "a9709baf5da28a00a", "result": "RESULT", "toolsUsed": ["Read", "Bash", "StructuredOutput"]}
+{"type": "result", "key": "8b22a4d0ac87", "agentId": "a024484ad730e8310", "result": "RESULT", "toolsUsed": ["Read", "Bash", "StructuredOutput"]}
+{"type": "result", "key": "9cec2f167ba8", "agentId": "ac77abec7c1751d0d", "result": "RESULT", "toolsUsed": ["Bash", "StructuredOutput"]}
+{"type": "result", "key": "0ef19b2c2f62", "agentId": "a1e01ac20133135d7", "result": "RESULT", "toolsUsed": ["Read", "Bash", "StructuredOutput"]}
+{"type": "result", "key": "eab476a3ec72", "agentId": "a3fb212f4477c405c", "result": "RESULT", "toolsUsed": ["Bash", "StructuredOutput"]}
+{"type": "result", "key": "f799e0e1d6c5", "agentId": "aade12339e9155813", "result": "RESULT", "toolsUsed": ["Bash", "StructuredOutput"]}
+{"type": "started", "key": "7eb7a7206f53", "agentId": "aa020b63c1d255add", "label": "label-38", "phase": "phase-7"}
+{"type": "result", "key": "7eb7a7206f53", "agentId": "aa020b63c1d255add", "result": "RESULT", "toolsUsed": ["Bash", "Edit"]}

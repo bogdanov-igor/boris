@@ -1,0 +1,3 @@
+{"type": "user", "message": {"role": "user", "content": "PROMPT"}}
+{"type": "assistant", "message": {"id": "msg_011CgFRCRqEqKXTWQRJLB1Cx", "model": "claude-opus-5-5", "content": [{"type": "text", "text": "TEXT"}], "usage": {"input_tokens": 2, "output_tokens": 727, "cache_read_input_tokens": 139163, "cache_creation_input_tokens": 2159}}}
+{"type": "assistant", "isApiErrorMessage": true, "error": "rate_limit", "message": {"role": "assistant", "content": [{"type": "text", "text": "You've hit your monthly spend limit · raise it at https://claude.ai/settings/usage"}]}}

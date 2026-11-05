@@ -1,0 +1,6 @@
+{"type": "user", "cwd": "/fixtures/proj-07", "sessionId": "99d9019b-b16d-46d1-8158-406b10dfeba8"}
+{"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "TaskStop", "input": {"task_id": "wzzv3heyu"}}]}}
+{"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "TaskStop", "input": {"task_id": "wc6lz6nwf"}}]}}
+{"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "TaskStop", "input": {"task_id": "w4xmqspba"}}]}}
+{"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "TaskStop", "input": {"task_id": "wdmkp6mus"}}]}}
+{"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "TaskStop", "input": {"task_id": "wab3nf568"}}]}}

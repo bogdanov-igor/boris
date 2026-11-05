@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>app.boris.Boris.agent</string>
+    <key>BundleProgram</key>
+    <string>Contents/MacOS/Boris</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>5</integer>
+    <key>ProcessType</key>
+    <string>Interactive</string>
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>BORIS_LAUNCHD</key>
+        <string>1</string>
+    </dict>
+    <key>AssociatedBundleIdentifiers</key>
+    <array>
+        <string>app.boris.Boris</string>
+    </array>
+</dict>
+</plist>

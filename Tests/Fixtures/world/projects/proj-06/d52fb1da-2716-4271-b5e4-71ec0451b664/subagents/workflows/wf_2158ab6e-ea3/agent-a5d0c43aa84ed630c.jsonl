@@ -1,0 +1,3 @@
+{"type": "user", "message": {"role": "user", "content": "PROMPT"}}
+{"type": "assistant", "message": {"id": "msg_011CfGfPsmvEA6hdidW7Rt8Z", "model": "claude-sonnet-5", "content": [{"type": "text", "text": "TEXT"}], "usage": {"input_tokens": 2, "output_tokens": 1891, "cache_read_input_tokens": 44883, "cache_creation_input_tokens": 2443}}}
+{"type": "user", "message": {"role": "user", "content": "TEXT"}}

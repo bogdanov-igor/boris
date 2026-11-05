@@ -1,0 +1,17 @@
+{"type": "launched"}
+{"type": "started", "key": "6fac448c0fb6", "agentId": "aeb4b97c2223faeec", "label": "label-1", "phase": "phase-1"}
+{"type": "started", "key": "acc7d8187a6f", "agentId": "a3421a35f8058733f", "label": "label-2", "phase": "phase-1"}
+{"type": "started", "key": "e1e3c40f633d", "agentId": "aa6cefd7c1cc7a8a3", "label": "label-3", "phase": "phase-1"}
+{"type": "started", "key": "26fa3ffcbdb9", "agentId": "af837654fe0aa6aac", "label": "label-4", "phase": "phase-1"}
+{"type": "result", "key": "e1e3c40f633d", "agentId": "aa6cefd7c1cc7a8a3", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Edit"]}
+{"type": "result", "key": "acc7d8187a6f", "agentId": "a3421a35f8058733f", "result": "RESULT", "toolsUsed": ["Bash"]}
+{"type": "result", "key": "6fac448c0fb6", "agentId": "aeb4b97c2223faeec", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "result", "key": "26fa3ffcbdb9", "agentId": "af837654fe0aa6aac", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Edit"]}
+{"type": "started", "key": "9303693d9957", "agentId": "afb22d237f2391f56", "label": "label-5", "phase": "phase-2"}
+{"type": "result", "key": "9303693d9957", "agentId": "afb22d237f2391f56", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write", "Edit"]}
+{"type": "started", "key": "441f47fde907", "agentId": "ae4625a9bfd70dfab", "label": "label-6", "phase": "phase-3"}
+{"type": "started", "key": "05770bc2883c", "agentId": "addd1ae2fdde00979", "label": "label-7", "phase": "phase-3"}
+{"type": "result", "key": "05770bc2883c", "agentId": "addd1ae2fdde00979", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "result", "key": "441f47fde907", "agentId": "ae4625a9bfd70dfab", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "started", "key": "c549f09b3582", "agentId": "ad405539269ea5d0d", "label": "label-8", "phase": "phase-3"}
+{"type": "result", "key": "c549f09b3582", "agentId": "ad405539269ea5d0d", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write", "Edit"]}

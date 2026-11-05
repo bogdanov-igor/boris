@@ -1,0 +1,17 @@
+{"type": "launched"}
+{"type": "started", "key": "86727bedf38a", "agentId": "adbe82faa62c562f4", "label": "label-1", "phase": "phase-1"}
+{"type": "started", "key": "abc5e0095b1a", "agentId": "a01e700fef29b8691", "label": "label-2", "phase": "phase-1"}
+{"type": "started", "key": "09aa8b39dff6", "agentId": "a352587ddde884200", "label": "label-3", "phase": "phase-1"}
+{"type": "started", "key": "d4c25fde9ecb", "agentId": "ad26ff8a5528dba58", "label": "label-4", "phase": "phase-1"}
+{"type": "result", "key": "09aa8b39dff6", "agentId": "a352587ddde884200", "result": "RESULT"}
+{"type": "started", "key": "8d5288ed6161", "agentId": "a9bb6970c7fa14212", "label": "label-5", "phase": "phase-2"}
+{"type": "result", "key": "8d5288ed6161", "agentId": "a9bb6970c7fa14212", "result": "RESULT"}
+{"type": "result", "key": "86727bedf38a", "agentId": "adbe82faa62c562f4", "result": "RESULT"}
+{"type": "started", "key": "cf19eea63235", "agentId": "a75f402b4c6d390a1", "label": "label-6", "phase": "phase-2"}
+{"type": "result", "key": "abc5e0095b1a", "agentId": "a01e700fef29b8691", "result": "RESULT"}
+{"type": "started", "key": "ff0f1320f140", "agentId": "af05ae73115af0a66", "label": "label-7", "phase": "phase-2"}
+{"type": "result", "key": "cf19eea63235", "agentId": "a75f402b4c6d390a1", "result": "RESULT"}
+{"type": "result", "key": "d4c25fde9ecb", "agentId": "ad26ff8a5528dba58", "result": "RESULT"}
+{"type": "started", "key": "8933a1ad4aa0", "agentId": "af8177516e64fee79", "label": "label-8", "phase": "phase-2"}
+{"type": "result", "key": "ff0f1320f140", "agentId": "af05ae73115af0a66", "result": "RESULT"}
+{"type": "result", "key": "8933a1ad4aa0", "agentId": "af8177516e64fee79", "result": "RESULT"}

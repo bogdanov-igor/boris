@@ -1,0 +1,15 @@
+{"type": "launched"}
+{"type": "started", "key": "76866d056719", "agentId": "a5897f240f4956b27", "label": "label-1", "phase": "phase-1"}
+{"type": "started", "key": "add0592bf455", "agentId": "abc0c4843a7ef3c18", "label": "label-2", "phase": "phase-1"}
+{"type": "result", "key": "add0592bf455", "agentId": "abc0c4843a7ef3c18", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "result", "key": "76866d056719", "agentId": "a5897f240f4956b27", "result": "RESULT", "toolsUsed": ["Bash", "Read", "ToolSearch", "TaskStop", "StructuredOutput"]}
+{"type": "started", "key": "5d3b3e254b3b", "agentId": "ac18814f766103d5c", "label": "label-3", "phase": "phase-2"}
+{"type": "started", "key": "1e181727174f", "agentId": "a91015d24b5197a35", "label": "label-4", "phase": "phase-2"}
+{"type": "result", "key": "5d3b3e254b3b", "agentId": "ac18814f766103d5c", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Edit"]}
+{"type": "result", "key": "1e181727174f", "agentId": "a91015d24b5197a35", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Write", "Edit"]}
+{"type": "started", "key": "ba6250920251", "agentId": "a7fcf8370097937a5", "label": "label-5", "phase": "phase-3"}
+{"type": "started", "key": "84405cf47dc4", "agentId": "a3fef13d334f1a8d8", "label": "label-6", "phase": "phase-3"}
+{"type": "result", "key": "84405cf47dc4", "agentId": "a3fef13d334f1a8d8", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "result", "key": "ba6250920251", "agentId": "a7fcf8370097937a5", "result": "RESULT", "toolsUsed": ["Bash", "Read", "StructuredOutput"]}
+{"type": "started", "key": "1a1415f1d1db", "agentId": "a30590c8ddeb5e08f", "label": "label-7", "phase": "phase-3"}
+{"type": "result", "key": "1a1415f1d1db", "agentId": "a30590c8ddeb5e08f", "result": "RESULT", "toolsUsed": ["Bash", "Write", "Read", "Edit"]}

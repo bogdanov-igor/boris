@@ -1,0 +1,25 @@
+{"type": "launched"}
+{"type": "started", "key": "2e239aedd867", "agentId": "afe5de2b0a242d3d3", "label": "label-1", "phase": "phase-1"}
+{"type": "started", "key": "3de13d72542a", "agentId": "aaefcf2a3be0591ec", "label": "label-2", "phase": "phase-2"}
+{"type": "started", "key": "af5ee56096f8", "agentId": "a2126497954c8593a", "label": "label-3", "phase": "phase-1"}
+{"type": "started", "key": "3031f01e03f7", "agentId": "a638d77c4a2b1e820", "label": "label-4", "phase": "phase-1"}
+{"type": "started", "key": "bf62a4629d17", "agentId": "a6afcd0b2a8125c28", "label": "label-5", "phase": "phase-1"}
+{"type": "started", "key": "d03b505b111e", "agentId": "af355c2e1cf8d04bb", "label": "label-6", "phase": "phase-1"}
+{"type": "started", "key": "669a77b2f7c1", "agentId": "aa2e72859155e19b2", "label": "label-7", "phase": "phase-2"}
+{"type": "started", "key": "5705d67c8919", "agentId": "a14faa49a5a40e995", "label": "label-8", "phase": "phase-2"}
+{"type": "started", "key": "e5f99d407111", "agentId": "aec729936c1db7c97", "label": "label-9", "phase": "phase-2"}
+{"type": "started", "key": "9fcd001187dc", "agentId": "aed254e7e8ba64e1a", "label": "label-10", "phase": "phase-2"}
+{"type": "result", "key": "e5f99d407111", "agentId": "aec729936c1db7c97", "result": "RESULT"}
+{"type": "started", "key": "e4f3c6fb52e5", "agentId": "aa8c0b61eeb96b714", "label": "label-11", "phase": "phase-2"}
+{"type": "result", "key": "af5ee56096f8", "agentId": "a2126497954c8593a", "result": "RESULT"}
+{"type": "started", "key": "da9ea2b64b48", "agentId": "abc9af9c6851e9660", "label": "label-12", "phase": "phase-3"}
+{"type": "result", "key": "3031f01e03f7", "agentId": "a638d77c4a2b1e820", "result": "RESULT"}
+{"type": "result", "key": "3de13d72542a", "agentId": "aaefcf2a3be0591ec", "result": "RESULT"}
+{"type": "result", "key": "9fcd001187dc", "agentId": "aed254e7e8ba64e1a", "result": "RESULT"}
+{"type": "result", "key": "2e239aedd867", "agentId": "afe5de2b0a242d3d3", "result": "RESULT"}
+{"type": "result", "key": "669a77b2f7c1", "agentId": "aa2e72859155e19b2", "result": "RESULT"}
+{"type": "result", "key": "d03b505b111e", "agentId": "af355c2e1cf8d04bb", "result": "RESULT"}
+{"type": "result", "key": "bf62a4629d17", "agentId": "a6afcd0b2a8125c28", "result": "RESULT"}
+{"type": "result", "key": "5705d67c8919", "agentId": "a14faa49a5a40e995", "result": "RESULT"}
+{"type": "result", "key": "e4f3c6fb52e5", "agentId": "aa8c0b61eeb96b714", "result": "RESULT"}
+{"type": "result", "key": "da9ea2b64b48", "agentId": "abc9af9c6851e9660", "result": "RESULT"}

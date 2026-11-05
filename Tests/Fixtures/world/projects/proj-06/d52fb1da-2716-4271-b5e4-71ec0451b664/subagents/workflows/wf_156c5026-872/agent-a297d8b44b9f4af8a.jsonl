@@ -1,0 +1,3 @@
+{"type": "user", "message": {"role": "user", "content": "PROMPT"}}
+{"type": "assistant", "message": {"id": "msg_011CesZbD7HJAvp6d7EPsexw", "model": "claude-fable-5-1", "content": [{"type": "text", "text": "TEXT"}], "usage": {"input_tokens": 32, "output_tokens": 2, "cache_read_input_tokens": 67661, "cache_creation_input_tokens": 5028}}}
+{"type": "assistant", "isApiErrorMessage": true, "error": "rate_limit", "message": {"role": "assistant", "content": [{"type": "text", "text": "You've hit your session limit · resets 4:10pm"}]}}

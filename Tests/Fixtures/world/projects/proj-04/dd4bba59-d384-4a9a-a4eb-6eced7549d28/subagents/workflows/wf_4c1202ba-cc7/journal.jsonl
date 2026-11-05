@@ -1,0 +1,21 @@
+{"type": "launched"}
+{"type": "started", "key": "bcf654aa9859", "agentId": "a4c1b8bcaaba28c08", "label": "label-1", "phase": "phase-1"}
+{"type": "started", "key": "d1e5b0bfb671", "agentId": "acd4561944bc7388c", "label": "label-2", "phase": "phase-1"}
+{"type": "started", "key": "82c2b8db259b", "agentId": "a87b9c4d8b9a63886", "label": "label-3", "phase": "phase-1"}
+{"type": "started", "key": "cf6d8b02e9a6", "agentId": "a4b67927ae33940b2", "label": "label-4", "phase": "phase-1"}
+{"type": "started", "key": "5ba76b9dbf00", "agentId": "a39b1b7fd6f8fb946", "label": "label-5", "phase": "phase-1"}
+{"type": "result", "key": "d1e5b0bfb671", "agentId": "acd4561944bc7388c", "result": "RESULT"}
+{"type": "started", "key": "303c4d36f7c0", "agentId": "a1023d660568075a0", "label": "label-6", "phase": "phase-2"}
+{"type": "result", "key": "bcf654aa9859", "agentId": "a4c1b8bcaaba28c08", "result": "RESULT"}
+{"type": "started", "key": "337ed6a7babf", "agentId": "abd6bf39391769bc7", "label": "label-7", "phase": "phase-2"}
+{"type": "result", "key": "5ba76b9dbf00", "agentId": "a39b1b7fd6f8fb946", "result": "RESULT"}
+{"type": "started", "key": "22eae05f5a39", "agentId": "a64f5c0a4c14ebaf7", "label": "label-8", "phase": "phase-2"}
+{"type": "result", "key": "82c2b8db259b", "agentId": "a87b9c4d8b9a63886", "result": "RESULT"}
+{"type": "started", "key": "988253e89ede", "agentId": "a96afe5295c2140be", "label": "label-9", "phase": "phase-2"}
+{"type": "result", "key": "303c4d36f7c0", "agentId": "a1023d660568075a0", "result": "RESULT"}
+{"type": "result", "key": "cf6d8b02e9a6", "agentId": "a4b67927ae33940b2", "result": "RESULT"}
+{"type": "started", "key": "81672aff1dcc", "agentId": "a52088226d6c8d5d1", "label": "label-10", "phase": "phase-2"}
+{"type": "result", "key": "22eae05f5a39", "agentId": "a64f5c0a4c14ebaf7", "result": "RESULT"}
+{"type": "result", "key": "337ed6a7babf", "agentId": "abd6bf39391769bc7", "result": "RESULT"}
+{"type": "result", "key": "988253e89ede", "agentId": "a96afe5295c2140be", "result": "RESULT"}
+{"type": "result", "key": "81672aff1dcc", "agentId": "a52088226d6c8d5d1", "result": "RESULT"}

@@ -1,0 +1,5 @@
+{"type": "launched"}
+{"type": "started", "key": "1c1451a46485", "agentId": "adb521416b620951a", "label": "label-1", "phase": "phase-1"}
+{"type": "result", "key": "1c1451a46485", "agentId": "adb521416b620951a", "result": "RESULT", "toolsUsed": ["Bash", "Read", "ToolSearch", "WebFetch", "WebSearch", "Write", "Edit"]}
+{"type": "started", "key": "7a70683cb2a8", "agentId": "adefd8b0776cedc63", "label": "label-2", "phase": "phase-2"}
+{"type": "result", "key": "7a70683cb2a8", "agentId": "adefd8b0776cedc63", "result": "RESULT", "toolsUsed": ["Bash", "Read", "Edit", "Write"]}

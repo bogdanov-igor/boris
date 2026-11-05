@@ -1,0 +1,17 @@
+{
+  "failureClass": {
+    "limit": 606,
+    "network": 19,
+    "sleep": 4,
+    "unknown": 17
+  },
+  "runs": 110,
+  "status": {
+    "allAgentsFailed": 11,
+    "completed": 78,
+    "completedWithErrors": 7,
+    "failed": 3,
+    "interrupted": 4,
+    "stopped": 7
+  }
+}

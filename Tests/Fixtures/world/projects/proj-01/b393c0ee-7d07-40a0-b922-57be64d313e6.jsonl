@@ -1,0 +1,2 @@
+{"type": "user", "cwd": "/fixtures/proj-01", "sessionId": "b393c0ee-7d07-40a0-b922-57be64d313e6"}
+{"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "TaskStop", "input": {"task_id": "w6u7kydel"}}]}}

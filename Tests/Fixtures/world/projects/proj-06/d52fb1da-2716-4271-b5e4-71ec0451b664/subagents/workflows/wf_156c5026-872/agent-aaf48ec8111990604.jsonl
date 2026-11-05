@@ -1,0 +1,2 @@
+{"type": "user", "message": {"role": "user", "content": "PROMPT"}}
+{"type": "assistant", "isApiErrorMessage": true, "error": "rate_limit", "message": {"role": "assistant", "content": [{"type": "text", "text": "You've hit your session limit · resets 4:10pm"}]}}

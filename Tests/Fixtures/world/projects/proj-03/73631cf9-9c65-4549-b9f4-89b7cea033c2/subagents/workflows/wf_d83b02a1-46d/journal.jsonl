@@ -1,0 +1,20 @@
+{"type": "launched"}
+{"type": "started", "key": "3d5d5eb140e4", "agentId": "a487f2b8039928620", "label": "label-1", "phase": "phase-1"}
+{"type": "started", "key": "ef348490cd0f", "agentId": "a5e513fc33e53bde2", "label": "label-2", "phase": "phase-1"}
+{"type": "started", "key": "635aba7a3246", "agentId": "a9650c27f6a4cd3fc", "label": "label-3", "phase": "phase-1"}
+{"type": "started", "key": "47f351990303", "agentId": "a25634c231e3b0d70", "label": "label-4", "phase": "phase-1"}
+{"type": "started", "key": "47500b87163d", "agentId": "ad3e8ea321e8e342d", "label": "label-5", "phase": "phase-1"}
+{"type": "started", "key": "809a6c053e2d", "agentId": "aeec765513a605c51", "label": "label-6", "phase": "phase-1"}
+{"type": "result", "key": "ef348490cd0f", "agentId": "a5e513fc33e53bde2", "result": "RESULT"}
+{"type": "result", "key": "3d5d5eb140e4", "agentId": "a487f2b8039928620", "result": "RESULT"}
+{"type": "result", "key": "47f351990303", "agentId": "a25634c231e3b0d70", "result": "RESULT"}
+{"type": "result", "key": "809a6c053e2d", "agentId": "aeec765513a605c51", "result": "RESULT"}
+{"type": "result", "key": "635aba7a3246", "agentId": "a9650c27f6a4cd3fc", "result": "RESULT"}
+{"type": "result", "key": "47500b87163d", "agentId": "ad3e8ea321e8e342d", "result": "RESULT"}
+{"type": "started", "key": "1d48325a1767", "agentId": "a144027be1fb96ec3", "label": "label-7", "phase": "phase-2"}
+{"type": "started", "key": "1d48325a1767", "agentId": "a6d07332c4df1b8e0", "label": "label-7", "phase": "phase-2"}
+{"type": "started", "key": "1d48325a1767", "agentId": "aaebf49faa763fbe7", "label": "label-7", "phase": "phase-2"}
+{"type": "started", "key": "1d48325a1767", "agentId": "abc5328f7adcd1d3c", "label": "label-7", "phase": "phase-2"}
+{"type": "started", "key": "1d48325a1767", "agentId": "aee1bbe7cb21fed30", "label": "label-7", "phase": "phase-2"}
+{"type": "started", "key": "1d48325a1767", "agentId": "aaf531664bb628b0c", "label": "label-7", "phase": "phase-2"}
+{"type": "failed", "key": "1d48325a1767", "agentId": "aaf531664bb628b0c"}

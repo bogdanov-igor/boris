@@ -1,0 +1,3 @@
+{"type": "user", "message": {"role": "user", "content": "PROMPT"}}
+{"type": "assistant", "message": {"id": "msg_011CgeM8KC97NYidE2XYYwmM", "model": "claude-opus-5-5", "content": [{"type": "text", "text": "TEXT"}], "usage": {"input_tokens": 2, "output_tokens": 1808, "cache_read_input_tokens": 209953, "cache_creation_input_tokens": 1110}}}
+{"type": "assistant", "message": {"role": "assistant", "content": "TEXT"}}

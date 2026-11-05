@@ -1,0 +1,3 @@
+{"type": "user", "message": {"role": "user", "content": "PROMPT"}}
+{"type": "assistant", "message": {"id": "msg_011CesUX69tN3mRhdEfkQmiE", "model": "claude-fable-5-1", "content": [{"type": "text", "text": "TEXT"}], "usage": {"input_tokens": 32, "output_tokens": 2116, "cache_read_input_tokens": 48073, "cache_creation_input_tokens": 6050}}}
+{"type": "user", "message": {"role": "user", "content": "TEXT"}}

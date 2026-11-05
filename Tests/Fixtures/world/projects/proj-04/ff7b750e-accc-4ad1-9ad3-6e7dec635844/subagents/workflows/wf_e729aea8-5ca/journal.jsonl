@@ -1,0 +1,5 @@
+{"type": "launched"}
+{"type": "started", "key": "7cd948c26c8f", "agentId": "abb110d59eacd1064", "label": "label-1", "phase": "phase-1"}
+{"type": "started", "key": "1478d965faeb", "agentId": "a85df0dbfaff97531", "label": "label-2", "phase": "phase-1"}
+{"type": "result", "key": "1478d965faeb", "agentId": "a85df0dbfaff97531", "result": "RESULT"}
+{"type": "result", "key": "7cd948c26c8f", "agentId": "abb110d59eacd1064", "result": "RESULT"}

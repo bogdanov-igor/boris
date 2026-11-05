@@ -1,0 +1,7 @@
+{"type": "launched"}
+{"type": "started", "key": "963afdcf5a36", "agentId": "a98861f9b41e8daa0", "label": "label-1", "phase": "phase-1"}
+{"type": "started", "key": "5d650ba6a97e", "agentId": "a2fa4f394cb730575", "label": "label-2", "phase": "phase-1"}
+{"type": "started", "key": "6c581d3de491", "agentId": "a055e907ede844981", "label": "label-3", "phase": "phase-1"}
+{"type": "result", "key": "963afdcf5a36", "agentId": "a98861f9b41e8daa0", "result": "RESULT"}
+{"type": "result", "key": "6c581d3de491", "agentId": "a055e907ede844981", "result": "RESULT"}
+{"type": "result", "key": "5d650ba6a97e", "agentId": "a2fa4f394cb730575", "result": "RESULT"}

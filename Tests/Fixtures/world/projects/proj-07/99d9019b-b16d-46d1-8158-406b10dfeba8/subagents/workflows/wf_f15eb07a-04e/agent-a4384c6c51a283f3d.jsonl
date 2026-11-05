@@ -1,0 +1,2 @@
+{"type": "user", "message": {"role": "user", "content": "PROMPT"}}
+{"type": "assistant", "isApiErrorMessage": true, "error": "server_error", "message": {"role": "assistant", "content": [{"type": "text", "text": "API Error: Connection lost while your computer was asleep"}]}}
