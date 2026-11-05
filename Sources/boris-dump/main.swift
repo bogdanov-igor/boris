@@ -23,6 +23,13 @@ func tokens() async {
     print("total \(total.total): input \(total.input), output \(total.output), cache read \(total.cacheRead), cache write \(total.cacheWrite)")
     let byDay = Dictionary(grouping: records, by: \.day).mapValues { $0.reduce(0) { $0 + $1.usage.total } }
     for day in byDay.keys.sorted().suffix(5) { print("  \(day): \(byDay[day] ?? 0)") }
+    let byModel = Dictionary(grouping: records, by: { $0.model ?? "?" }).mapValues { $0.reduce(0) { $0 + $1.usage.total } }
+    for model in byModel.keys.sorted() {
+        print("  \(model): \(byModel[model] ?? 0)\(PriceTable.price(for: model) == nil ? " (no price)" : "")")
+    }
+    let building = clock.now
+    let book = TokenBook(records: records, now: Date())
+    print("records \(records.count), book built in \(clock.now - building), all time ≈ $\(Int(book.report(.all).estimate.dollars))")
 }
 
 func describe(_ node: WorkNode, depth: Int) {

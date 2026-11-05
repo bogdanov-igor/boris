@@ -31,6 +31,9 @@ public struct SessionInfo: Sendable, Equatable, Identifiable {
     public var nameSource: String?
     /// The title Claude gave the conversation. It comes from the request, so it is for lists on screen only.
     public var title: String?
+    /// How full the main agent's context is and on which model, from the last record. Read while someone looks closely.
+    public var contextTokens: Int?
+    public var model: String?
 
     public init(
         sessionId: String,

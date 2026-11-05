@@ -93,7 +93,7 @@ public struct WorkNode: Sendable, Equatable, Identifiable {
     public var step: StepBrief?
     /// How full the context is, from the last record.
     public var contextTokens: Int?
-    /// What was really spent, each message counted once.
+    /// What was really spent, each message counted once. For the root of a session this is the whole session.
     public var tokens: TokenUsage?
     public var model: String?
     public var failure: FailureInfo?
@@ -159,6 +159,8 @@ public struct WorkSession: Sendable, Equatable, Identifiable {
     public var startedAt: Date?
     public var lastActivity: Date?
     public var root: WorkNode
+    /// What the main agent spent itself, while `root.tokens` is the whole session.
+    public var mainAgentTokens: TokenUsage?
 
     public init(id: String, environment: WorkEnvironment? = nil, cwd: String? = nil, title: String? = nil, state: WorkState, waitingFor: WaitingReason? = nil, startedAt: Date? = nil, lastActivity: Date? = nil, root: WorkNode) {
         self.id = id

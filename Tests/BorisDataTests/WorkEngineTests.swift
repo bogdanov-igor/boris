@@ -107,6 +107,28 @@ struct WorkEngineTests {
         let measured = try #require(delay)
         #expect(measured <= 5, "токены обновились через \(measured) с")
     }
+
+    @Test("Запуск с готовым кэшем сразу отдаёт цифры, а проход без изменений их не трогает")
+    func tokensFromCache() async throws {
+        let folder = TempFolder()
+        let cache = folder.url.appendingPathComponent("index.json")
+        folder.write("projects/p/s1.jsonl", toolLine("Read", file: "/x/a.swift", message: "m1"))
+        let paths = ClaudePaths(root: folder.url)
+        await TokenIndex(cacheFile: cache).update(roots: [paths])
+
+        let outputs = Outputs()
+        let engine = WorkEngine(paths: paths, tokenCache: cache, others: { [] }) { outputs.add($0) }
+        await engine.start()
+        #expect(await outputs.wait(timeout: 10) { $0.tokensVersion == 1 && $0.tokens.reduce(0) { $0 + $1.usage.total } == 105 } != nil)
+
+        // Something other than a log changed, so the logs are looked at again and nothing new comes out.
+        await engine.filesChanged([folder.url.appendingPathComponent("sessions/1.json").path])
+        try await Task.sleep(for: .seconds(4))
+        let latest = try #require(outputs.latest)
+        await engine.stop()
+        #expect(latest.tokensVersion == 1)
+        #expect(latest.tokens.reduce(0) { $0 + $1.usage.total } == 105)
+    }
 }
 
 @Suite("Хуки поверх файлов", .serialized)
