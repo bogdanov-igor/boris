@@ -139,10 +139,12 @@ public struct TokenBook: Sendable {
         for record in records where record.usage.total > 0 {
             let usage = record.usage
             let cost = price(record.model)
+            let environment = WorkEnvironment(entrypoint: record.entrypoint ?? entrypoints[record.sessionId], unlisted: false)
             let keys = [
                 (TokenBreakdown.days, TokenLine.Key.day(record.day)),
-                (.environments, .environment(WorkEnvironment(entrypoint: record.entrypoint ?? entrypoints[record.sessionId], unlisted: false))),
-                (.projects, .project(record.cwd ?? cwds[record.sessionId])),
+                (.environments, .environment(environment)),
+                // The same rule as the Projects page, so that a separate copy of a project is not a project of its own here either.
+                (.projects, .project(GitPlace.projectPath(cwd: record.cwd ?? cwds[record.sessionId], environment: environment))),
                 // The logs may spell one model in several ways, and its price does not depend on that.
                 (.models, .model(record.model.map { ModelName.canonical($0) ?? $0 })),
                 (.agents, .agents(record.agentId == nil ? .main : record.runId == nil ? .subagents : .workflow)),
@@ -208,6 +210,24 @@ public struct TokenBook: Sendable {
 
     public func spent(onDay day: String) -> TokenUsage {
         days[day] ?? TokenUsage()
+    }
+
+    /// The whole session: its main agent and everything under it.
+    public func spent(session id: String) -> TokenUsage? {
+        sessions[id]
+    }
+
+    /// What a session's main agent spent itself.
+    public func spent(mainAgentOf session: String) -> TokenUsage? {
+        mainAgents[session]
+    }
+
+    public func spent(agent id: String) -> TokenUsage? {
+        agents[id]
+    }
+
+    public func spent(run id: String) -> TokenUsage? {
+        runs[id]
     }
 
     /// Lays the exact numbers over the live model. The root of a session gets the whole session, every other node what it spent itself.

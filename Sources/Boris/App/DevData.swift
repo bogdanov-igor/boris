@@ -1,11 +1,12 @@
 #if DEBUG
 import BorisCore
+import BorisData
 import Foundation
 
 /// Made-up work for looking at screens. Nothing here comes from real sessions.
 @MainActor
 enum DevData: String {
-    case busy, empty, long
+    case busy, empty, long, big
 
     func fill(_ model: AppModel, offer: Bool = false, issues: Set<FormatIssue> = [], folderFound: Bool = true) {
         let now = Date()
@@ -20,35 +21,26 @@ enum DevData: String {
         )
         world.account = self == .empty ? .unknown : .signedIn
         world.usage?.extra = .on(used: 12.4, limit: 50, currency: "USD")
-        model.usage.showForSnapshot(book: DevUsageData.book(for: self, now: now))
+        let projectTokens = self == .empty ? [] : DevProjects.tokens(now: now)
+        model.usage.showForSnapshot(book: DevUsageData.book(for: self, now: now, adding: projectTokens), records: projectTokens)
         let tokens = self == .empty ? TokenUsage() : TokenUsage(input: 520_000, output: 60_000, cacheRead: 1_170_000, cacheWrite: 90_000)
         let mood: Mood = self == .empty ? .sleeping : .waiting
         model.showForSnapshot(work: work(now: now), world: world, today: tokens, mood: mood, offer: offer)
         model.load.showForSnapshot(macLoad)
         fillLosses(model, now: now)
+        let hasPast = self == .busy || self == .long
+        model.showProjectsForSnapshot(past: hasPast ? DevProjects.past(now: now, long: self == .long) : [])
     }
 
     private func work(now: Date) -> WorkModel {
         guard self != .empty else { return WorkModel() }
+        if self == .big {
+            let session = DevProjects.bigSession(now: now)
+            return WorkModel(projects: [WorkProject(path: session.cwd, sessions: [session])])
+        }
         let long = self == .long
-        let waiting = WorkSession(
-            id: "a1",
-            environment: .vsCode,
-            cwd: long ? "/x/a-very-long-project-name-that-nobody-would-ever-want-to-type-by-hand-more-than-once" : "/x/shop-api",
-            state: .waiting,
-            waitingFor: .permission(tool: "Bash"),
-            startedAt: now.addingTimeInterval(-2520),
-            root: WorkNode(id: "a1", kind: .main, state: .waiting, tokens: TokenUsage(input: 900_000))
-        )
-        let helpers = (1...3).map { WorkNode(id: "h\($0)", kind: .subagent, state: .running) }
-        let running = WorkSession(
-            id: "b1",
-            environment: .terminal,
-            cwd: "/x/boris",
-            state: .running,
-            startedAt: now.addingTimeInterval(-3960),
-            root: WorkNode(id: "b1", kind: .main, state: .running, step: StepBrief(kind: .edit, tool: "Edit", fileName: long ? "a-file-with-a-name-so-long-that-it-cannot-possibly-fit-anywhere-on-one-line.swift" : "auth.swift"), tokens: TokenUsage(input: 1_750_000), children: helpers)
-        )
+        let waiting = DevProjects.troubledSession(now: now, long: long)
+        let running = DevProjects.workingSession(now: now, long: long)
         let cowork = WorkSession(
             id: "c1",
             environment: .cowork,
@@ -69,7 +61,7 @@ enum DevData: String {
             WorkProject(path: waiting.cwd, sessions: [waiting]),
             WorkProject(path: running.cwd, sessions: [running]),
             WorkProject(path: nil, sessions: [cowork]),
-            WorkProject(path: silent.cwd, sessions: [silent]),
+            WorkProject(path: silent.cwd, sessions: [silent, DevProjects.finishedSession(now: now)]),
         ])
     }
 }

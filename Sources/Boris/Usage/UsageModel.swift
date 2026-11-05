@@ -15,15 +15,26 @@ final class UsageModel {
     var progress: WorkEngine.TokenProgress?
 
     @ObservationIgnored var onBuilt: (() -> Void)?
-    /// The Losses page adds up what failed agents spent from these same records.
-    @ObservationIgnored private(set) var records: [TokenRecord] = []
+    /// The Projects and Losses pages add up from these same records. They change only when the logs did.
+    private(set) var records: [TokenRecord] = []
     @ObservationIgnored private var building = false
     @ObservationIgnored private var buildAgain = false
+    @ObservationIgnored private var generation = 0
 
     /// New numbers from the logs.
     func read(_ records: [TokenRecord]) {
         self.records = records
         build()
+    }
+
+    /// Another Claude folder: nothing is known about it yet. A build still under way must not bring the old numbers back.
+    func reset() {
+        generation += 1
+        records = []
+        book = nil
+        progress = nil
+        building = false
+        buildAgain = false
     }
 
     /// A new day moves every period, even when nothing is being written.
@@ -48,13 +59,15 @@ final class UsageModel {
         }
         building = true
         let records = records
+        let generation = generation
         Task.detached(priority: .utility) { [weak self] in
             let book = TokenBook(records: records, now: Date())
-            await self?.finish(book)
+            await self?.finish(book, generation: generation)
         }
     }
 
-    private func finish(_ book: TokenBook) {
+    private func finish(_ book: TokenBook, generation: Int) {
+        guard generation == self.generation else { return }
         self.book = book
         building = false
         onBuilt?()
@@ -72,8 +85,9 @@ final class UsageModel {
     }
 
     #if DEBUG
-    func showForSnapshot(book: TokenBook?, progress: WorkEngine.TokenProgress? = nil) {
+    func showForSnapshot(book: TokenBook?, records: [TokenRecord] = [], progress: WorkEngine.TokenProgress? = nil) {
         self.book = book
+        self.records = records
         self.progress = progress
     }
     #endif

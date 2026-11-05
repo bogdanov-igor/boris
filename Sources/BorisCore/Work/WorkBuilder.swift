@@ -28,7 +28,7 @@ public enum WorkBuilder {
             ))
         }
 
-        let byProject = Dictionary(grouping: sessions, by: \.cwd)
+        let byProject = Dictionary(grouping: sessions, by: \.projectPath)
         let projects = byProject.map { path, sessions in
             WorkProject(path: path, sessions: sessions.sorted(by: comesFirst))
         }
@@ -60,8 +60,15 @@ public enum WorkBuilder {
 
     private static func session(id: String, info: SessionInfo?, isLive: Bool, died: Bool, runs: [RunState], agents: [AgentSnapshot], world: WorldSnapshot) -> WorkSession {
         let ownState = sessionState(info: info, isLive: isLive, died: died)
-        var nodes: [WorkNode] = agents.map { node($0, sessionId: id, tokens: world.agentTokens[$0.id]) }
-        for run in runs { nodes += workflowNodes(run, sessionId: id, tokens: world.runTokens[run.runId]) }
+        // Files and dictionaries come in no fixed order, and a list that jumps around at every scan cannot be read.
+        var nodes: [WorkNode] = agents.sorted { comesEarlier($0.startedAt, $0.id, $1.startedAt, $1.id) }.map { node($0, sessionId: id, tokens: world.agentTokens[$0.id]) }
+        for run in runs.sorted(by: { comesEarlier($0.startedAt, $0.runId, $1.startedAt, $1.runId) }) {
+            nodes += workflowNodes(run, sessionId: id, tokens: world.runTokens[run.runId])
+        }
+        let place = world.places[id]
+        for index in nodes.indices {
+            if let own = world.places[nodes[index].id], own.isSeparateCopy, place?.isSameCopy(as: own) != true { nodes[index].place = own }
+        }
 
         let root = WorkNode(
             id: id,
@@ -83,8 +90,15 @@ public enum WorkBuilder {
             waitingFor: ownState == .waiting ? waitingFor : nil,
             startedAt: info?.startedAt ?? runs.compactMap(\.startedAt).min() ?? agents.compactMap(\.startedAt).min(),
             lastActivity: ([info?.statusUpdatedAt] + runs.map(\.lastWrite) + agents.map(\.lastWrite)).compactMap { $0 }.max(),
+            place: place,
             root: root
         )
+    }
+
+    private static func comesEarlier(_ a: Date?, _ first: String, _ b: Date?, _ second: String) -> Bool {
+        let x = a ?? .distantPast
+        let y = b ?? .distantPast
+        return x == y ? first < second : x < y
     }
 
     private static func sessionState(info: SessionInfo?, isLive: Bool, died: Bool) -> WorkState {
@@ -123,7 +137,8 @@ public enum WorkBuilder {
             contextTokens: agent.contextTokens,
             tokens: tokens,
             model: agent.model,
-            failure: agent.failure
+            failure: agent.failure,
+            lastActivity: agent.lastWrite
         )
     }
 
@@ -136,7 +151,8 @@ public enum WorkBuilder {
             state: state(run.status),
             tokens: tokens,
             attempts: run.attempt,
-            workflow: WorkflowDetails(run)
+            workflow: WorkflowDetails(run),
+            lastActivity: run.lastWrite
         )]
         for agent in run.agents {
             nodes.append(WorkNode(
@@ -151,7 +167,8 @@ public enum WorkBuilder {
                 model: agent.model,
                 failure: agent.failure,
                 attempts: agent.attempts,
-                phase: agent.phase
+                phase: agent.phase,
+                lastActivity: run.lastWrite
             ))
         }
         return nodes

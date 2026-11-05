@@ -89,6 +89,7 @@ enum DevSnapshot {
         case notificationsQuiet, notificationsBot, notificationsOffline, notificationsConnect, notificationsPreview, quietRequests
         case spendUltra, spendTeam, spendGateway, spendGatewayBudget, spendApiKey, spendExtraOff, spendExtraNoLimit, spendFilling, spendFailed, spendZero, spendAncient
         case spendProjects, spendModels, spendPlaces, spendAgents, spendToday, spendMonth, spendEverything
+        case project, projectDates, datesPicker, session, sessionTrouble, sessionPast, sessionGone, bigRun
 
         var page: AppPage? {
             DevUsageData.Scenario(rawValue: rawValue) != nil ? .spend : AppPage(rawValue: rawValue)
@@ -135,6 +136,10 @@ enum DevSnapshot {
         case .notificationsPreview:
             view = AnyView(NotificationPreview(long: data == .long))
             canvas = size ?? CGSize(width: 800, height: 1040)
+        case .datesPicker:
+            model.projectFilter.period = .dates(from: Date().addingTimeInterval(-10 * 86400), to: Date())
+            view = AnyView(ProjectDatesPicker(model: model).background(Palette.pop))
+            canvas = CGSize(width: 240, height: 0)
         case .general, .sources, .surfaces, .notifications, .connections, .about, .license, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
             if screen == .surfacesLast { settings.surfaces = SurfaceSwitches(icon: false, notch: true, mini: false) }
             if screen == .surfacesHotKey {
@@ -180,6 +185,25 @@ enum DevSnapshot {
                 model.page = .losses
                 model.losses.kind = .denied
                 model.losses.project = "shop-api"
+            case .project:
+                model.openProject("/x/shop-api")
+                if data == .long { model.openProject(model.work.projects.first?.path) }
+            case .projectDates:
+                model.openProject("/x/shop-api")
+                model.projectFilter.period = .dates(from: Date().addingTimeInterval(-3.5 * 86400), to: Date().addingTimeInterval(-86400))
+            case .session:
+                model.openSession(DevProjects.working)
+            case .sessionTrouble:
+                model.openSession(DevProjects.troubled)
+            case .sessionPast:
+                model.openSession(DevProjects.pastBroken)
+            case .sessionGone:
+                model.openSession("no-such-session")
+            case .bigRun:
+                DevData.big.fill(model)
+                model.openSession(DevProjects.big)
+                let phases = model.session(DevProjects.big)?.root.children.first?.phases ?? []
+                model.expandedPhases = Set(phases.map { AgentTree.phaseKey(workflow: "wf_big", phase: $0.title) })
             default:
                 break
             }
@@ -194,6 +218,8 @@ enum DevSnapshot {
         window.appearance = host.appearance
         window.contentView = host
         host.frame = bounds
+        let measuring = ProcessInfo.processInfo.environment["BORIS_MEASURE_SCROLL"] != nil
+        if measuring { print(String(format: "first layout: %.1f ms", milliseconds { host.layoutSubtreeIfNeeded() })) }
         window.setFrameOrigin(NSPoint(x: -5000, y: -5000))
         window.orderBack(nil)
         try? await Task.sleep(for: .seconds(0.25))
@@ -202,7 +228,52 @@ enum DevSnapshot {
             host.cacheDisplay(in: host.bounds, to: picture)
             try? picture.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
         }
+        if measuring { await measureScroll(in: host, model: model) }
         window.orderOut(nil)
+    }
+
+    private static func milliseconds(_ work: () -> Void) -> Double {
+        let cost = ContinuousClock().measure(work)
+        return Double(cost.components.attoseconds) / 1e15 + Double(cost.components.seconds) * 1000
+    }
+
+    /// `BORIS_MEASURE_SCROLL=1` goes down the first long list one step at a time and says what each step cost: a frame at 60 Hz has 16 ms.
+    /// Then it changes what every row depends on, as a new scan does, and says what that cost.
+    private static func measureScroll(in host: NSView, model: AppModel) async {
+        func scrollViews(in view: NSView) -> [NSScrollView] {
+            ((view as? NSScrollView).map { [$0] } ?? []) + view.subviews.flatMap(scrollViews)
+        }
+        guard let scroll = scrollViews(in: host).first(where: { ($0.documentView?.frame.height ?? 0) > $0.frame.height + 1 }) else {
+            print("scroll: nothing long enough to scroll")
+            return
+        }
+        var costs: [Double] = []
+        var y: CGFloat = 0
+        while y < scroll.documentView?.frame.height ?? 0 {
+            costs.append(milliseconds {
+                scroll.contentView.scroll(to: NSPoint(x: 0, y: y))
+                scroll.reflectScrolledClipView(scroll.contentView)
+                host.layoutSubtreeIfNeeded()
+                host.displayIfNeeded()
+            })
+            y += 40
+            // Lets the lazy list bring in what has just come into view, as a real run of the main loop would.
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        costs.sort()
+        let average = costs.reduce(0, +) / Double(max(costs.count, 1))
+        let height = scroll.documentView?.frame.height ?? 0
+        print(String(format: "scroll: list %.0f pt, %d steps, average %.2f ms, 95%% %.2f ms, worst %.2f ms", height, costs.count, average, costs[costs.count * 95 / 100], costs.last ?? 0))
+        var updates: [Double] = []
+        for index in 0..<10 {
+            updates.append(milliseconds {
+                model.feedAgent = "agent-\(index)"
+                host.layoutSubtreeIfNeeded()
+                host.displayIfNeeded()
+            })
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        print(String(format: "update of every row: worst %.1f ms", updates.max() ?? 0))
     }
     #endif
 }

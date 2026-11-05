@@ -848,8 +848,7 @@ struct QuietNotificationTests {
         #expect(quiet.missed == [.waiting: 1])
         #expect(work.waitingSessions.map(\.id) == ["s1"])
         // Nothing about the waiting state depends on the mode: the walrus still shows the request.
-        let waitingInfo = session(status: "waiting", waitingFor: "approve Bash")
-        #expect(MoodBoard().mood(runs: [], sessions: [waitingInfo], formatBroken: false, matrix: ReactionMatrix(), now: at(1)) == .waiting)
+        #expect(MoodBoard().mood(work: work, broken: false, matrix: ReactionMatrix(), now: at(1)) == .waiting)
     }
 
     @Test("Режим закончился сам: одна сводка") func endsByItself() {

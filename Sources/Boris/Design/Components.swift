@@ -257,6 +257,8 @@ struct SessionRow: View {
                         .font(.system(size: 11.5))
                         .foregroundStyle(Palette.text2)
                         .lineLimit(1)
+                        .fixedSize()
+                    if let place = session.place, place.isSeparateCopy { CopyBadge(place: place, mode: mode) }
                 }
                 Text(WorkPhrases.line(session, mode: mode))
                     .font(.system(size: compact ? 11.5 : 12))
@@ -287,14 +289,22 @@ struct LimitsBlock: View {
 
     var body: some View {
         if let usage, !usage.windows.filter(Self.isBar).isEmpty {
-            Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: compact ? 6 : 8) {
+            Grid(alignment: .leading, horizontalSpacing: compact ? 8 : 10, verticalSpacing: compact ? 6 : 3) {
                 ForEach(usage.windows.filter(Self.isBar)) { window in
                     GridRow {
                         Text(Self.title(window)).foregroundStyle(Palette.text2).lineLimit(1)
                         Meter(percent: window.percent, height: compact ? 4 : 5).frame(minWidth: 50)
                         Text(WorkFormat.percent(window.percent)).fontWeight(.semibold).monospacedDigit()
                         // The bar gives way, since the day of the reset is what must be read in full.
-                        Text(window.resetsAt.map { WorkFormat.resets($0, now: now) } ?? "").font(.system(size: 11)).foregroundStyle(Palette.text3).lineLimit(1).fixedSize()
+                        if compact { resets(window).fixedSize() }
+                    }
+                    // In a wide block the reset goes under the bar, where a long day name has room.
+                    if !compact {
+                        GridRow {
+                            Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                            resets(window).gridCellColumns(2)
+                        }
+                        .padding(.bottom, 4)
                     }
                 }
             }
@@ -304,11 +314,15 @@ struct LimitsBlock: View {
         }
     }
 
+    private func resets(_ window: UsageWindow) -> some View {
+        Text(window.resetsAt.map { WorkFormat.resets($0, now: now) } ?? "").font(.system(size: 11)).foregroundStyle(Palette.text3).lineLimit(1)
+    }
+
     private static func isBar(_ window: UsageWindow) -> Bool {
         window.kind != .extraSpend
     }
 
-    private static func title(_ window: UsageWindow) -> String {
+    static func title(_ window: UsageWindow) -> String {
         switch window.kind {
         case .fiveHour: return L("5 hours")
         case .week: return L("Week")

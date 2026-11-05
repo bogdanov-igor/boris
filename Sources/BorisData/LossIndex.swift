@@ -580,7 +580,7 @@ public actor LossIndex {
 
         let ended = finalEnd(final) ?? finalModified ?? journalModified ?? Date()
         let needsOrigin = final == nil || final?.status == "failed" || agents.contains { $0.state == .failed }
-        let origin = needsOrigin ? TranscriptReader.origin(in: parent) : (cwd: nil, entrypoint: nil)
+        let origin = needsOrigin ? TranscriptReader.origin(in: parent) : (cwd: nil, entrypoint: nil, gitBranch: nil)
         // A run started from a file has no script copy here, and only its launch in the parent transcript names it.
         let name = final?.workflowName
             ?? runs[id]?.template.title

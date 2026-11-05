@@ -9,7 +9,7 @@ extension DevData {
         switch self {
         case .empty:
             return MacLoad()
-        case .busy:
+        case .busy, .big:
             return MacLoad(
                 cpu: LoadSplit(total: 60, named: [.claude: 20, .vsCode: 12, .boris: 1]),
                 memory: LoadSplit(total: 71, named: [.claude: 18, .vsCode: 9, .boris: 1]),

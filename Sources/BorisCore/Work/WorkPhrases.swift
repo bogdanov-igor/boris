@@ -56,7 +56,7 @@ public enum WorkPhrases {
         guard let step else { return nil }
         guard mode == .simple else { return [step.tool, step.fileName].compactMap { $0 }.joined(separator: " ") }
         switch step.kind {
-        case .read: return step.fileName.map { L("Reading %@", $0) } ?? L("Reading files")
+        case .read: return L("Reading project files")
         case .edit: return step.fileName.map { L("Editing %@", $0) } ?? L("Editing files")
         case .write: return step.fileName.map { L("Writing %@", $0) } ?? L("Writing files")
         case .shell: return L("Running a command")
@@ -91,12 +91,12 @@ extension WorkSession {
     /// The name Claude or the person gave it, otherwise its project.
     public var displayName: String {
         if let title, !title.isEmpty { return title }
-        if let cwd { return URL(fileURLWithPath: cwd).lastPathComponent }
+        if let cwd, !cwd.isEmpty { return URL(fileURLWithPath: cwd).lastPathComponent }
         return String(id.prefix(8))
     }
 
     /// A folder is set in a monospaced font, a person's words are not.
     public var nameIsFolder: Bool {
-        title?.isEmpty != false && cwd != nil
+        title?.isEmpty != false && cwd?.isEmpty == false
     }
 }

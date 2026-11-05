@@ -150,7 +150,8 @@ public enum SurfaceWords {
             return (session.lastActivity ?? session.startedAt).map { WorkFormat.duration(now.timeIntervalSince($0)) } ?? ""
         }
         guard mode == .technical else { return "" }
-        let spent = session.root.flattened.compactMap(\.tokens).reduce(0) { $0 + $1.total }
+        // The root holds the whole session once the logs are added up. Until then only what its agents metered live is known.
+        let spent = session.root.tokens?.total ?? session.root.flattened.compactMap(\.tokens).reduce(0) { $0 + $1.total }
         return spent > 0 ? WorkFormat.tokens(spent) : ""
     }
 

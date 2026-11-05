@@ -10,8 +10,8 @@ enum DevUsageData {
         UsageModel.dayKey(date)
     }
 
-    static func book(for data: DevData, now: Date) -> TokenBook {
-        guard data != .empty else { return TokenBook(records: [], now: now) }
+    static func book(for data: DevData, now: Date, adding others: [TokenRecord] = []) -> TokenBook {
+        guard data != .empty else { return TokenBook(records: others, now: now) }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
@@ -42,7 +42,7 @@ enum DevUsageData {
                 ))
             }
         }
-        return TokenBook(records: records, now: now)
+        return TokenBook(records: records + others, now: now)
     }
 
     /// The accounts and states the page has to get right, on invented data.

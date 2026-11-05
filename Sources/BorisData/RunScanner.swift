@@ -50,6 +50,9 @@ public actor RunScanner {
         var agentTypes: [String: String] = [:]
         var tokens: [String: (at: Date, tokens: Int, model: String?)] = [:]
         var steps: [String: StepBrief] = [:]
+        /// Agents whose first record has been read for where they work, and those of them in a separate copy.
+        var placesRead: Set<String> = []
+        var places: [String: GitPlace] = [:]
         var lastChecked: Date = .distantPast
         var loaded = false
 
@@ -65,7 +68,6 @@ public actor RunScanner {
     private var usage: UsageSnapshot?
     private var account = ClaudeAccount.unknown
     /// The main agent's last known context and model. It does not change while a session is idle, so one read is enough then.
-    private var sessionContext: [String: (tokens: Int, model: String?)] = [:]
     private var usageModified: Date?
     private var usageChecked: Date = .distantPast
     private var focusRuns: Set<String> = []
@@ -81,6 +83,7 @@ public actor RunScanner {
     private var unlisted: UnlistedSessions
     private var changedProjects: Set<String> = []
     private var titles: [String: (checked: Date, title: String?)] = [:]
+    private var sessionTails: [String: (modified: Date?, tail: TranscriptReader.Tail)] = [:]
 
     /// - Parameter others: finds the other places Claude keeps files. Only `paths` is the source of usage limits.
     public init(paths: ClaudePaths, config: Config = Config(), others: @escaping @Sendable () -> [ClaudePaths] = { [] }) {
@@ -161,27 +164,26 @@ public actor RunScanner {
         let ended = read.sessions.filter { !SessionReader.isLive($0) && !BorisPaths.isUsageProbe(cwd: $0.cwd) && recentlyActive($0, now: now) }
         sessions += unlistedSessions(listed: Set(read.sessions.map(\.sessionId)), now: now).filter { !BorisPaths.isUsageProbe(cwd: $0.cwd) }
         applyTitles(&sessions, now: now)
-        for index in sessions.indices where sessions[index].status != "idle" {
-            let unnamedTool = WaitingReason(sessions[index].waitingFor) == .permission(tool: nil)
-            guard followSessions || unnamedTool, let file = sessionTranscript(sessions[index].sessionId) else { continue }
-            let tail = TranscriptReader.tail(file)
-            let running = tail.running
-            if let usage = tail.usage { sessionContext[sessions[index].sessionId] = (usage.context, tail.model) }
-            if followSessions { sessions[index].currentStep = running }
-            // A request from a workflow agent is not in this file, so its tool stays unnamed.
-            if unnamedTool, let tool = running?.tool { sessions[index].waitingFor = "approve \(tool)" }
-        }
-        if followSessions {
-            for index in sessions.indices {
-                let id = sessions[index].sessionId
-                if sessionContext[id] == nil, let file = sessionTranscript(id) {
-                    let tail = TranscriptReader.tail(file)
-                    if let usage = tail.usage { sessionContext[id] = (usage.context, tail.model) }
-                }
-                sessions[index].contextTokens = sessionContext[id]?.tokens
-                sessions[index].model = sessionContext[id]?.model
+        var places: [String: GitPlace] = [:]
+        for index in sessions.indices {
+            let idle = sessions[index].status == "idle"
+            let unnamedTool = !idle && WaitingReason(sessions[index].waitingFor) == .permission(tool: nil)
+            let id = sessions[index].sessionId
+            guard followSessions || unnamedTool, let file = sessionTranscript(id) else { continue }
+            let tail = sessionTail(id, file: file)
+            if followSessions {
+                if !idle { sessions[index].currentStep = tail.running }
+                sessions[index].contextTokens = tail.usage?.context
+                sessions[index].model = tail.model
+                places[id] = GitPlaceReader.place(folder: sessions[index].cwd, branch: tail.gitBranch)
             }
+            // A request from a workflow agent is not in this file, so its tool stays unnamed.
+            if unnamedTool, let tool = tail.running?.tool { sessions[index].waitingFor = "approve \(tool)" }
         }
+        for session in sessions + ended where places[session.sessionId] == nil {
+            places[session.sessionId] = GitPlaceReader.place(folder: session.cwd, branch: nil)
+        }
+        sessionTails = sessionTails.filter { id, _ in sessions.contains { $0.sessionId == id } }
         var sessionGrowth = TokenUsage()
         for session in sessions {
             guard let file = sessionTranscript(session.sessionId) else { continue }
@@ -216,11 +218,12 @@ public actor RunScanner {
             guard cache.loaded, shown else { continue }
             issues.formUnion(formatIssues(cache, now: now))
             snapshots.append(snapshot(cache, session: sessions.first { $0.sessionId == cache.sessionId }))
+            places.merge(cache.places) { own, _ in own }
         }
         dirty.removeAll()
         refreshUsage(now: now)
         var agentTokens: [String: TokenUsage] = [:]
-        let agents = singleAgentSnapshots(sessions: sessions, now: now, tokens: &agentTokens)
+        let agents = singleAgentSnapshots(sessions: sessions, now: now, tokens: &agentTokens, places: &places)
 
         var world = WorldSnapshot(takenAt: now, sessions: sessions, runs: snapshots, usage: usage, claudeFolderFound: folderFound, formatIssues: issues)
         world.account = account
@@ -229,7 +232,22 @@ public actor RunScanner {
         world.sessionTokenGrowth = sessionGrowth
         world.runTokens = runTokens
         world.agentTokens = agentTokens
+        world.places = places
         return world
+    }
+
+    /// A file that has not changed says the same as last time.
+    private func sessionTail(_ id: String, file: URL) -> TranscriptReader.Tail {
+        let modified = FileInfo.modified(file)
+        if let known = sessionTails[id], known.modified == modified { return known.tail }
+        var tail = TranscriptReader.tail(file)
+        // A long result can push the last usage out of what the reader looks at, and the context has not gone anywhere.
+        if tail.usage == nil, let known = sessionTails[id]?.tail {
+            tail.usage = known.usage
+            tail.model = tail.model ?? known.model
+        }
+        sessionTails[id] = (modified, tail)
+        return tail
     }
 
     /// A file left behind long ago says nothing about the work of today.
@@ -389,6 +407,8 @@ public actor RunScanner {
         var step: StepBrief?
         var contextTokens: Int?
         var model: String?
+        var placeRead = false
+        var place: GitPlace?
 
         var file: URL { folder.appendingPathComponent("agent-\(id).jsonl") }
         var meta: URL { folder.appendingPathComponent("agent-\(id).meta.json") }
@@ -409,7 +429,7 @@ public actor RunScanner {
         }
     }
 
-    private func singleAgentSnapshots(sessions: [SessionInfo], now: Date, tokens: inout [String: TokenUsage]) -> [AgentSnapshot] {
+    private func singleAgentSnapshots(sessions: [SessionInfo], now: Date, tokens: inout [String: TokenUsage], places: inout [String: GitPlace]) -> [AgentSnapshot] {
         for session in sessions {
             guard let transcript = sessionTranscript(session.sessionId) else { continue }
             let folder = subagentsFolder(project: transcript.deletingLastPathComponent(), session: session.sessionId)
@@ -474,6 +494,12 @@ public actor RunScanner {
                 agent.step = nil
                 meter.forget(agent.file)
             }
+            if !agent.placeRead {
+                let origin = TranscriptReader.origin(in: agent.file)
+                agent.placeRead = origin.cwd != nil
+                agent.place = GitPlaceReader.place(folder: origin.cwd, branch: origin.gitBranch)
+            }
+            if let place = agent.place, place.isSeparateCopy { places[id] = place }
             singleAgents[id] = agent
             result.append(snapshot(agent, lastWrite: lastWrite))
         }
@@ -514,6 +540,11 @@ public actor RunScanner {
         for agent in cache.journal.tally.agents {
             guard let id = agent.agentId else { continue }
             let file = cache.runDir.appendingPathComponent("agent-\(id).jsonl")
+            if !cache.placesRead.contains(id) {
+                let origin = TranscriptReader.origin(in: file)
+                if origin.cwd != nil { cache.placesRead.insert(id) }
+                if let place = GitPlaceReader.place(folder: origin.cwd, branch: origin.gitBranch), place.isSeparateCopy { cache.places[id] = place }
+            }
             if agent.state == .running, cache.agentTypes[id] == nil {
                 let meta = (try? Data(contentsOf: cache.runDir.appendingPathComponent("agent-\(id).meta.json"))).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
                 cache.agentTypes[id] = AgentKind.shown(meta?["agentType"] as? String) ?? ""

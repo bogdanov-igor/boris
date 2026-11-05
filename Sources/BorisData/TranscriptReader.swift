@@ -3,13 +3,17 @@ import BorisCore
 
 public enum TranscriptReader {
     public struct Tail: Sendable, Equatable {
+        /// The very last line, whatever it is. In a session's log that is usually one of Claude's own records.
         public var last: LastRecord?
+        /// The newest message of the person or of Claude, which is what says how things ended.
+        public var lastMessage: LastRecord?
         public var usage: TokenUsage?
         public var model: String?
         /// The tool call still without a result, if any.
         public var running: StepBrief?
         /// The newest message closes a turn of Claude's, so nothing more is coming unless someone asks.
         public var turnEnded = false
+        public var gitBranch: String?
 
         public init(last: LastRecord? = nil, usage: TokenUsage? = nil, model: String? = nil, running: StepBrief? = nil) {
             self.last = last
@@ -45,8 +49,10 @@ public enum TranscriptReader {
             for line in lines.reversed() {
                 guard let record = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] else { continue }
                 if result.last == nil { result.last = lastRecord(record) }
+                if result.gitBranch == nil { result.gitBranch = record["gitBranch"] as? String }
                 if !messageSeen, let type = record["type"] as? String, type == "assistant" || type == "user" {
                     messageSeen = true
+                    result.lastMessage = lastRecord(record)
                     result.turnEnded = type == "assistant" && closesTurn(record)
                 }
                 if result.usage == nil, let (usage, model) = realUsage(record) {
@@ -229,16 +235,16 @@ public enum TranscriptReader {
     }
 
     /// Where a session runs and what started it, from its first transcript lines.
-    public static func origin(in parent: URL) -> (cwd: String?, entrypoint: String?) {
-        guard let handle = try? FileHandle(forReadingFrom: parent) else { return (nil, nil) }
+    public static func origin(in parent: URL) -> (cwd: String?, entrypoint: String?, gitBranch: String?) {
+        guard let handle = try? FileHandle(forReadingFrom: parent) else { return (nil, nil, nil) }
         defer { try? handle.close() }
-        guard let data = try? handle.read(upToCount: 256 * 1024) else { return (nil, nil) }
+        guard let data = try? handle.read(upToCount: 256 * 1024) else { return (nil, nil, nil) }
         for line in data.split(separator: 0x0A) {
             if let record = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any], let cwd = record["cwd"] as? String {
-                return (cwd, record["entrypoint"] as? String)
+                return (cwd, record["entrypoint"] as? String, record["gitBranch"] as? String)
             }
         }
-        return (nil, nil)
+        return (nil, nil, nil)
     }
 
     /// The title Claude gave the conversation. It is rewritten often, so its newest copy is close to the end.

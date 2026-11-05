@@ -54,6 +54,10 @@ enum Palette {
     static let limitSoft = Color(DesignTokens.statusLimitSoft)
     static let notch = Color(DesignTokens.notch)
     static let panel = Color(DesignTokens.panel)
+    static let ribbonDone = Color(DesignTokens.ribbonDone)
+    static let ribbonRunning = Color(DesignTokens.ribbonRunning)
+    static let ribbonFailed = Color(DesignTokens.ribbonFailed)
+    static let ribbonCancelled = Color(DesignTokens.ribbonCancelled)
     static let brandRed = Color(DesignTokens.brandRed)
     static let brandGold = Color(DesignTokens.brandGold)
 }

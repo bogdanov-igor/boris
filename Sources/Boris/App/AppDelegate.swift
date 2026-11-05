@@ -57,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         surface.onIconSwitch = { [weak statusBar] in statusBar?.update() }
 
         statusBar.onOpenMain = { [weak main] in main?.show() }
+        model.onShowMainWindow = { [weak main] in main?.show() }
         statusBar.onOpenSettings = { [weak settings] section in settings?.show(section) }
         main.onOpenSettings = { [weak settings] section in settings?.show(section) }
         actions.applyHotKey = { [weak self] in self?.registerHotKey() }

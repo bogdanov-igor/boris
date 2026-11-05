@@ -132,6 +132,8 @@ public struct WorldSnapshot: Sendable, Equatable {
     public var runTokens: [String: TokenUsage] = [:]
     /// What each running ordinary agent has spent so far.
     public var agentTokens: [String: TokenUsage] = [:]
+    /// Where sessions and agents work in git, by their id.
+    public var places: [String: GitPlace] = [:]
 
     public init(
         takenAt: Date,

@@ -22,7 +22,6 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     }
 
     func show() {
-        model.mainWindowIsOpen = true
         if window == nil {
             let host = NSHostingController(rootView: MainWindowView(model: model, connect: connect, openSettings: { [weak self] section in
                 self?.onOpenSettings?(section)
@@ -43,7 +42,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
-        model.setLookingClosely(true)
+        model.setLookingClosely(true, from: .mainWindow)
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
@@ -51,8 +50,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        model.mainWindowIsOpen = false
-        model.setLookingClosely(false)
+        model.setLookingClosely(false, from: .mainWindow)
     }
 }
 
@@ -104,7 +102,7 @@ private struct Sidebar: View {
             Color.clear.frame(height: 38)
             ForEach(AppPage.allCases.filter { $0.isShown(in: model.settings.displayMode) }) { page in
                 item(page.title, selected: model.page == page, badge: page == .requests ? model.requestCount : 0) {
-                    model.page = page
+                    model.choose(page)
                 }
             }
             item(L("Settings"), selected: false, badge: 0) { openSettings(.general) }
@@ -154,21 +152,24 @@ private struct PageContent: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(model.page.title).font(.system(size: 18, weight: .semibold))
-                Text(subtitle).font(.system(size: 12)).foregroundStyle(Palette.text2).lineLimit(1)
-                if model.page == .walrus { WalrusPageTabs(model: model) }
-                Spacer(minLength: 0)
-                if model.page == .walrus { WalrusImportButton(model: model) }
-                if model.page == .losses { LossPeriodBar(store: model.losses) }
-                if model.page == .spend {
-                    SpendHeaderControls(usage: model.usage)
-                        .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 5 }
+            // The page of projects has a header of its own, with the way back and its filters.
+            if model.page != .projects {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(model.page.title).font(.system(size: 18, weight: .semibold))
+                    Text(subtitle).font(.system(size: 12)).foregroundStyle(Palette.text2).lineLimit(1)
+                    if model.page == .walrus { WalrusPageTabs(model: model) }
+                    Spacer(minLength: 0)
+                    if model.page == .walrus { WalrusImportButton(model: model) }
+                    if model.page == .losses { LossPeriodBar(store: model.losses) }
+                    if model.page == .spend {
+                        SpendHeaderControls(usage: model.usage)
+                            .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 5 }
+                    }
                 }
+                .padding(.horizontal, 24)
+                .frame(height: 52)
+                Rectangle().fill(Palette.separator).frame(height: 1)
             }
-            .padding(.horizontal, 24)
-            .frame(height: 52)
-            Rectangle().fill(Palette.separator).frame(height: 1)
             ConnectionNotices(model: model, connect: connect)
             page.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
