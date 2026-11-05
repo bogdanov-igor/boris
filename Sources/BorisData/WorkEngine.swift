@@ -282,7 +282,7 @@ public actor WorkEngine {
         let runs = tracker.resolve(world) { ProcessInspector.startTime(pid: $0) }
         scanned = (world, runs)
         hooks.expire(now: now)
-        let events = detector.detect(runs: hooks.overlay(runs: runs), sessions: hooks.overlay(sessions: world.sessions), usage: world.usage, now: now, failures: hooks.drainFailures())
+        let events = detector.detect(runs: hooks.overlay(runs: runs), sessions: hooks.overlay(sessions: world.sessions), usage: world.usage, now: now, failures: hooks.drainFailures(), endedSessions: world.endedSessions)
         // Just assigned, so it is always there.
         return assemble(now: now, events: events) ?? emptyOutput(now: now, world: world, runs: runs, events: events)
     }

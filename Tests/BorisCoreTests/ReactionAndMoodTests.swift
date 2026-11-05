@@ -47,11 +47,11 @@ struct ReactionTests {
         #expect(r.status == .allAgentsFailed)
     }
 
-    @Test("Тихий час: баннера нет, сова работает, в конце сводка") func quiet() {
+    @Test("Тихий час: ни баннера, ни звука, ни реакции моржа, в конце сводка") func quiet() {
         var quiet = QuietMode()
         quiet.start(for: 3600, now: t0)
         let alarm = ReactionMatrix().reaction(for: .failed)
-        #expect(quiet.filter(alarm, kind: .failed, now: at(10)) == Reaction(banner: false, sound: false, mood: .alarm))
+        #expect(quiet.filter(alarm, kind: .failed, now: at(10)) == Reaction(banner: false, sound: false, mood: .none))
         _ = quiet.filter(alarm, kind: .failed, now: at(20))
         #expect(quiet.finish(now: at(100)) == nil)
         #expect(quiet.finish(now: at(3601)) == [.failed: 2])

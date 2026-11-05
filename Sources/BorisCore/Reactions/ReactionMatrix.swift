@@ -47,10 +47,13 @@ public struct ReactionMatrix: Codable, Sendable, Equatable {
     }
 }
 
-/// Banners and sounds off for a while. The walrus and statuses keep working, and one summary comes at the end.
+/// Banners, sounds and the walrus's reactions off for a while. Statuses and requests keep working, and one summary comes at the end.
 public struct QuietMode: Codable, Sendable, Equatable {
     public var until: Date?
     public var missed: [EventKind: Int]
+
+    /// Longer than anyone leaves a Mac on: the way to say "until turned off" with an end date.
+    public static let indefinitely: TimeInterval = 10 * 365 * 24 * 3600
 
     public init(until: Date? = nil, missed: [EventKind: Int] = [:]) {
         self.until = until
@@ -71,7 +74,7 @@ public struct QuietMode: Codable, Sendable, Equatable {
     public mutating func filter(_ reaction: Reaction, kind: EventKind, now: Date) -> Reaction {
         guard isOn(now: now) else { return reaction }
         if reaction.banner || reaction.sound { missed[kind, default: 0] += 1 }
-        return Reaction(banner: false, sound: false, mood: reaction.mood)
+        return Reaction(banner: false, sound: false, mood: .none)
     }
 
     /// Returns the summary once quiet mode has just ended.
@@ -82,9 +85,13 @@ public struct QuietMode: Codable, Sendable, Equatable {
         return missed.isEmpty ? nil : missed
     }
 
-    /// Ends quiet mode at the user's request. There is no summary, because the user is here now.
-    public mutating func cancel() {
-        until = nil
-        missed = [:]
+    /// Ends quiet mode at the user's request. "Until turned off" ends in no other way, so what was missed is told here too.
+    @discardableResult
+    public mutating func cancel() -> [EventKind: Int]? {
+        defer {
+            until = nil
+            missed = [:]
+        }
+        return missed.isEmpty ? nil : missed
     }
 }
