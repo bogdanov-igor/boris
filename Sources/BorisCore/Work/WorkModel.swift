@@ -56,6 +56,8 @@ public struct WorkflowDetails: Sendable, Equatable {
     public var status: RunStatus
     public var description: String?
     public var phases: [PhaseGroup]
+    /// What the script plans, for a run with no agents yet.
+    public var planned: [String]
     public var total: Int
     public var done: Int
     public var running: Int
@@ -64,12 +66,14 @@ public struct WorkflowDetails: Sendable, Equatable {
     public var durationMs: Int?
     public var errorFirstLine: String?
     public var stoppedByClaude: Bool
+    public var totalTokens: Int?
 
     public init(_ run: RunState) {
         runId = run.runId
         status = run.status
         description = run.description
         phases = run.phases
+        planned = run.plannedPhases
         total = run.total
         done = run.done
         running = run.running
@@ -78,6 +82,7 @@ public struct WorkflowDetails: Sendable, Equatable {
         durationMs = run.durationMs
         errorFirstLine = run.errorFirstLine
         stoppedByClaude = run.stoppedByClaude
+        totalTokens = run.totalTokens
     }
 }
 
@@ -100,6 +105,9 @@ public struct WorkNode: Sendable, Equatable, Identifiable {
     public var attempts: Int
     public var phase: String?
     public var workflow: WorkflowDetails?
+    /// Set only when it works somewhere other than its session: in its own separate copy of the project.
+    public var place: GitPlace?
+    public var lastActivity: Date?
     public var children: [WorkNode]
 
     public init(
@@ -117,6 +125,8 @@ public struct WorkNode: Sendable, Equatable, Identifiable {
         attempts: Int = 1,
         phase: String? = nil,
         workflow: WorkflowDetails? = nil,
+        place: GitPlace? = nil,
+        lastActivity: Date? = nil,
         children: [WorkNode] = []
     ) {
         self.id = id
@@ -133,6 +143,8 @@ public struct WorkNode: Sendable, Equatable, Identifiable {
         self.attempts = attempts
         self.phase = phase
         self.workflow = workflow
+        self.place = place
+        self.lastActivity = lastActivity
         self.children = children
     }
 
@@ -158,9 +170,10 @@ public struct WorkSession: Sendable, Equatable, Identifiable {
     public var waitingFor: WaitingReason?
     public var startedAt: Date?
     public var lastActivity: Date?
+    public var place: GitPlace?
     public var root: WorkNode
 
-    public init(id: String, environment: WorkEnvironment? = nil, cwd: String? = nil, title: String? = nil, state: WorkState, waitingFor: WaitingReason? = nil, startedAt: Date? = nil, lastActivity: Date? = nil, root: WorkNode) {
+    public init(id: String, environment: WorkEnvironment? = nil, cwd: String? = nil, title: String? = nil, state: WorkState, waitingFor: WaitingReason? = nil, startedAt: Date? = nil, lastActivity: Date? = nil, place: GitPlace? = nil, root: WorkNode) {
         self.id = id
         self.environment = environment
         self.cwd = cwd
@@ -169,7 +182,14 @@ public struct WorkSession: Sendable, Equatable, Identifiable {
         self.waitingFor = waitingFor
         self.startedAt = startedAt
         self.lastActivity = lastActivity
+        self.place = place
         self.root = root
+    }
+
+    /// The project this session belongs to: the main copy for a separate copy, and none for Cowork, whose folder lives inside a virtual machine.
+    public var projectPath: String? {
+        if environment == .cowork { return nil }
+        return place?.mainFolder ?? cwd
     }
 
     /// Agents busy right now, whatever started them. A workflow is a script, so it is not one of them.

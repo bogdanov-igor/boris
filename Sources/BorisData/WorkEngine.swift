@@ -43,6 +43,7 @@ public actor WorkEngine {
     private var rescanNeeded = false
     private let index: TokenIndex
     private let others: @Sendable () -> [ClaudePaths]
+    private nonisolated let history: SessionHistory
     private var tokens: [TokenRecord] = []
     private var tokenProgress: TokenProgress?
     private var tokensChanged = true
@@ -63,6 +64,7 @@ public actor WorkEngine {
         self.index = TokenIndex(cacheFile: tokenCache)
         self.others = others
         self.scanner = RunScanner(paths: paths, others: others)
+        self.history = SessionHistory(paths: paths, others: others)
         self.tracker = RunTracker(memory: runs, config: status)
         self.detector = EventDetector(memory: detector, config: events)
         self.handler = handler
@@ -127,6 +129,11 @@ public actor WorkEngine {
 
     public func sessionTranscript(_ sessionId: String) async -> URL? {
         await scanner.sessionTranscript(sessionId)
+    }
+
+    /// Every session Claude still keeps a log of. Off the actor, so a long first read holds up no scan.
+    public nonisolated func pastSessions() async -> [WorkSession] {
+        await history.sessions()
     }
 
     public func setFocus(runs: Set<String>, lookingClosely: Bool) async {
