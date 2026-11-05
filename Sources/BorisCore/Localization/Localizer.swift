@@ -28,6 +28,8 @@ public enum Localizer {
     private static let table = OSAllocatedUnfairLock<Bundle?>(initialState: nil)
     private static let chosen = OSAllocatedUnfairLock(initialState: AppLanguage.en)
 
+    public static var language: AppLanguage { chosen.withLock { $0 } }
+
     /// Numbers, dates and plurals follow the chosen language, not the system one.
     public static var locale: Locale {
         Locale(identifier: chosen.withLock { $0 }.rawValue)
@@ -36,9 +38,13 @@ public enum Localizer {
     /// English is the source language and has no table: its text is the key itself.
     /// Falling back to the main bundle here would pick the system language instead of the chosen one.
     public static func use(_ language: AppLanguage, in main: Bundle = .main) {
-        let bundle = main.path(forResource: language.rawValue, ofType: "lproj").flatMap(Bundle.init(path:))
+        let bundle = table(for: language, in: main)
         table.withLock { $0 = bundle }
         chosen.withLock { $0 = language }
+    }
+
+    static func table(for language: AppLanguage, in main: Bundle = .main) -> Bundle? {
+        main.path(forResource: language.rawValue, ofType: "lproj").flatMap(Bundle.init(path:))
     }
 
     public static func string(_ key: String) -> String {
