@@ -5,7 +5,8 @@ import Testing
 
 @Suite("Workflow на реальных запусках")
 struct WorkflowFixtureTests {
-    private func model() async throws -> (WorkModel, TempFolder) {
+    /// Read once: a pass over all the fixtures is the heaviest thing here, and the timing tests next door feel it.
+    private static let work = Task { () throws -> WorkModel in
         let folder = TempFolder()
         let paths = try Fixtures.world(into: folder)
         var config = RunScanner.Config()
@@ -14,7 +15,11 @@ struct WorkflowFixtureTests {
         var tracker = RunTracker()
         let runs = tracker.resolve(world) { _ in nil }
         world.sessions = []
-        return (WorkBuilder.build(world: world, runs: runs), folder)
+        return WorkBuilder.build(world: world, runs: runs)
+    }
+
+    private func model() async throws -> WorkModel {
+        try await Self.work.value
     }
 
     private func workflows(_ model: WorkModel) -> [WorkNode] {
@@ -23,7 +28,7 @@ struct WorkflowFixtureTests {
 
     @Test("Гистограмма статусов узлов дерева совпадает с независимым подсчётом")
     func statusHistogram() async throws {
-        let (work, _) = try await model()
+        let work = try await model()
         var histogram: [String: Int] = [:]
         for node in workflows(work) { histogram[node.workflow?.status.key ?? "?", default: 0] += 1 }
         #expect(histogram == (try Fixtures.expected()).status)
@@ -31,7 +36,7 @@ struct WorkflowFixtureTests {
 
     @Test("Завершён, но упали все агенты: узел в состоянии сбоя, а не успеха")
     func honestState() async throws {
-        let (work, _) = try await model()
+        let work = try await model()
         let failed = workflows(work).filter { $0.workflow?.status == .allAgentsFailed }
         #expect(failed.count == 11)
         #expect(failed.allSatisfy { $0.state == .failed })
@@ -40,7 +45,7 @@ struct WorkflowFixtureTests {
 
     @Test("Каждый агент каждого запуска стоит ровно в одной фазе, порядок как в плане")
     func everyAgentInOnePhase() async throws {
-        let (work, _) = try await model()
+        let work = try await model()
         let nodes = workflows(work)
         #expect(nodes.count == (try Fixtures.expected()).runs)
         for node in nodes {
@@ -59,7 +64,7 @@ struct WorkflowFixtureTests {
 
     @Test("Запуск из 219 агентов свёрнут в считанные строки, а раскрытый показывает всех")
     func bigRun() async throws {
-        let (work, _) = try await model()
+        let work = try await model()
         let session = try #require(work.sessions.first { $0.root.children.contains { $0.id == "wf_156c5026-872" } })
         let node = try #require(session.root.children.first { $0.id == "wf_156c5026-872" })
         #expect(node.workflow?.total == 219)
@@ -81,7 +86,7 @@ struct WorkflowFixtureTests {
 
     @Test("Список строк для 219 агентов собирается быстрее кадра")
     func rowsAreCheap() async throws {
-        let (work, _) = try await model()
+        let work = try await model()
         let session = try #require(work.sessions.first { $0.root.children.contains { $0.id == "wf_156c5026-872" } })
         let node = try #require(session.root.children.first { $0.id == "wf_156c5026-872" })
         let keys = Set(node.phases.map { AgentTree.phaseKey(workflow: node.id, phase: $0.title) })
@@ -98,7 +103,7 @@ struct WorkflowFixtureTests {
 
     @Test("Сбои запусков называют причину")
     func failureWords() async throws {
-        let (work, _) = try await model()
+        let work = try await model()
         let failures = work.sessions.flatMap(\.failures)
         #expect(failures.contains { if case .workflow(.allAgentsFailed, _, _) = $0.source { return $0.cause == .limit } else { return false } })
         for failure in failures {
@@ -344,6 +349,43 @@ struct WorktreeTests {
         #expect(model.projects.first?.path == main.path)
         #expect(session.root.children.first?.id == "a1")
         #expect(session.root.children.first?.place == nil)
+    }
+}
+
+@Suite("Параллельные сессии")
+struct ParallelSessionsTests {
+    private func process() throws -> Process {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sleep")
+        process.arguments = ["30"]
+        try process.run()
+        return process
+    }
+
+    @Test("Терминал и VS Code на настоящих процессах: один проект, две сессии, обе работают, а workflow нет")
+    func terminalAndEditor() async throws {
+        let folder = TempFolder()
+        let first = try process()
+        let second = try process()
+        defer {
+            first.terminate()
+            second.terminate()
+        }
+        let updated = Int(Date().timeIntervalSince1970 * 1000)
+        folder.write("sessions/\(first.processIdentifier).json", #"{"sessionId":"cli","pid":\#(first.processIdentifier),"cwd":"/x/app","entrypoint":"cli","status":"busy","statusUpdatedAt":\#(updated)}"#)
+        folder.write("sessions/\(second.processIdentifier).json", #"{"sessionId":"code","pid":\#(second.processIdentifier),"cwd":"/x/app","entrypoint":"claude-vscode","status":"busy","statusUpdatedAt":\#(updated)}"#)
+
+        let world = await RunScanner(paths: ClaudePaths(root: folder.url)).scan(now: Date())
+        let model = WorkBuilder.build(world: world, runs: [])
+        #expect(model.projects.count == 1)
+        let digest = NowDigest(model, now: Date())
+        #expect(!digest.isQuiet)
+        #expect(Set(digest.active.compactMap(\.environment)) == [.terminal, .vsCode])
+        #expect(digest.active.allSatisfy { WorkPhrases.line($0, mode: .simple) == "Working" })
+
+        let summary = try #require(ProjectBook.summaries(sessions: ProjectBook.sessions(work: model, past: []), tokens: [], filter: ProjectFilter(), now: Date()).first)
+        #expect(summary.active.count == 2)
+        #expect(Set(summary.environments) == [.terminal, .vsCode])
     }
 }
 

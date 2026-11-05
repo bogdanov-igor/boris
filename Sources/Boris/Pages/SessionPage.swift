@@ -162,7 +162,7 @@ private struct SessionContent: View {
                         .lineLimit(2)
                         .truncationMode(.tail)
                     if session.workingAgents > 0 {
-                        Text(WorkPhrases.agentsAtWork(session.workingAgents))
+                        Text(WorkPhrases.agentsWorking(session.workingAgents))
                             .font(.system(size: 13))
                             .foregroundStyle(Palette.text2)
                     }

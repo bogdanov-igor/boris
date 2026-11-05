@@ -250,8 +250,8 @@ struct WorkflowWordsTests {
 
     @Test("Сколько работает")
     func working() {
-        #expect(WorkPhrases.agentsAtWork(1) == "1 agent at work")
-        #expect(WorkPhrases.agentsAtWork(3) == "3 agents at work")
+        #expect(WorkPhrases.agentsWorking(1) == "1 agent working")
+        #expect(WorkPhrases.agentsWorking(3) == "3 agents working")
     }
 }
 

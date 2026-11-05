@@ -127,9 +127,9 @@ extension WorkPhrases {
         }
     }
 
-    /// `3 agents at work`. Counts everything that works, the main agent too.
-    public static func agentsAtWork(_ count: Int) -> String {
-        count == 1 ? L("%lld agent at work", count) : L("%lld agents at work", count)
+    /// `3 agents working`. Counts everything that works, the main agent too.
+    public static func agentsWorking(_ count: Int) -> String {
+        count == 1 ? L("%lld agent working", count) : L("%lld agents working", count)
     }
 
     /// The headline of a session in the simple mode: the current occupation, never «nothing» while it works.

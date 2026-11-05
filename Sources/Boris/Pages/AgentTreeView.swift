@@ -159,8 +159,10 @@ private struct WorkflowLine: View {
 
     private var mode: DisplayMode { model.settings.displayMode }
 
+    /// The meter counts what a live run has spent since Boris started, the logs and the final file what it has spent in all, so the largest is the truth.
     private var spent: Int? {
-        node.tokens?.total ?? model.spendIndex.runs[node.id]?.total ?? node.workflow?.totalTokens
+        let known = max(node.tokens?.total ?? 0, model.spendIndex.runs[node.id]?.total ?? 0, node.workflow?.totalTokens ?? 0)
+        return known > 0 ? known : nil
     }
 
     private var statusLine: String {
@@ -255,7 +257,7 @@ private struct PhaseLine: View {
         .buttonStyle(.plain)
         .disabled(phase.isAhead)
         .onHover { hovering = $0 }
-        .accessibilityValue(open ? L("Expanded") : L("Folded"))
+        .accessibilityValue(open ? L("Phase expanded") : L("Phase folded"))
     }
 }
 

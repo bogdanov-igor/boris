@@ -85,6 +85,22 @@ struct WorkModelTests {
         #expect(Set(tree.flatMap(\.flattened).map(\.id)) == ["a", "b", "c"])
     }
 
+    @Test("Агенты и запуски стоят по времени старта, а не как попало от скана к скану")
+    func stableOrder() throws {
+        var world = WorldSnapshot(takenAt: now, sessions: [info()])
+        var late = agent("late")
+        late.startedAt = now
+        var early = agent("early")
+        early.startedAt = now.addingTimeInterval(-100)
+        world.agents = [late, early]
+        var second = workflow("wf_b")
+        second.startedAt = now
+        var first = workflow("wf_a")
+        first.startedAt = now.addingTimeInterval(-50)
+        let session = try #require(WorkBuilder.build(world: world, runs: [second, first]).sessions.first)
+        #expect(session.root.children.map(\.id) == ["early", "late", "wf_a", "wf_b"])
+    }
+
     @Test("Занятая сессия без workflow это работа, а не «ничего не идёт»")
     func busyWithoutWorkflow() {
         let model = WorkBuilder.build(world: WorldSnapshot(takenAt: now, sessions: [info()]), runs: [])

@@ -236,15 +236,6 @@ struct ProjectFilterBar: View {
         }
     }
 
-    private func date(_ pick: @escaping (Date, Date) -> Date, set: @escaping (Date, Date, Date) -> WorkPeriod) -> Binding<Date> {
-        Binding {
-            if case .dates(let from, let to) = model.projectFilter.period { return pick(from, to) }
-            return model.now
-        } set: { value in
-            if case .dates(let from, let to) = model.projectFilter.period { model.projectFilter.period = set(from, to, value) }
-        }
-    }
-
     private var environment: Binding<WorkEnvironment?> {
         Binding { model.projectFilter.environment } set: { model.projectFilter.environment = $0 }
     }
@@ -258,20 +249,7 @@ struct ProjectFilterBar: View {
     var body: some View {
         HStack(spacing: 10) {
             ChoiceBar(options: [(Choice.today, L("Today")), (.week, L("7 days")), (.month, L("30 days")), (.dates, L("Dates…"))], selection: choice, label: L("Period"))
-                .popover(isPresented: $choosingDates, arrowEdge: .bottom) {
-                    Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 8) {
-                        GridRow {
-                            Text(L("From")).foregroundStyle(Palette.text2)
-                            DatePicker("", selection: date({ from, _ in from }, set: { _, to, value in .dates(from: value, to: to) }), in: ...Date(), displayedComponents: .date).labelsHidden()
-                        }
-                        GridRow {
-                            Text(L("To")).foregroundStyle(Palette.text2)
-                            DatePicker("", selection: date({ _, to in to }, set: { from, _, value in .dates(from: from, to: value) }), in: ...Date(), displayedComponents: .date).labelsHidden()
-                        }
-                    }
-                    .font(.system(size: 12))
-                    .padding(12)
-                }
+                .popover(isPresented: $choosingDates, arrowEdge: .bottom) { ProjectDatesPicker(model: model) }
             Picker(L("Environment"), selection: environment) {
                 Text(countsEnvironments && !environments.isEmpty ? L("All environments · %lld", environments.count) : L("All environments")).tag(WorkEnvironment?.none)
                 ForEach(shownEnvironments, id: \.self) { place in
@@ -283,6 +261,35 @@ struct ProjectFilterBar: View {
             .controlSize(.small)
             .fixedSize()
         }
+    }
+}
+
+/// The days a list is limited to, when none of the ready periods will do.
+struct ProjectDatesPicker: View {
+    @Bindable var model: AppModel
+
+    private func date(_ pick: @escaping (Date, Date) -> Date, set: @escaping (Date, Date, Date) -> WorkPeriod) -> Binding<Date> {
+        Binding {
+            if case .dates(let from, let to) = model.projectFilter.period { return pick(from, to) }
+            return model.now
+        } set: { value in
+            if case .dates(let from, let to) = model.projectFilter.period { model.projectFilter.period = set(from, to, value) }
+        }
+    }
+
+    var body: some View {
+        Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 8) {
+            GridRow {
+                Text(L("From")).foregroundStyle(Palette.text2)
+                DatePicker("", selection: date({ from, _ in from }, set: { _, to, value in .dates(from: value, to: to) }), in: ...Date(), displayedComponents: .date).labelsHidden()
+            }
+            GridRow {
+                Text(L("To")).foregroundStyle(Palette.text2)
+                DatePicker("", selection: date({ _, to in to }, set: { from, _, value in .dates(from: from, to: value) }), in: ...Date(), displayedComponents: .date).labelsHidden()
+            }
+        }
+        .font(.system(size: 12))
+        .padding(12)
     }
 }
 

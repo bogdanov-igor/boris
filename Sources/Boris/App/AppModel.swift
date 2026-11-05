@@ -61,6 +61,7 @@ final class AppModel {
     private var board = MoodBoard()
     private var engine: WorkEngine?
     private var tokensVersion = -1
+    private var lookingClosely = false
     private var focusedRuns: Set<String> = []
     private var pastRead = Date.distantPast
     private var pastReading = false
@@ -148,6 +149,7 @@ final class AppModel {
 
     /// Open windows get fresher data, and closed ones cost nothing.
     func setLookingClosely(_ closely: Bool) {
+        lookingClosely = closely
         Task { [focusedRuns] in await engine?.setFocus(runs: focusedRuns, lookingClosely: closely) }
     }
 
@@ -155,7 +157,7 @@ final class AppModel {
     func focus(on runs: Set<String>) {
         guard runs != focusedRuns else { return }
         focusedRuns = runs
-        setLookingClosely(true)
+        setLookingClosely(lookingClosely)
     }
 
     private func receive(_ signal: HookSignal) {

@@ -20,15 +20,15 @@ struct ProjectPage: View {
     }
 
     var body: some View {
-        let sessions = model.allSessions.filter { $0.projectPath == path }
-        let project = ProjectBook.summary(path: path, sessions: sessions, tokens: tokens(sessions), filter: model.projectFilter, now: model.now)
+        let all = model.allSessions
+        let project = ProjectBook.summary(path: path, sessions: all, tokens: model.tokens, filter: model.projectFilter, now: model.now)
         VStack(spacing: 0) {
             header(project)
             Rectangle().fill(Palette.separator).frame(height: 1)
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(spacing: 10) {
-                        ProjectFilterBar(model: model, environments: ProjectBook.environments(of: sessions), countsEnvironments: true)
+                        ProjectFilterBar(model: model, environments: ProjectBook.environments(of: all.filter { $0.projectPath == path }), countsEnvironments: true)
                         Spacer(minLength: 0)
                         Text(rangeText)
                             .font(.system(size: 11.5))
@@ -41,15 +41,6 @@ struct ProjectPage: View {
                 }
                 .padding(EdgeInsets(top: 14, leading: 24, bottom: 20, trailing: 24))
             }
-        }
-    }
-
-    /// Only the tokens of this project: a record without a known session says by its folder where it belongs.
-    private func tokens(_ sessions: [WorkSession]) -> [TokenRecord] {
-        let ids = Set(sessions.map(\.id))
-        let known = Set(model.allSessions.map(\.id))
-        return model.tokens.filter { record in
-            ids.contains(record.sessionId) || (!known.contains(record.sessionId) && path != nil && (record.cwd.map { GitPlaceReader.mainFolder(of: $0) ?? $0 } == path))
         }
     }
 
