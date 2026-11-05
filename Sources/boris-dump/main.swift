@@ -60,6 +60,10 @@ func work() async {
         }
     }
     if !output.world.formatIssues.isEmpty { print("format issues: \(output.world.formatIssues)") }
+    let plan = HookInstaller.Plan(helperPath: "/Applications/Boris.app/Contents/MacOS/boris-hook", permissions: false, permissionWait: 120)
+    let hooks = HookConnection(wanted: false, status: HookInstaller.status(at: paths.settings, plan: plan))
+    let connection = ConnectionStatus(world: output.world, hooks: hooks, hookState: output.hooks, hooksSince: Date(), now: Date())
+    print("hooks: \(hooks), problems: \(connection.problems)")
 }
 
 if arguments.first == "tokens" {

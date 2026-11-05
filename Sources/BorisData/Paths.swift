@@ -9,6 +9,7 @@ public struct ClaudePaths: Sendable, Equatable {
 
     public var sessions: URL { root.appendingPathComponent("sessions") }
     public var projects: URL { root.appendingPathComponent("projects") }
+    public var settings: URL { root.appendingPathComponent("settings.json") }
 
     public init(root: URL, profile: URL? = nil) {
         self.root = root

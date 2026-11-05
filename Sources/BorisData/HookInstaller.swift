@@ -15,14 +15,25 @@ public enum HookInstaller {
     }
 
     public enum Status: Sendable, Equatable {
-        case notInstalled, installed, outdated, disabledByPolicy
+        case notInstalled, installed, outdated
+        /// `disableAllHooks` in the person's own settings: their choice, not a ban.
+        case disabledInSettings
+        case disabledByPolicy
+        /// The file cannot be trusted, so nothing gets written to it.
+        case unreadable
     }
 
     public enum Failure: Error, Equatable {
         case invalidSettings
     }
 
-    static let events = ["SessionStart", "SessionEnd", "PreToolUse", "PostToolUse", "PostToolUseFailure", "SubagentStop", "Stop", "StopFailure", "Notification"]
+    public struct Preview: Sendable, Equatable {
+        public var lines: [String]
+        /// The layout of the file changes as well, while what is in it stays the same.
+        public var reformats: Bool
+    }
+
+    static let events = ["SessionStart", "SessionEnd", "PreToolUse", "PostToolUse", "PostToolUseFailure", "SubagentStart", "SubagentStop", "Stop", "StopFailure", "Notification"]
     static let permissionEvent = "PermissionRequest"
     private static let marker = "/boris-hook"
 
@@ -75,8 +86,17 @@ public enum HookInstaller {
         return command.contains(marker)
     }
 
+    private static func hasOurEntries(_ settings: [String: Any]) -> Bool {
+        guard let hooks = settings["hooks"] as? [String: Any] else { return false }
+        return hooks.values.contains { value in
+            (value as? [[String: Any]] ?? []).contains { group in
+                (group["hooks"] as? [[String: Any]] ?? []).contains(where: isOurs)
+            }
+        }
+    }
+
     static func status(_ settings: [String: Any], plan: Plan) -> Status {
-        if settings["disableAllHooks"] as? Bool == true { return .disabledByPolicy }
+        if settings["disableAllHooks"] as? Bool == true { return .disabledInSettings }
         let hooks = settings["hooks"] as? [String: Any] ?? [:]
         var found = 0
         var matching = 0
@@ -100,69 +120,136 @@ public enum HookInstaller {
         return data
     }
 
-    private static func parse(_ url: URL) throws -> [String: Any] {
-        guard let data = try? Data(contentsOf: url), !data.isEmpty else { return [:] }
-        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw Failure.invalidSettings }
-        return object
+    private struct Loaded {
+        var file: URL
+        var settings: [String: Any]
+        var raw: Data?
     }
 
-    public static func status(at url: URL, plan: Plan) -> Status {
-        guard let settings = try? parse(url) else { return .notInstalled }
-        return status(settings, plan: plan)
+    /// Follows a link, so a settings file kept in dotfiles stays where its owner put it. A file that exists and cannot be read is never taken for an empty one.
+    private static func load(_ url: URL) throws -> Loaded {
+        let manager = FileManager.default
+        let file = url.resolvingSymlinksInPath()
+        guard manager.fileExists(atPath: file.path) else {
+            if (try? manager.destinationOfSymbolicLink(atPath: file.path)) != nil { throw Failure.invalidSettings }
+            return Loaded(file: file, settings: [:], raw: nil)
+        }
+        guard let raw = try? Data(contentsOf: file), let settings = decode(raw), isSafeToEdit(settings) else { throw Failure.invalidSettings }
+        return Loaded(file: file, settings: settings, raw: raw)
     }
 
-    /// Lines that will change, for showing before anything is written.
-    public static func preview(at url: URL, plan: Plan) throws -> [String] {
-        let settings = try parse(url)
-        return diff(old: try encode(settings), new: try encode(merged(settings, plan: plan)))
+    private static func decode(_ data: Data) -> [String: Any]? {
+        data.isEmpty ? [:] : (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     }
 
-    public static func previewRemoval(at url: URL) throws -> [String] {
-        let settings = try parse(url)
-        return diff(old: try encode(settings), new: try encode(removed(settings)))
+    /// Adding to a value of an unexpected shape would replace it. Events Boris does not use are left out of this, and stay as they are.
+    private static func isSafeToEdit(_ settings: [String: Any]) -> Bool {
+        guard let value = settings["hooks"] else { return true }
+        guard let hooks = value as? [String: Any] else { return false }
+        return (events + [permissionEvent]).allSatisfy { hooks[$0] == nil || hooks[$0] is [[String: Any]] }
+    }
+
+    public static func status(at url: URL, plan: Plan, managed: ManagedSettings = .system) -> Status {
+        if managed.blocksUserHooks { return .disabledByPolicy }
+        guard let loaded = try? load(url) else { return .unreadable }
+        return status(loaded.settings, plan: plan)
+    }
+
+    /// What will change, for showing before anything is written.
+    public static func preview(at url: URL, plan: Plan) throws -> Preview {
+        let loaded = try load(url)
+        let current = try encode(loaded.settings)
+        let lines = diff(old: current, new: try encode(merged(loaded.settings, plan: plan)))
+        return Preview(lines: lines, reformats: isLaidOutDifferently(loaded, from: current))
+    }
+
+    public static func previewRemoval(at url: URL) throws -> Preview {
+        let loaded = try load(url)
+        let current = try encode(loaded.settings)
+        let lines = diff(old: current, new: try encode(removed(loaded.settings)))
+        switch try removal(loaded) {
+        case .nothing: return Preview(lines: [], reformats: false)
+        case .restore: return Preview(lines: lines, reformats: false)
+        case .write, .delete: return Preview(lines: lines, reformats: isLaidOutDifferently(loaded, from: current))
+        }
+    }
+
+    private static func isLaidOutDifferently(_ loaded: Loaded, from normal: Data) -> Bool {
+        guard let raw = loaded.raw, !raw.isEmpty else { return false }
+        return raw != normal
     }
 
     static func diff(old: Data, new: Data) -> [String] {
         let a = String(decoding: old, as: UTF8.self).components(separatedBy: "\n")
         let b = String(decoding: new, as: UTF8.self).components(separatedBy: "\n")
-        return b.difference(from: a).map { change in
+        return b.difference(from: a).compactMap { change in
             switch change {
-            case .insert(_, let line, _): return "+ " + line
-            case .remove(_, let line, _): return "- " + line
+            case .insert(_, let line, _): return line.allSatisfy(\.isWhitespace) ? nil : "+ " + line
+            case .remove(_, let line, _): return line.allSatisfy(\.isWhitespace) ? nil : "- " + line
             }
         }
     }
 
-    private static func backupURL(_ url: URL) -> URL {
-        url.deletingLastPathComponent().appendingPathComponent(url.lastPathComponent + ".boris-backup")
+    private static func backupURL(_ file: URL) -> URL {
+        file.deletingLastPathComponent().appendingPathComponent(file.lastPathComponent + ".boris-backup")
+    }
+
+    /// The copy to come back to is the file without our entries. A repair must not overwrite it with one that has them.
+    private static func keepBackup(_ loaded: Loaded) throws {
+        let manager = FileManager.default
+        let backup = backupURL(loaded.file)
+        let exists = manager.fileExists(atPath: backup.path)
+        if exists, hasOurEntries(loaded.settings) { return }
+        if exists { try manager.removeItem(at: backup) }
+        if loaded.raw != nil { try manager.copyItem(at: loaded.file, to: backup) }
+    }
+
+    /// Replacing a file would otherwise drop the permissions its owner set.
+    private static func write(_ data: Data, to file: URL) throws {
+        let manager = FileManager.default
+        let permissions = try? manager.attributesOfItem(atPath: file.path)[.posixPermissions]
+        try data.write(to: file, options: .atomic)
+        if let permissions { try? manager.setAttributes([.posixPermissions: permissions], ofItemAtPath: file.path) }
     }
 
     public static func install(at url: URL, plan: Plan) throws {
-        let settings = try parse(url)
-        let backup = backupURL(url)
-        // The first backup is the one that matters. Reinstalling must not overwrite it with a file that has our entries.
-        if !FileManager.default.fileExists(atPath: backup.path), FileManager.default.fileExists(atPath: url.path) {
-            try FileManager.default.copyItem(at: url, to: backup)
-        }
-        try encode(merged(settings, plan: plan)).write(to: url, options: .atomic)
+        let loaded = try load(url)
+        try keepBackup(loaded)
+        try write(encode(merged(loaded.settings, plan: plan)), to: loaded.file)
+    }
+
+    private enum Removal {
+        case nothing
+        case restore(Data)
+        case write(Data)
+        case delete
     }
 
     /// When nothing else changed since the backup, the original bytes come back exactly.
+    private static func removal(_ loaded: Loaded) throws -> Removal {
+        guard hasOurEntries(loaded.settings) else { return .nothing }
+        let clean = removed(loaded.settings)
+        let backup = backupURL(loaded.file)
+        if let original = try? Data(contentsOf: backup), let object = decode(original), !hasOurEntries(object),
+           NSDictionary(dictionary: removed(object)).isEqual(to: clean) {
+            return .restore(original)
+        }
+        if clean.isEmpty, !FileManager.default.fileExists(atPath: backup.path) { return .delete }
+        return .write(try encode(clean))
+    }
+
     public static func uninstall(at url: URL) throws {
-        let settings = try parse(url)
-        let clean = removed(settings)
-        let backup = backupURL(url)
-        if let original = try? Data(contentsOf: backup),
-           let object = try? JSONSerialization.jsonObject(with: original) as? [String: Any],
-           NSDictionary(dictionary: object).isEqual(to: clean) {
-            try original.write(to: url, options: .atomic)
-            try FileManager.default.removeItem(at: backup)
-            return
+        let loaded = try load(url)
+        switch try removal(loaded) {
+        case .nothing:
+            break
+        case .restore(let original):
+            try write(original, to: loaded.file)
+            try FileManager.default.removeItem(at: backupURL(loaded.file))
+        case .write(let data):
+            try write(data, to: loaded.file)
+        case .delete:
+            try FileManager.default.removeItem(at: loaded.file)
         }
-        if clean.isEmpty, !FileManager.default.fileExists(atPath: backup.path) {
-            try FileManager.default.removeItem(at: url)
-            return
-        }
-        try encode(clean).write(to: url, options: .atomic)
     }
 }

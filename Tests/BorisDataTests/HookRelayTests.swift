@@ -171,6 +171,55 @@ struct HookRelayTests {
         #expect((output["decision"] as? [String: Any])?["behavior"] as? String == (allow ? "allow" : "deny"))
     }
 
+    private func shell(_ command: String, socket: String, input: String) throws -> Result {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", command]
+        process.environment = ["BORIS_HOOK_SOCKET": socket, "HOME": NSHomeDirectory()]
+        let stdin = Pipe()
+        let output = Pipe()
+        process.standardInput = stdin
+        process.standardOutput = output
+        process.standardError = output
+        let began = Date()
+        try process.run()
+        stdin.fileHandleForWriting.write(Data(input.utf8))
+        try stdin.fileHandleForWriting.close()
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return Result(status: process.terminationStatus, output: String(decoding: data, as: UTF8.self), seconds: Date().timeIntervalSince(began))
+    }
+
+    @Test("Команда из настроек Claude доходит до приложения, а после удаления приложения безвредна")
+    func installedCommand() async throws {
+        let folder = TempFolder()
+        let app = folder.url.appendingPathComponent("Bo'ris app")
+        try FileManager.default.createDirectory(at: app, withIntermediateDirectories: true)
+        let helper = app.appendingPathComponent("boris-hook")
+        try FileManager.default.copyItem(at: try #require(Self.binary), to: helper)
+        let plan = HookInstaller.Plan(helperPath: helper.path, permissions: true, permissionWait: 30)
+        let observe = HookInstaller.command(plan, permission: false)
+        let ask = HookInstaller.command(plan, permission: true)
+
+        let path = socketPath()
+        let (server, received) = try server(path)
+        defer { server.stop() }
+        let sent = try shell(observe, socket: path, input: toolEvent)
+        #expect(sent.status == 0)
+        #expect(sent.output.isEmpty)
+        #expect(await eventually { received.allSignals == [.toolStarted(session: "s1", agent: nil, tool: "Bash")] })
+
+        // The app is gone, and the entries are still in Claude's settings.
+        try FileManager.default.removeItem(at: app)
+        for (command, input) in [(observe, toolEvent), (ask, permission)] {
+            let result = try shell(command, socket: path, input: input)
+            #expect(result.status == 0)
+            #expect(result.output.isEmpty)
+            #expect(result.seconds < 2)
+        }
+        #expect(received.firstRequest == nil)
+    }
+
     @Test("Нет ответа за отведённое время: запрос остаётся в Claude, решения нет")
     func permissionTimedOut() async throws {
         let path = socketPath()

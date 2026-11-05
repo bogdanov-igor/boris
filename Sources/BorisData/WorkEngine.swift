@@ -130,9 +130,9 @@ public actor WorkEngine {
         }
     }
 
-    public func diagnostics(appVersion: String) async -> String {
+    public func diagnostics(appVersion: String, connection: ConnectionStatus? = nil) async -> String {
         let world = await scanner.scan(now: Date())
-        return Diagnostics.report(world: world, paths: paths, appVersion: appVersion)
+        return Diagnostics.report(world: world, paths: paths, appVersion: appVersion, connection: connection)
     }
 
     /// Marks what changed and asks for a scan.
@@ -163,6 +163,7 @@ public actor WorkEngine {
             await runScan()
             return
         }
+        if case .agentStarted = signal { await scanner.markDiscovery() }
         emitSoon()
         requestScan()
     }

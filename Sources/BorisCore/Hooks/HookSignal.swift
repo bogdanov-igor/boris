@@ -41,6 +41,7 @@ public enum HookPayload {
 public enum HookSignal: Sendable, Equatable {
     case toolStarted(session: String, agent: String?, tool: String)
     case toolFinished(session: String, agent: String?, tool: String)
+    case agentStarted(session: String, agent: String)
     case agentStopped(session: String, agent: String)
     case workflowLaunched(session: String, runId: String)
     case turnStopped(session: String)
@@ -53,7 +54,8 @@ public enum HookSignal: Sendable, Equatable {
     /// Unknown events return nil: a new hook type must not disturb anything.
     public init?(payload p: [String: Any]) {
         guard let event = p["hook_event_name"] as? String, let session = p["session_id"] as? String else { return nil }
-        let agent = p["agent_id"] as? String
+        // The files know an agent by its bare id.
+        let agent = (p["agent_id"] as? String).map { $0.hasPrefix("agent-") ? String($0.dropFirst(6)) : $0 }
         let tool = p["tool_name"] as? String
         let cwd = p["cwd"] as? String
         switch event {
@@ -67,6 +69,9 @@ public enum HookSignal: Sendable, Equatable {
             } else {
                 self = .toolFinished(session: session, agent: agent, tool: tool)
             }
+        case "SubagentStart":
+            guard let agent else { return nil }
+            self = .agentStarted(session: session, agent: agent)
         case "SubagentStop":
             guard let agent else { return nil }
             self = .agentStopped(session: session, agent: agent)
@@ -102,6 +107,8 @@ public struct HookState: Sendable, Equatable {
         var at: Date
     }
 
+    /// When any hook last spoke, for noticing that they have gone quiet.
+    public private(set) var lastEventAt: Date?
     public private(set) var currentTool: [String: String] = [:]
     /// What the main agent of each session is running now.
     public private(set) var sessionTool: [String: String] = [:]
@@ -117,7 +124,10 @@ public struct HookState: Sendable, Equatable {
     public init() {}
 
     public mutating func apply(_ signal: HookSignal, now: Date) {
+        lastEventAt = now
         switch signal {
+        case .agentStarted:
+            break
         case .toolStarted(let session, let agent, let tool):
             if let agent { currentTool[agent] = tool } else { sessionTool[session] = tool }
         case .toolFinished(let session, let agent, _):
