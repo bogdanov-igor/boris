@@ -11,6 +11,8 @@ struct NotificationSettings: View {
     var body: some View {
         if model.notifications.macDenied { deniedNotice }
         EventTable(settings: settings, telegramConnected: !settings.notifications.telegramChat.isEmpty)
+            // The person may have just changed this in System Settings.
+            .onAppear { model.notifications.refreshPermission() }
         SettingsGroup {
             thresholdRow(
                 L("Limit threshold"),

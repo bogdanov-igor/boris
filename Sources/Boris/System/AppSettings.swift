@@ -37,6 +37,8 @@ final class AppSettings {
     var matrix: ReactionMatrix { didSet { save(matrix, "matrix") } }
     var silenceMinutes: Int { didSet { defaults?.set(silenceMinutes, forKey: "silenceMinutes") } }
     var longTurnMinutes: Int { didSet { defaults?.set(longTurnMinutes, forKey: "longTurnMinutes") } }
+    var usageLow: Int { didSet { defaults?.set(usageLow, forKey: "usageLow") } }
+    var usageHigh: Int { didSet { defaults?.set(usageHigh, forKey: "usageHigh") } }
     var notifications: NotificationPreferences { didSet { save(notifications, "notifications") } }
 
     init(defaults: UserDefaults? = .standard) {
@@ -54,6 +56,8 @@ final class AppSettings {
         matrix = Self.load(defaults, "matrix") ?? ReactionMatrix()
         silenceMinutes = defaults?.object(forKey: "silenceMinutes") as? Int ?? 12
         longTurnMinutes = defaults?.object(forKey: "longTurnMinutes") as? Int ?? 5
+        usageLow = defaults?.object(forKey: "usageLow") as? Int ?? 80
+        usageHigh = defaults?.object(forKey: "usageHigh") as? Int ?? 95
         notifications = Self.load(defaults, "notifications") ?? NotificationPreferences()
         Localizer.use(language)
         NSApp?.appearance = theme.appearance

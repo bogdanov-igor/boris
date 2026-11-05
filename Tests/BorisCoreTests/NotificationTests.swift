@@ -199,6 +199,13 @@ struct NotificationContentTests {
         #expect(!NotificationWords.telegram(event).full.contains("story"))
     }
 
+    @Test("Длинное имя проекта не вытесняет событие из заголовка, а в Telegram идёт целиком") func longProject() {
+        let name = "a-very-long-project-name-that-nobody-would-ever-want-to-type-by-hand"
+        let event = BorisEvent(id: "x", kind: .failed, at: t0, project: name)
+        #expect(NotificationWords.banner(event).title == "a-very-long-pr…y-hand · work failed")
+        #expect(NotificationWords.telegram(event).subject == name)
+    }
+
     @Test("Сводка пропущенного как на макете") func quietSummary() {
         let banner = NotificationWords.quietSummary(missed: [.waiting: 3, .failed: 1, .completed: 2], requestsWaiting: 1)
         #expect(banner.title == "While Do not disturb was on")

@@ -77,6 +77,11 @@ public enum NotificationWords {
         project(event) ?? place(event, forTelegram: true) ?? "Claude"
     }
 
+    /// The system cuts a long title at its end, where the event is, so a long name gives way.
+    private static func short(_ name: String) -> String {
+        name.count > 24 ? "\(name.prefix(14))…\(name.suffix(6))" : name
+    }
+
     private static func capitalized(_ text: String) -> String {
         text.prefix(1).uppercased() + text.dropFirst()
     }
@@ -175,7 +180,7 @@ public enum NotificationWords {
         case .silent:
             return L("No news for a while.")
         case .limitReached:
-            let parts = [project(event), resets(event)].compactMap { $0 }
+            let parts = [project(event).map(short), resets(event)].compactMap { $0 }
             return parts.isEmpty ? "" : parts.joined(separator: ". ") + "."
         case .limitNear:
             return window(event.windowId).map(capitalized) ?? ""
@@ -197,7 +202,7 @@ public enum NotificationWords {
         case .limitNear:
             title = detail([capitalized(phrase(event)), event.percent.map(WorkFormat.percent)])
         default:
-            title = "\(subject(event)) · \(phrase(event))"
+            title = "\(short(subject(event))) · \(phrase(event))"
         }
         return MacBanner(id: event.id, title: title, body: body(event), route: route(event))
     }
@@ -245,7 +250,7 @@ public enum NotificationWords {
 
     static func waveBanner(_ topic: NotificationTopic, count: Int, projects: [String]) -> MacBanner {
         let isRequest = topic == .permission || topic == .question || topic == .plan
-        return MacBanner(id: "boris.wave.\(topic.rawValue)", title: waveTitle(topic, count: count), body: names(projects), route: isRequest ? .requests(session: nil) : .now)
+        return MacBanner(id: "boris.wave.\(topic.rawValue)", title: waveTitle(topic, count: count), body: names(projects.map(short)), route: isRequest ? .requests(session: nil) : .now)
     }
 
     static func waveTelegram(_ topic: NotificationTopic, count: Int, projects: [String]) -> TelegramLine {
@@ -263,7 +268,7 @@ public enum NotificationWords {
     static func awayBanner(sessions: [String?], projects: [String]) -> MacBanner {
         var route = NotificationRoute.now
         if sessions.count == 1, let session = sessions[0] { route = .session(session) }
-        let detail = capitalized(awayDetail(sessions: sessions.count, projects: projects))
+        let detail = capitalized(awayDetail(sessions: sessions.count, projects: projects.map(short)))
         return MacBanner(id: "boris.away", title: L("While Boris was closed"), body: "\(detail). \(L("Open to see where the work stopped."))", route: route)
     }
 
