@@ -57,6 +57,8 @@ public final class MacLoadWatch {
             self.current = first
             try? await Task.sleep(for: second)
             while !Task.isCancelled {
+                // Taken afresh each time: choosing another Claude folder brings another reader while a block stays open.
+                guard let reader = self.reader else { return }
                 let load = await reader(self.request())
                 guard !Task.isCancelled else { return }
                 self.current = load

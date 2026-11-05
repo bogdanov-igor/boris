@@ -1,0 +1,22 @@
+{
+ "%@ GB": "%@ ГБ",
+ "%@ KB": "%@ КБ",
+ "%@ MB": "%@ МБ",
+ "%@ TB": "%@ ТБ",
+ "%@: reading is off, its load is counted in the rest.": "%@: считывание выключено, его нагрузка входит в «Остальное».",
+ "CPU": "Процессор",
+ "CPU: 100% is the whole Mac. Activity Monitor counts each core as 100%, so its numbers are higher.": "Процессор: 100 % это весь Mac. «Мониторинг системы» считает каждое ядро за 100 %, поэтому там цифры больше.",
+ "CPU: share of the whole Mac. Memory: how much is used, the bar is out of the Mac's total.": "Процессор: доля всего Mac. Память: сколько занято, полоса от объёма Mac.",
+ "Claude logs %@": "Логи Claude %@",
+ "Claude logs: no data": "Логи Claude: нет данных",
+ "Cowork runs in one virtual machine, and the Mac sees it as a whole. The share of this session cannot be counted.": "Cowork работает в одной виртуальной машине, и Mac видит её целиком. Отдельную долю этой сессии не посчитать.",
+ "Disk": "Диск",
+ "Load on Mac": "Нагрузка на Mac",
+ "Load on Mac · this session with agents and commands": "Нагрузка на Mac · сессия с агентами и командами",
+ "Memory": "Оперативка",
+ "Memory used": "Память",
+ "The Mac is %lld%% loaded, %lld%% of it by Claude.": "Mac загружен на %lld %%, из них Claude %lld %%.",
+ "The Mac is %lld%% loaded.": "Mac загружен на %lld %%.",
+ "The rest": "Остальное",
+ "The session runs on %@ and does not load this Mac.": "Сессия идёт на %@ и этот Mac не нагружает."
+}

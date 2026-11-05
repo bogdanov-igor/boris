@@ -115,6 +115,19 @@ struct MacLoadWatchTests {
         #expect(watch.current?.diskPercent == 5)
     }
 
+    @Test("Новый читатель подхватывается, пока блок открыт")
+    func newReader() async {
+        let old = Readings()
+        let new = Readings()
+        let watch = watch(old)
+        let viewer = UUID()
+        watch.setVisible(true, viewer: viewer)
+        #expect(await eventually { !old.requests.isEmpty })
+        watch.reader = new.reader
+        #expect(await eventually { !new.requests.isEmpty })
+        watch.setVisible(false, viewer: viewer)
+    }
+
     @Test("Замер получает сессии и выключенные источники")
     func requestCarriesContext() async {
         let readings = Readings()

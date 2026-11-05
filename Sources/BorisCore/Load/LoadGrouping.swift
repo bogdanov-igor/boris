@@ -9,6 +9,8 @@ public enum LoadGrouping {
         let components = path.split(separator: "/")
         guard let name = components.last else { return nil }
         if name == "claude" || path.contains("/claude/versions/") { return .claude }
+        // It lives inside Claude.app but Chrome starts it and it runs with Claude Desktop closed, which would show a row for a closed app.
+        if name == "chrome-native-host" { return nil }
         if name == "com.apple.Virtualization.VirtualMachine" {
             return responsible.flatMap { mark(path: $0) } == .claudeDesktop ? .cowork : nil
         }

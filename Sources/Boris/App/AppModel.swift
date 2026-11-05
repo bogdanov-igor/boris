@@ -49,6 +49,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 final class AppModel {
     let settings: AppSettings
     let hooks: HookController
+    let load = MacLoadWatch()
     private let store: StateStore?
     private var state: AppState
     private var board = MoodBoard()
@@ -92,6 +93,7 @@ final class AppModel {
             settings.wardrobe.firstLaunch = loaded.firstLaunch
         }
         hooks.onSignal = { [weak self] signal in self?.receive(signal) }
+        load.sessions = { [weak self] in self?.sessionProcesses ?? [:] }
     }
 
     func start() {
@@ -109,6 +111,8 @@ final class AppModel {
             Task { @MainActor in owner.model?.apply(output) }
         }
         self.engine = engine
+        let sampler = MacLoadSampler(logRoots: { ([paths] + ClaudeFolders.others(besides: paths)).map(\.projects) })
+        load.reader = { await sampler.read($0) }
         Task { await engine.start() }
         hooks.refresh()
     }
@@ -215,6 +219,11 @@ final class AppModel {
 
     var activeSessions: [WorkSession] {
         work.sessions.filter { $0.state.isActive && $0.state != .waiting }
+    }
+
+    /// Sessions known only by a transcript have no process on this Mac to measure.
+    private var sessionProcesses: [String: Int32] {
+        Dictionary(world.sessions.filter { $0.pid > 0 }.map { ($0.sessionId, $0.pid) }) { first, _ in first }
     }
 
     var connectionStatus: ConnectionStatus {

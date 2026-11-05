@@ -215,6 +215,7 @@ struct MacLoadTests {
         "/usr/bin/node",
         "/Applications/NotCursor.app/Contents/MacOS/NotCursor",
         "/Applications/Claude Helper Tool.app/Contents/MacOS/Tool",
+        "/Applications/Claude.app/Contents/Helpers/chrome-native-host",
         "/System/Library/PrivateFrameworks/TextInputUIMacHelper.framework/Versions/A/XPCServices/CursorUIViewService.xpc/Contents/MacOS/CursorUIViewService",
         "",
     ])
