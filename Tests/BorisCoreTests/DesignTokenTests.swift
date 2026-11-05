@@ -1,4 +1,4 @@
-import BorisCore
+@testable import BorisCore
 import Testing
 
 @Suite("Токены дизайна")
@@ -45,7 +45,8 @@ struct LocalizationTests {
 
     @Test("Без таблицы перевода остаётся ключ на английском")
     func missingTable() {
-        Localizer.use(.ru)
+        // Choosing Russian here would change how numbers read in every test running at the same moment.
+        #expect(Localizer.table(for: .ru) == nil)
         #expect(L("Hello from a test") == "Hello from a test")
     }
 
