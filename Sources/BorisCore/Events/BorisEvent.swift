@@ -91,4 +91,10 @@ public struct BorisEvent: Sendable, Equatable, Identifiable {
 
     /// Stopped and interrupted runs can be continued from their session.
     public var canResume: Bool { kind == .stopped || kind == .interrupted }
+
+    /// A run that failed because the limit ran out. The limit's own event speaks for it.
+    public var failedFromLimit: Bool {
+        guard topFailure == .limit else { return false }
+        return kind == .completedWithErrors || kind == .allAgentsFailed || kind == .failed
+    }
 }

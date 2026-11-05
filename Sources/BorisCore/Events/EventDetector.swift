@@ -56,9 +56,10 @@ public struct EventDetector: Sendable {
 
     public mutating func detect(runs: [RunState], sessions: [SessionInfo], usage: UsageSnapshot?, now: Date, failures: [HookState.Failure] = [], endedSessions: [SessionInfo] = []) -> [BorisEvent] {
         var events: [BorisEvent] = []
-        events += runEvents(runs, now: now)
+        let fromRuns = runEvents(runs, now: now)
+        events += fromRuns
         events += interruptedSessions(sessions, ended: endedSessions, runs: runs, now: now)
-        events += limitEvents(runs, hookLimit: failures.contains { $0.error == "rate_limit" }, now: now)
+        events += limitEvents(runs, justFailed: Set(fromRuns.filter(\.failedFromLimit).compactMap(\.runId)), hookLimit: failures.contains { $0.error == "rate_limit" }, now: now)
         events += sessionErrors(failures.filter { $0.error != "rate_limit" }, sessions: sessions, now: now)
         events += usageEvents(usage, now: now)
         events += sessionEvents(sessions, now: now)
@@ -144,10 +145,11 @@ public struct EventDetector: Sendable {
     }
 
     /// All runs hitting one limit make one event, sent as soon as the first agent fails.
-    private mutating func limitEvents(_ runs: [RunState], hookLimit: Bool, now: Date) -> [BorisEvent] {
+    /// A run can also fall between two looks or while Boris is closed, never seen at work with a failed agent.
+    private mutating func limitEvents(_ runs: [RunState], justFailed: Set<String>, hookLimit: Bool, now: Date) -> [BorisEvent] {
         var hit: [String: (kind: LimitKind, resets: String?, runs: Set<String>, agents: Int, projects: Set<String>)] = [:]
         // A limit reported by a hook has no details of its own. It only counts when no run reports one.
-        for run in runs where run.status.isActive {
+        for run in runs where run.status.isActive || justFailed.contains(run.runId) {
             for agent in run.agents where agent.state == .failed {
                 guard let failure = agent.failure, failure.failureClass == .limit else { continue }
                 let kind = failure.limitKind ?? .other

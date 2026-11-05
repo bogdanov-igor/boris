@@ -28,25 +28,23 @@ public struct NotificationRouter: Sendable {
         var lastAt = Date.distantPast
         var total = 0
         var projects: [String] = []
+        /// Banners of this burst still on screen, for its summary to take back.
+        var posted: [String] = []
+        /// Once a burst has its summary, nothing of it comes one by one again, even when it slows down.
+        var summarized = false
         /// Telegram cannot take messages back, so its one summary waits until the burst is over.
         var telegramOwed = false
     }
 
-    /// Agents keep falling for hours after the limit ran out, and the one notification has already told about them.
-    static let limitCovers: TimeInterval = 5 * 3600
-
     private var waves: [NotificationTopic: Wave] = [:]
     private var limiter = SoundLimiter()
-    private var limitToldAt: Date?
 
     public init() {}
 
     public mutating func route(_ items: [Item], now: Date) -> [NotificationDelivery] {
-        var limits = items.filter { $0.event.kind == .limitReached }
-        let causedByLimit = items.filter { $0.event.kind != .limitReached && $0.event.topFailure == .limit }
-        // Without its own limit event a failure still has to tell about the limit, once.
-        if limits.isEmpty, !isLimitTold(now: now) { limits = causedByLimit }
-        let rest = items.filter { $0.event.kind != .limitReached && $0.event.topFailure != .limit }
+        let limits = items.filter { $0.event.kind == .limitReached }
+        // Agents keep falling for hours after the limit ran out. The detector gives each limit one event, and that event tells about them.
+        let rest = items.filter { $0.event.kind != .limitReached && !$0.event.failedFromLimit }
         let away = rest.filter { $0.event.kind == .interrupted && $0.event.whileAway }
         let ordinary = rest.filter { !($0.event.kind == .interrupted && $0.event.whileAway) }
 
@@ -72,17 +70,12 @@ public struct NotificationRouter: Sendable {
         return deliveries
     }
 
-    private func isLimitTold(now: Date) -> Bool {
-        guard let limitToldAt else { return false }
-        return now.timeIntervalSince(limitToldAt) < Self.limitCovers
-    }
-
     private mutating func oneLimit(_ items: [Item], now: Date) -> [NotificationDelivery] {
-        guard let first = items.first else { return [] }
-        limitToldAt = now
+        guard !items.isEmpty else { return [] }
         let projects = Set(items.compactMap(\.event.project))
         let merged = BorisEvent(
-            id: "\(first.event.id)|limit",
+            // One place on the Mac: a limit first known without its time gets it here, not as a second notification.
+            id: "boris.limit",
             kind: .limitReached,
             at: now,
             project: projects.count == 1 ? projects.first : nil,
@@ -103,7 +96,7 @@ public struct NotificationRouter: Sendable {
         for item in items where item.event.sessionId == nil || !sessions.contains(item.event.sessionId) {
             sessions.append(item.event.sessionId)
         }
-        let projects = unique(items.compactMap(\.event.project))
+        let projects = unique(items.compactMap { NotificationWords.project($0.event) })
 
         var deliveries: [NotificationDelivery] = []
         if items.contains(where: \.reaction.banner) { deliveries.append(.banner(NotificationWords.awayBanner(sessions: sessions, projects: projects))) }
@@ -118,32 +111,27 @@ public struct NotificationRouter: Sendable {
             let ofTopic = items.filter { NotificationTopic($0.event) == topic }
             guard !ofTopic.isEmpty else { continue }
             var wave = waves[topic] ?? Wave()
-            var shown: [Item] = []
-            var replacing: [String]?
             for item in ofTopic {
                 wave.lastAt = now
-                wave.projects = unique(wave.projects + [item.event.project].compactMap { $0 })
-                switch wave.grouper.add(item.event, now: now) {
-                case .show:
-                    wave.total += 1
-                    shown.append(item)
-                case .summarize(let counts, let ids):
-                    wave.total = counts.values.reduce(0, +)
-                    replacing = ids
-                }
+                wave.total += 1
+                wave.projects = unique(wave.projects + [NotificationWords.project(item.event)].compactMap { $0 })
+                if case .summarize = wave.grouper.add(item.event, now: now) { wave.summarized = true }
             }
-            if let replacing {
-                // Those from this same scan were never posted, so only the earlier ones need taking back.
-                let thisScan = Set(ofTopic.map(\.event.id))
-                let earlier = replacing.filter { !thisScan.contains($0) }
-                if !earlier.isEmpty { deliveries.append(.removeBanners(earlier)) }
+            if wave.summarized {
+                // With no summary to put in their place, the banners stay on screen.
                 if ofTopic.contains(where: \.reaction.banner) {
+                    if !wave.posted.isEmpty { deliveries.append(.removeBanners(wave.posted)) }
+                    wave.posted = []
                     deliveries.append(.banner(NotificationWords.waveBanner(topic, count: wave.total, projects: wave.projects)))
                 }
                 if ofTopic.contains(where: \.telegram) { wave.telegramOwed = true }
             } else {
-                for item in shown {
-                    if item.reaction.banner { deliveries.append(.banner(NotificationWords.banner(item.event))) }
+                for item in ofTopic {
+                    if item.reaction.banner {
+                        let banner = NotificationWords.banner(item.event)
+                        wave.posted.append(banner.id)
+                        deliveries.append(.banner(banner))
+                    }
                     if item.telegram { deliveries.append(.telegram(NotificationWords.telegram(item.event))) }
                 }
             }

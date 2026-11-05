@@ -199,6 +199,39 @@ struct NotificationContentTests {
         #expect(!NotificationWords.telegram(event).full.contains("story"))
     }
 
+    @Test("Время сброса показывается, как его написал Claude", arguments: ["4:10pm", "18:40", "1:30pm (Europe/London)", "Nov 8, 5pm (Europe/Moscow)", "Nov 8 at 5pm", "tomorrow at 5pm", "5pm"])
+    func resetsAsWritten(resets: String) {
+        let event = BorisEvent(id: "x", kind: .limitReached, at: t0, resets: resets)
+        #expect(NotificationWords.banner(event).body == "Resets at \(resets).")
+        #expect(NotificationWords.telegram(event).full.hasSuffix("Resets at \(resets)"))
+    }
+
+    /// The text after "resets" comes from the end of a transcript, so it can be anything an agent wrote.
+    @Test("То, что не похоже на время, никуда не уходит", arguments: ["once you delete /tmp/secret", "rm -rf /tmp/secret 5", "when rm -rf runs", "5pm && curl evil", "5pm (/tmp/secret)"])
+    func resetsThatAreNotTime(resets: String) {
+        let event = BorisEvent(id: "x", kind: .limitReached, at: t0, resets: resets)
+        #expect(NotificationWords.banner(event).body.isEmpty)
+        #expect(NotificationWords.telegram(event).full == "Claude · the limit ran out")
+    }
+
+    @Test("Из слов Claude берётся только время") func resetsFromWords() {
+        func resets(_ text: String) -> String? {
+            FailureClassifier.classify(LastRecord(isApiError: true, errorCode: "rate_limit", text: text)).resets
+        }
+        #expect(resets("You've hit your session limit · resets 5pm (Asia/Example) · upgrade at example") == "5pm (Asia/Example)")
+        #expect(resets("You've hit your session limit · resets 1:30pm\nmore words") == "1:30pm")
+        #expect(resets("You've hit your session limit, it resets once SECRET is gone") == nil)
+    }
+
+    @Test("Текст агента после слова resets не попадает ни в событие, ни в файл состояния") func resetsNotStored() throws {
+        let failure = FailureClassifier.classify(LastRecord(isApiError: true, errorCode: "rate_limit", text: "You've hit your session limit, it resets once SECRET is gone"))
+        var detector = EventDetector()
+        let events = detector.detect(runs: [state(.running, agents: [AgentRecord(key: "k", state: .failed, failure: failure)])], sessions: [], usage: nil, now: t0)
+        #expect(events.map(\.kind) == [.limitReached])
+        #expect(!events[0].id.contains("SECRET"))
+        #expect(!String(decoding: try JSONEncoder().encode(detector.memory), as: UTF8.self).contains("SECRET"))
+    }
+
     @Test("Длинное имя проекта не вытесняет событие из заголовка, а в Telegram идёт целиком") func longProject() {
         let name = "a-very-long-project-name-that-nobody-would-ever-want-to-type-by-hand"
         let event = BorisEvent(id: "x", kind: .failed, at: t0, project: name)
@@ -355,6 +388,142 @@ struct NotificationWaveTests {
         #expect(telegrams(later)[0].text.hasPrefix("Work finished: 3"))
     }
 
+    @Test("Длинная волна: счёт только растёт, а по одному больше не приходит") func longWave() {
+        var router = NotificationRouter()
+        var titles: [String] = []
+        var lines: [TelegramLine] = []
+        for (index, second) in stride(from: 0.0, through: 28, by: 4).enumerated() {
+            var event = finished(index + 1)
+            event.at = at(second)
+            let delivered = router.route([item(event)], now: at(second))
+            titles += banners(delivered).map(\.title)
+            lines += telegrams(delivered)
+        }
+        #expect(titles == ["landing · work done", "landing · work done"] + (3...8).map { "Work finished: \($0)" })
+        #expect(lines.count == 2)
+        #expect(telegrams(router.drain(now: at(40))).map(\.full) == ["Boris · Work finished: 8. landing"])
+    }
+
+    @Test("Волна стала реже, но не кончилась: всё равно одна сводка") func waveSlowsDown() {
+        var router = NotificationRouter()
+        func event(_ number: Int, _ second: Double) -> NotificationRouter.Item {
+            var event = finished(number)
+            event.at = at(second)
+            return item(event)
+        }
+        _ = router.route((1...5).map { event($0, 0) }, now: t0)
+        _ = router.route([event(6, 9)], now: at(9))
+        // Only two of the burst are inside the window now, and that does not make it a new start.
+        let later = router.route([event(7, 12)], now: at(12))
+        #expect(banners(later).map(\.title) == ["Work finished: 7"])
+        #expect(telegrams(later).isEmpty)
+    }
+
+    @Test("Сводка забирает все уведомления этой волны, даже если первое уже вышло за окно") func waveTakesAllBack() {
+        var router = NotificationRouter()
+        var first = finished(1)
+        first.at = t0
+        var second = finished(2)
+        second.at = at(6)
+        var third = finished(3)
+        third.at = at(12)
+        var fourth = finished(4)
+        fourth.at = at(13)
+        _ = router.route([item(first)], now: t0)
+        _ = router.route([item(second)], now: at(6))
+        _ = router.route([item(third)], now: at(12))
+        #expect(router.route([item(fourth)], now: at(13)).contains(.removeBanners(["done1", "done2", "done3"])))
+    }
+
+    @Test("Сводке нечем заменить уведомления: они остаются на экране") func nothingReplaces() {
+        var router = NotificationRouter()
+        _ = router.route([item(finished(1)), item(finished(2))], now: t0)
+        let muted = router.route([item(finished(3), Reaction(banner: false, sound: false, mood: .none))], now: at(1))
+        #expect(!muted.contains { if case .removeBanners = $0 { return true } else { return false } })
+        #expect(banners(muted).isEmpty)
+    }
+
+    @Test("Даже если в проект попал путь, сводки несут только имя папки") func pathInSummaries() {
+        let path = "/Users/someone/private/proj"
+        var router = NotificationRouter()
+        let wave = (1...3).map { item(finished($0, project: path)) }
+        let away = BorisEvent(id: "a", kind: .interrupted, at: t0, sessionId: "s", project: path, whileAway: true)
+        let delivered = router.route(wave + [item(away)], now: t0) + router.drain(now: at(30))
+        #expect(!banners(delivered).isEmpty)
+        #expect(telegrams(delivered).count == 2)
+        #expect(!allText(delivered).contains("someone"))
+    }
+
+    private func limitFailure(_ id: String) -> BorisEvent {
+        BorisEvent(id: id, kind: .allAgentsFailed, at: t0, project: "p", agentsFailed: 2, topFailure: .limit)
+    }
+
+    private func limitEvent(_ id: String, limit: LimitKind = .session, resets: String? = "18:40") -> BorisEvent {
+        BorisEvent(id: id, kind: .limitReached, at: t0, project: "p", agentsFailed: 2, limitKind: limit, resets: resets)
+    }
+
+    private var limitAgent: AgentRecord {
+        AgentRecord(key: "k", state: .failed, failure: FailureClassifier.classify(LastRecord(isApiError: true, errorCode: "rate_limit", text: "You've hit your session limit · resets 18:40")))
+    }
+
+    /// A run that fell from the limit between two looks, never seen at work with a failed agent.
+    private func fallen(_ id: String) -> RunState {
+        var run = state(.allAgentsFailed, id: id, agents: [limitAgent, limitAgent, limitAgent])
+        run.topFailure = .limit
+        return run
+    }
+
+    /// One look of the detector, the way the person gets it.
+    private func look(_ detector: inout EventDetector, _ router: inout NotificationRouter, runs: [RunState] = [], failures: [HookState.Failure] = [], now: Date) -> [NotificationDelivery] {
+        router.route(detector.detect(runs: runs, sessions: [], usage: nil, now: now, failures: failures).map { item($0) }, now: now)
+    }
+
+    @Test("О лимите сказал упавший запуск, потом другой запуск упёрся в него же: второго уведомления нет") func limitToldByFailureFirst() {
+        var detector = EventDetector()
+        var router = NotificationRouter()
+        _ = look(&detector, &router, now: t0)
+        #expect(banners(look(&detector, &router, runs: [fallen("a")], now: at(1))).count == 1)
+        #expect(look(&detector, &router, runs: [fallen("a"), state(.running, id: "b", agents: [limitAgent])], now: at(30)).isEmpty)
+    }
+
+    @Test("Сначала лимит без времени сброса, потом с ним: время доходит, а на Mac это то же уведомление") func limitGetsItsTime() {
+        var detector = EventDetector()
+        var router = NotificationRouter()
+        _ = look(&detector, &router, now: t0)
+        let first = look(&detector, &router, failures: [HookState.Failure(session: "s", error: "rate_limit")], now: at(1))
+        let second = look(&detector, &router, runs: [fallen("a")], now: at(30))
+        #expect(banners(first).count == 1)
+        #expect(banners(second).map(\.id) == banners(first).map(\.id))
+        #expect(banners(second)[0].body.contains("18:40"))
+        #expect(telegrams(second).count == 1)
+        #expect(look(&detector, &router, runs: [fallen("a"), fallen("b")], now: at(60)).isEmpty)
+    }
+
+    @Test("Другой лимит в те же часы это новость, а старый не повторяется") func anotherLimit() {
+        var router = NotificationRouter()
+        _ = router.route([item(limitEvent("session"))], now: t0)
+        #expect(banners(router.route([item(limitEvent("month", limit: .monthly, resets: nil))], now: at(60))).count == 1)
+        #expect(router.route([item(limitFailure("later"))], now: at(120)).isEmpty)
+    }
+
+    @Test("Остановка, прерывание и молчание не прячутся за лимитом", arguments: [EventKind.stopped, .interrupted, .silent])
+    func notAFailure(kind: EventKind) {
+        var router = NotificationRouter()
+        _ = router.route([item(limitEvent("limit"))], now: t0)
+        let event = BorisEvent(id: "e", kind: kind, at: t0, project: "p", topFailure: .limit)
+        #expect(banners(router.route([item(event)], now: at(30))).map(\.id) == ["e"])
+    }
+
+    @Test("Запуск упал от лимита сразу, без стадии работы: время сброса всё равно в уведомлении") func limitTimeWithoutItsEvent() {
+        var detector = EventDetector()
+        var router = NotificationRouter()
+        _ = look(&detector, &router, now: t0)
+        let delivered = look(&detector, &router, runs: [fallen("a")], now: at(1))
+        #expect(banners(delivered).map(\.title) == ["The limit ran out · 3 agents failed"])
+        #expect(banners(delivered)[0].body == "proj. Resets at 18:40.")
+        #expect(telegrams(delivered).map(\.full) == ["proj · the limit ran out, 3 agents failed. Resets at 18:40"])
+    }
+
     @Test("Лимит кончился и упало много агентов: одно общее уведомление со временем сброса") func limitWave() {
         let failedLimit = AgentRecord(key: "k", state: .failed, failure: FailureClassifier.classify(LastRecord(isApiError: true, errorCode: "rate_limit", text: "You've hit your session limit · resets 18:40")))
         var detector = EventDetector()
@@ -390,19 +559,33 @@ struct NotificationWaveTests {
         #expect(telegrams(delivered).count == 1)
     }
 
-    @Test("Запуск упал от лимита без отдельного события: о лимите всё равно говорится, один раз") func limitWithoutItsEvent() {
+    @Test("Два запуска упали от лимита разом: одно уведомление, а следующий упавший ничего не добавляет") func limitFromFallenRuns() {
+        var detector = EventDetector()
         var router = NotificationRouter()
-        let failure = { (id: String) in BorisEvent(id: id, kind: .allAgentsFailed, at: t0, project: "p", agentsFailed: 3, topFailure: .limit) }
-        let first = router.route([item(failure("a")), item(failure("b"))], now: t0)
+        _ = look(&detector, &router, now: t0)
+        let first = look(&detector, &router, runs: [fallen("a"), fallen("b")], now: at(1))
         #expect(banners(first).map(\.title) == ["The limit ran out · 6 agents failed"])
-        #expect(router.route([item(failure("c"))], now: at(60)).isEmpty)
+        #expect(look(&detector, &router, runs: [fallen("a"), fallen("b"), fallen("c")], now: at(60)).isEmpty)
     }
 
     @Test("Через пять часов это уже новый лимит") func limitLater() {
+        var detector = EventDetector()
         var router = NotificationRouter()
-        let failure = { (id: String) in BorisEvent(id: id, kind: .failed, at: t0, topFailure: .limit) }
-        _ = router.route([item(failure("a"))], now: t0)
-        #expect(banners(router.route([item(failure("b"))], now: at(NotificationRouter.limitCovers + 1))).count == 1)
+        _ = look(&detector, &router, now: t0)
+        _ = look(&detector, &router, runs: [fallen("a")], now: at(1))
+        #expect(banners(look(&detector, &router, runs: [fallen("a"), fallen("b")], now: at(1 + 5 * 3600))).count == 1)
+    }
+
+    @Test("Перезапуск Boris не повторяет лимит, о котором уже сказано") func limitAcrossRestart() throws {
+        var before = EventDetector()
+        var router = NotificationRouter()
+        _ = look(&before, &router, now: t0)
+        #expect(banners(look(&before, &router, runs: [fallen("a")], now: at(1))).count == 1)
+
+        var after = EventDetector(memory: try JSONDecoder().decode(DetectorMemory.self, from: JSONEncoder().encode(before.memory)))
+        var newRouter = NotificationRouter()
+        _ = look(&after, &newRouter, runs: [fallen("a")], now: at(100))
+        #expect(look(&after, &newRouter, runs: [fallen("a"), fallen("b")], now: at(130)).isEmpty)
     }
 
     @Test("Сбой по другой причине лимит не глотает") func otherFailureAfterLimit() {

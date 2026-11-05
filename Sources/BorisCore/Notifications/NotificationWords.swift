@@ -61,7 +61,7 @@ public struct TelegramLine: Sendable, Equatable {
 /// no commands, prompts, paths, tool names or titles, and the same text in both display modes.
 public enum NotificationWords {
     /// The folder's name, never the path to it.
-    private static func project(_ event: BorisEvent) -> String? {
+    static func project(_ event: BorisEvent) -> String? {
         guard let project = event.project, !project.isEmpty else { return nil }
         return URL(fileURLWithPath: project).lastPathComponent
     }
@@ -123,10 +123,9 @@ public enum NotificationWords {
         count == 1 ? L("%lld agent failed", count) : L("%lld agents failed", count)
     }
 
-    /// Reset time as Claude wrote it. Anything longer than a time is not one.
+    /// Reset time as Claude wrote it. Checked once more here, because this text leaves the Mac.
     private static func resets(_ event: BorisEvent) -> String? {
-        guard let resets = event.resets, resets.count <= 40, !resets.contains("\n") else { return nil }
-        return L("Resets at %@", resets)
+        event.resets.flatMap(FailureClassifier.resetTime).map { L("Resets at %@", $0) }
     }
 
     private static func window(_ id: String?) -> String? {

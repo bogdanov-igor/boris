@@ -69,7 +69,17 @@ public enum FailureClassifier {
 
     private static func resets(from text: String?) -> String? {
         guard let text, let range = text.range(of: "resets ") else { return nil }
-        let rest = text[range.upperBound...].trimmingCharacters(in: .whitespaces)
-        return rest.isEmpty ? nil : rest
+        return resetTime(String(text[range.upperBound...]))
+    }
+
+    /// `4:10pm`, `18:40`, `Nov 8, 5pm (Europe/Moscow)`, `tomorrow at 5pm`.
+    private static let resetTimePattern = #"^(?:(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.? \d{1,2},?|(?:today|tomorrow|mon|tue|wed|thu|fri|sat|sun)[a-z]*,?)(?: at)? )?\d{1,2}(?::\d{2})?(?: ?[ap]m)?(?: \([a-z_]+(?:/[a-z0-9_+-]+)*\))?$"#
+
+    /// The time at the start of what follows the word "resets". That text comes from the end of a transcript,
+    /// so it can be anything an agent wrote, and only a time may go on to the state file or a notification.
+    public static func resetTime(_ text: String) -> String? {
+        let line = text.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+        let time = line.components(separatedBy: " · ")[0].trimmingCharacters(in: .whitespaces)
+        return time.range(of: resetTimePattern, options: [.regularExpression, .caseInsensitive]) == nil ? nil : time
     }
 }
