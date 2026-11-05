@@ -34,13 +34,19 @@ public struct SpendEstimate: Sendable, Equatable {
     /// False only when there were tokens and none of them had a price.
     public var isKnown: Bool { pricedTokens > 0 || unpricedTokens == 0 }
 
-    mutating func add(_ usage: TokenUsage, price: ModelPrice?) {
+    public mutating func add(_ usage: TokenUsage, price: ModelPrice?) {
         if let price {
             dollars += price.cost(of: usage)
             pricedTokens += usage.total
         } else {
             unpricedTokens += usage.total
         }
+    }
+
+    public mutating func add(_ other: SpendEstimate) {
+        dollars += other.dollars
+        pricedTokens += other.pricedTokens
+        unpricedTokens += other.unpricedTokens
     }
 }
 
@@ -92,6 +98,7 @@ public struct TokenBook: Sendable {
     private let days: [String: TokenUsage]
     /// The whole session: its main agent and everything under it.
     private let sessions: [String: TokenUsage]
+    private let sessionEstimates: [String: SpendEstimate]
     private let mainAgents: [String: TokenUsage]
     private let agents: [String: TokenUsage]
     private let runs: [String: TokenUsage]
@@ -131,6 +138,7 @@ public struct TokenBook: Sendable {
         var tallies: [UsagePeriod: Tally] = [:]
         var days: [String: TokenUsage] = [:]
         var sessions: [String: TokenUsage] = [:]
+        var sessionEstimates: [String: SpendEstimate] = [:]
         var mainAgents: [String: TokenUsage] = [:]
         var agents: [String: TokenUsage] = [:]
         var runs: [String: TokenUsage] = [:]
@@ -156,6 +164,7 @@ public struct TokenBook: Sendable {
 
             days[record.day, default: TokenUsage()] = days[record.day, default: TokenUsage()] + usage
             sessions[record.sessionId, default: TokenUsage()] = sessions[record.sessionId, default: TokenUsage()] + usage
+            sessionEstimates[record.sessionId, default: SpendEstimate()].add(usage, price: cost)
             if let agent = record.agentId {
                 agents[agent, default: TokenUsage()] = agents[agent, default: TokenUsage()] + usage
             } else {
@@ -177,6 +186,7 @@ public struct TokenBook: Sendable {
         self.reports = reports
         self.days = days
         self.sessions = sessions
+        self.sessionEstimates = sessionEstimates
         self.mainAgents = mainAgents
         self.agents = agents
         self.runs = runs
@@ -215,6 +225,10 @@ public struct TokenBook: Sendable {
     /// The whole session: its main agent and everything under it.
     public func spent(session id: String) -> TokenUsage? {
         sessions[id]
+    }
+
+    public func estimate(session id: String) -> SpendEstimate? {
+        sessionEstimates[id]
     }
 
     /// What a session's main agent spent itself.

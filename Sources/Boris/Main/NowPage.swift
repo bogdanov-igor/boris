@@ -154,6 +154,9 @@ struct NowPage: View {
                 Text(model.usage.todayText(model.today))
                     .font(model.usage.book != nil ? .system(size: 24, weight: .semibold).monospacedDigit() : .system(size: 15).italic())
                     .foregroundStyle(model.usage.book != nil ? Palette.text1 : Palette.text3)
+                if let estimate = UsageFormat.estimateLine(model.usage.book?.report(.today).estimate) {
+                    Text(estimate).font(.system(size: 11.5)).foregroundStyle(Palette.text3)
+                }
                 if mode == .technical, model.usage.book != nil {
                     Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
                         GridRow { detail(L("Input"), model.today.input); detail(L("Output"), model.today.output) }
@@ -165,10 +168,7 @@ struct NowPage: View {
             card {
                 Text(L("Limits")).font(.system(size: 12)).foregroundStyle(Palette.text2)
                 LimitsBlock(usage: model.world.usage, now: model.now, compact: false)
-                if let fetched = model.world.usage?.fetchedAt {
-                    Text(L("updated %@", WorkFormat.ago(model.now.timeIntervalSince(fetched))))
-                        .font(.system(size: 11)).foregroundStyle(Palette.text3)
-                }
+                LimitsFreshness(model: model)
             }
             if !digest.finished.isEmpty {
                 card {

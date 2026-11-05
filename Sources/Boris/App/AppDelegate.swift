@@ -84,10 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.power.update(shouldHold: model.settings.keepAwake && model.work.isWorking)
         }
 
-        model.notifications.onOpen = { [weak model, weak main] route in
-            model?.open(route)
-            main?.show()
-        }
+        model.notifications.onOpen = { [weak model] route in model?.open(route) }
         model.notifications.refreshPermission()
 
         let center = NSWorkspace.shared.notificationCenter

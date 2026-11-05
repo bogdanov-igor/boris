@@ -128,7 +128,7 @@ struct SurfaceView: View {
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    RequestCardList(model: model)
+                    RequestCardList(model: model, surface: .notch)
                     sessions
                     failure
                 }
@@ -197,8 +197,7 @@ struct SurfaceView: View {
 
     /// A number must not lose its end, so on the narrower panel the row wraps instead.
     @ViewBuilder private var numbersRow: some View {
-        let numbers = SurfaceNumbers(work: model.work, requests: model.requestCount, today: model.today, usage: model.world.usage)
-        let parts = SurfaceWords.numbersRow(numbers, now: model.now)
+        let parts = SurfaceWords.numbersRow(model.surfaceNumbers, now: model.now)
         if !parts.isEmpty {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 14) {
@@ -218,9 +217,11 @@ struct SurfaceView: View {
     }
 
     @ViewBuilder private var sessions: some View {
-        let list = model.work.waitingSessions + model.activeSessions
+        // A session with a card above still counts among those at work. One without a held request has its notice among the cards only.
+        let held = Set(model.hooks.pending.map(\.session))
+        let list = model.work.waitingSessions.filter { held.contains($0.id) } + model.activeSessions
         if list.isEmpty {
-            if lastFailure == nil, model.hooks.pending.isEmpty {
+            if lastFailure == nil, model.requestCount == 0 {
                 VStack(spacing: 4) {
                     Text(L("Nothing is going on")).font(.system(size: 13, weight: .semibold))
                     Text(L("Nobody is waiting for an answer.")).font(.system(size: 12)).foregroundStyle(Palette.text2)
@@ -235,7 +236,13 @@ struct SurfaceView: View {
                     .foregroundStyle(Palette.text2)
                     .padding(EdgeInsets(top: 0, leading: 4, bottom: 4, trailing: 4))
                 ForEach(list) { session in
-                    SurfaceSessionRow(session: session, mode: mode, now: model.now)
+                    Button {
+                        model.openSession(session.id)
+                    } label: {
+                        SurfaceSessionRow(session: session, mode: mode, now: model.now).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(L("Opens the session"))
                 }
             }
         }
@@ -247,24 +254,31 @@ struct SurfaceView: View {
 
     @ViewBuilder private var failure: some View {
         if let failure = lastFailure {
-            HStack(alignment: .top, spacing: 8) {
-                StatusGlyph(kind: .failed, size: 14)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(SurfaceSessionRow.nameAndDetail(failure.name, isFolder: failure.nameIsFolder, detail: failure.who))
-                        .lineLimit(1)
-                    Text(failure.what)
-                        .foregroundStyle(Palette.redText)
-                        .fixedSize(horizontal: false, vertical: true)
+            Button {
+                model.openSession(failure.sessionId)
+            } label: {
+                HStack(alignment: .top, spacing: 8) {
+                    StatusGlyph(kind: .failed, size: 14)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(SurfaceSessionRow.nameAndDetail(failure.name, isFolder: failure.nameIsFolder, detail: failure.who))
+                            .lineLimit(1)
+                        Text(failure.what)
+                            .foregroundStyle(Palette.redText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .font(.system(size: 12.5))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    if let at = failure.at {
+                        Text(WorkFormat.time(at)).font(.system(size: 11).monospacedDigit()).foregroundStyle(Palette.text2)
+                    }
                 }
-                .font(.system(size: 12.5))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                if let at = failure.at {
-                    Text(WorkFormat.time(at)).font(.system(size: 11).monospacedDigit()).foregroundStyle(Palette.text2)
-                }
+                .padding(EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10))
+                .background(RoundedRectangle(cornerRadius: DesignMetrics.radiusLarge).fill(Palette.redSoft))
+                .contentShape(Rectangle())
+                .accessibilityElement(children: .combine)
             }
-            .padding(EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 10))
-            .background(RoundedRectangle(cornerRadius: DesignMetrics.radiusLarge).fill(Palette.redSoft))
-            .accessibilityElement(children: .combine)
+            .buttonStyle(.plain)
+            .accessibilityHint(L("Opens the session"))
         }
     }
 }

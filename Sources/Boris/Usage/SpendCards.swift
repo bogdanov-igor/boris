@@ -91,7 +91,7 @@ private struct SpendLimitsCard: View {
                     }
                 }
                 .font(.system(size: 12))
-                freshness
+                LimitsFreshness(model: model)
             }
         case .noData:
             SpendCard(spacing: 8) {
@@ -102,7 +102,7 @@ private struct SpendLimitsCard: View {
                     .foregroundStyle(Palette.text3)
                     .fixedSize(horizontal: false, vertical: true)
                 // A gateway has no plan to ask about, so there is nothing to refresh.
-                if model.world.account != .gateway { freshness }
+                if model.world.account != .gateway { LimitsFreshness(model: model) }
             }
         }
     }
@@ -137,9 +137,15 @@ private struct SpendLimitsCard: View {
         }
         .accessibilityElement(children: .combine)
     }
+}
 
-    /// How old the numbers are, and a way to ask for new ones. A failed attempt is said quietly: the work itself is fine.
-    private var freshness: some View {
+/// How old the limits are, and a way to ask for new ones. A failed attempt is said quietly: the work itself is fine.
+struct LimitsFreshness: View {
+    @Bindable var model: AppModel
+    /// In the mini window the button is only its icon.
+    var compact = false
+
+    var body: some View {
         HStack(spacing: 6) {
             if let line = ageLine {
                 Text(line)
@@ -149,9 +155,23 @@ private struct SpendLimitsCard: View {
             }
             // Its numbers do not come from a plan that Claude Code could be asked about.
             if model.world.account != .gateway {
-                Button(L("Refresh")) { model.usageRefresher.refreshNow() }
-                    .buttonStyle(SpendSmallButton())
+                if compact {
+                    Button { model.usageRefresher.refreshNow() } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(Palette.text2)
+                            .frame(width: 18, height: 18)
+                            .background(RoundedRectangle(cornerRadius: 4).fill(Palette.fill1))
+                    }
+                    .buttonStyle(.plain)
                     .disabled(model.usageRefresher.refreshing)
+                    .accessibilityLabel(L("Refresh limits now"))
+                    .help(L("Refresh limits now"))
+                } else {
+                    Button(L("Refresh")) { model.usageRefresher.refreshNow() }
+                        .buttonStyle(SpendSmallButton())
+                        .disabled(model.usageRefresher.refreshing)
+                }
             }
         }
     }

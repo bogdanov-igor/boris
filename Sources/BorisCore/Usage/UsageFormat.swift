@@ -21,6 +21,24 @@ public enum UsageFormat {
         return "≈ \(money(dollars.rounded(toPlaces: 2), locale: locale))"
     }
 
+    /// `≈ 3,10 $ по ценам API · оценка`. Nil when none of the tokens has a price, as there is then nothing to say.
+    public static func estimateLine(_ estimate: SpendEstimate?, locale: Locale = Localizer.locale) -> String? {
+        guard let estimate, estimate.pricedTokens > 0 else { return nil }
+        return L("%@ at API prices · estimate", Self.estimate(estimate, locale: locale))
+    }
+
+    /// `≈ 12,40 $ оценка`, for a tight place.
+    public static func estimateShort(_ estimate: SpendEstimate?, locale: Locale = Localizer.locale) -> String? {
+        guard let estimate, estimate.pricedTokens > 0 else { return nil }
+        return L("%@ estimate", Self.estimate(estimate, locale: locale))
+    }
+
+    /// `≈ 18,40 $` in a column that says it holds an estimate, and a dash when there is none.
+    public static func estimateCell(_ estimate: SpendEstimate?, locale: Locale = Localizer.locale) -> String {
+        guard let estimate, estimate.pricedTokens > 0 else { return "–" }
+        return Self.estimate(estimate, locale: locale)
+    }
+
     /// What the sum means depends on who is looking: for a subscriber it is not money that left.
     public static func estimateNote(account: ClaudeAccount) -> String {
         switch account {

@@ -6,6 +6,16 @@ import SwiftUI
 /// Takes the person to a session. It only opens things and never sends anything on its own.
 @MainActor
 enum SessionNavigator {
+    /// A session with no process or no window of its own has nowhere to go.
+    /// - Parameter pid: of its process. Nil when it has none on this Mac.
+    static func canOpen(_ session: WorkSession?, pid: Int32?) -> Bool {
+        switch session?.environment {
+        case .vsCode, .cursor, .claudeDesktop, .cowork: return true
+        case .terminal: return pid != nil
+        case .program, .chat, .insideClaude, .remote, nil: return false
+        }
+    }
+
     static func open(_ session: WorkSession, model: AppModel) {
         // A session that has ended has no process, and its old number may belong to another program by now.
         let process = model.world.sessions.first { $0.sessionId == session.id }?.pid

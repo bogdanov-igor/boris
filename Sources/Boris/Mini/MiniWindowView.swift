@@ -12,7 +12,7 @@ struct MiniWindowView: View {
         let waiting = model.requestCount
         let working = model.activeSessions.count
         let detail = working > 0 ? MainPhrases.sessionsAtWork(working) : L("Nothing is going on")
-        return (waiting > 0 ? L("%lld waiting for you", waiting) : (working > 0 ? L("At work") : L("Quiet")), detail)
+        return (waiting > 0 ? SurfaceWords.waiting(waiting) : (working > 0 ? L("At work") : L("Quiet")), detail)
     }
 
     var body: some View {
@@ -49,23 +49,39 @@ struct MiniWindowView: View {
     private var limits: some View {
         VStack(alignment: .leading, spacing: 7) {
             LimitsBlock(usage: model.world.usage, now: model.now, compact: true)
-            if let fetched = model.world.usage?.fetchedAt {
-                Text(L("updated %@", WorkFormat.ago(model.now.timeIntervalSince(fetched))))
-                    .font(.system(size: 11)).foregroundStyle(Palette.text3)
-            }
-            HStack(alignment: .firstTextBaseline) {
+            LimitsFreshness(model: model, compact: true)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(L("Tokens today")).font(.system(size: 12)).foregroundStyle(Palette.text2)
                 Spacer(minLength: 8)
                 Text(model.usage.todayText(model.today))
                     .font(model.usage.book != nil ? .system(size: 12, weight: .semibold).monospacedDigit() : .system(size: 12).italic())
                     .foregroundStyle(model.usage.book != nil ? Palette.text1 : Palette.text3)
+                if let estimate = UsageFormat.estimateShort(model.usage.book?.report(.today).estimate) {
+                    Text(verbatim: "· \(estimate)").font(.system(size: 11)).foregroundStyle(Palette.text3).lineLimit(1)
+                }
             }
             if mode == .technical, model.usage.book != nil {
-                HStack(spacing: 4) {
-                    breakdown(L("in %@", WorkFormat.tokens(model.today.input)))
-                    breakdown(L("out %@", WorkFormat.tokens(model.today.output)))
-                    breakdown(L("cache r. %@", WorkFormat.tokens(model.today.cacheRead)))
-                    breakdown(L("cache w. %@", WorkFormat.tokens(model.today.cacheWrite)))
+                // A number must not lose its end, and Russian ones are long, so the row takes the room each one needs and folds when that is too much.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        breakdown(L("in %@", WorkFormat.tokens(model.today.input)))
+                        Spacer(minLength: 0)
+                        breakdown(L("out %@", WorkFormat.tokens(model.today.output)))
+                        Spacer(minLength: 0)
+                        breakdown(L("cache r. %@", WorkFormat.tokens(model.today.cacheRead)))
+                        Spacer(minLength: 0)
+                        breakdown(L("cache w. %@", WorkFormat.tokens(model.today.cacheWrite)))
+                    }
+                    Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 2) {
+                        GridRow {
+                            breakdown(L("in %@", WorkFormat.tokens(model.today.input)))
+                            breakdown(L("out %@", WorkFormat.tokens(model.today.output)))
+                        }
+                        GridRow {
+                            breakdown(L("cache r. %@", WorkFormat.tokens(model.today.cacheRead)))
+                            breakdown(L("cache w. %@", WorkFormat.tokens(model.today.cacheWrite)))
+                        }
+                    }
                 }
             }
             Rectangle().fill(Palette.separator).frame(height: 1).padding(.top, 1)
@@ -79,8 +95,7 @@ struct MiniWindowView: View {
         Text(text)
             .font(.system(size: 10.5).monospacedDigit())
             .foregroundStyle(Palette.text2)
-            .lineLimit(1)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize()
     }
 
     @ViewBuilder private var sessions: some View {

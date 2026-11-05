@@ -21,6 +21,8 @@ public struct ProjectSummary: Sendable, Equatable, Identifiable {
     public var past: [WorkSession] = []
     public var today = TokenUsage()
     public var inPeriod = TokenUsage()
+    /// What the tokens of the period would cost at API prices.
+    public var estimate = SpendEstimate()
     /// Tokens by the `yyyy-MM-dd` of the day.
     public var byDay: [String: Int] = [:]
 
@@ -97,6 +99,14 @@ public enum ProjectBook {
         let today = dayKey(now, calendar: calendar)
         let first = dayKey(days.lowerBound, calendar: calendar)
         let last = dayKey(days.upperBound, calendar: calendar)
+        var prices: [String: ModelPrice?] = [:]
+        func price(_ model: String?) -> ModelPrice? {
+            guard let model else { return nil }
+            if let known = prices[model] { return known }
+            let found = PriceTable.price(for: model)
+            prices[model] = found
+            return found
+        }
         for record in tokens {
             let owner = owners[record.sessionId]
             let environment = owner?.environment ?? WorkEnvironment(entrypoint: record.entrypoint, unlisted: false)
@@ -107,6 +117,7 @@ public enum ProjectBook {
             if record.day == today { project.today = project.today + record.usage }
             if record.day >= first, record.day <= last {
                 project.inPeriod = project.inPeriod + record.usage
+                project.estimate.add(record.usage, price: price(record.model))
                 project.byDay[record.day, default: 0] += record.usage.total
             }
             projects[path] = project

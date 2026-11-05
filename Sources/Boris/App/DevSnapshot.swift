@@ -121,7 +121,7 @@ enum DevSnapshot {
         DevUsageData.Scenario(rawValue: screen.rawValue)?.fill(model)
         if let page = screen.page { model.page = page }
         if let section = screen.section { model.settingsSection = section }
-        if [.requests, .requestCards, .nowRequests, .miniRequests].contains(screen) { RequestDevData.fill(model, data: data) }
+        if [.requests, .requestCards, .nowRequests, .miniRequests, .notchOpen, .panelOpen].contains(screen) { RequestDevData.fill(model, data: data) }
 
         let view: AnyView
         var canvas = size ?? CGSize(width: 1200, height: 800)

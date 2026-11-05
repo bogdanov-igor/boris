@@ -282,7 +282,7 @@ struct RequestCardTests {
     @Test("Открыть можно только то, куда есть куда идти")
     func opening() {
         func can(_ environment: WorkEnvironment?, pid: Int32? = nil) -> Bool {
-            SessionOpener.canOpen(WorkSession(id: "s", environment: environment, state: .waiting, root: WorkNode(id: "s", kind: .main)), pid: pid)
+            SessionNavigator.canOpen(WorkSession(id: "s", environment: environment, state: .waiting, root: WorkNode(id: "s", kind: .main)), pid: pid)
         }
         #expect(can(.vsCode))
         #expect(can(.cursor))
@@ -292,6 +292,6 @@ struct RequestCardTests {
         #expect(!can(.terminal))
         #expect(!can(.program))
         #expect(!can(.insideClaude))
-        #expect(!SessionOpener.canOpen(nil, pid: nil))
+        #expect(!SessionNavigator.canOpen(nil, pid: nil))
     }
 }

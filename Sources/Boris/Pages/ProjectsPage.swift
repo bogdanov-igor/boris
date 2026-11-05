@@ -41,7 +41,7 @@ private struct ProjectList: View {
         if showsEnvironments { columns.append(.flex(1.3)) }
         columns += [.fixed(52)]
         if showsToday { columns.append(.fixed(70)) }
-        columns += [.fixed(70), .fixed(46), .fixed(74)]
+        columns += [.fixed(70), .fixed(72), .fixed(46), .fixed(74)]
         return columns
     }
 
@@ -120,6 +120,7 @@ private struct ProjectList: View {
                 TableHeadCell(L("Sessions"), trailing: true)
                 if showsToday { TableHeadCell(L("Today"), trailing: true) }
                 TableHeadCell(periodTitle, trailing: true)
+                TableHeadCell(L("Estimate"), trailing: true)
                 TableHeadCell(L("Failures"), trailing: true)
                 TableHeadCell(L("Last"), trailing: true)
             }
@@ -149,6 +150,7 @@ private struct ProjectList: View {
                 TableCell(text: "\(project.sessions.count)", trailing: true)
                 if showsToday { TableCell(text: WorkFormat.tokens(project.today.total), trailing: true) }
                 TableCell(text: WorkFormat.tokens(project.inPeriod.total), trailing: true, font: .system(size: 12.5, weight: .semibold).monospacedDigit())
+                TableCell(text: UsageFormat.estimateCell(project.estimate), trailing: true, font: .system(size: 12).monospacedDigit(), color: Palette.text2)
                 TableCell(text: "\(project.failures)", trailing: true, font: .system(size: 12.5, weight: project.failures > 0 ? .semibold : .regular).monospacedDigit(), color: project.failures > 0 ? Palette.redText : Palette.text2)
                 TableCell(text: ProjectWords.lastSeen(project.lastActivity, isActive: !project.active.isEmpty, now: model.now), trailing: true, font: .system(size: 11.5).monospacedDigit(), color: Palette.text2)
             }
@@ -170,6 +172,7 @@ private struct ProjectList: View {
                 TableCell(text: WorkFormat.tokens(projects.reduce(0) { $0 + $1.today.total }), trailing: true, font: .system(size: 12, weight: .semibold).monospacedDigit())
             }
             TableCell(text: WorkFormat.tokens(projects.reduce(0) { $0 + $1.inPeriod.total }), trailing: true, font: .system(size: 12, weight: .semibold).monospacedDigit())
+            TableCell(text: UsageFormat.estimateCell(projects.reduce(into: SpendEstimate()) { $0.add($1.estimate) }), trailing: true, font: .system(size: 12, weight: .semibold).monospacedDigit())
             let failures = projects.reduce(0) { $0 + $1.failures }
             TableCell(text: "\(failures)", trailing: true, font: .system(size: 12, weight: .semibold).monospacedDigit(), color: failures > 0 ? Palette.redText : Palette.text2)
             Color.clear

@@ -71,6 +71,7 @@ private struct SessionContent: View {
                     Text(duration).font(.system(size: 12).monospacedDigit()).foregroundStyle(Palette.text2).lineLimit(1).fixedSize()
                 }
                 Spacer(minLength: 0)
+                OpenSessionButton(model: model, session: session)
             }
             if mode == .technical {
                 Text(technicalLine)
@@ -133,12 +134,16 @@ private struct SessionContent: View {
                 ForEach(AgentTree.rows(root: session.root, expanded: model.expandedPhases)) { row in
                     AgentTreeLine(model: model, row: row, waitingFor: session.waitingFor)
                 }
+                SessionChangesView(model: model, session: session)
+                    .padding(.leading, 6)
+                    .padding(.top, 14)
                 heading(L("Failures · %lld", failures.count)).padding(.top, 14)
                 SessionFailuresList(model: model, failures: failures).padding(.horizontal, 8)
                 SessionTokensCard(model: model, session: session)
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: DesignMetrics.radiusLarge).fill(Palette.fill1))
                     .padding(.top, 14)
+                SessionLoadBlock(model: model, session: session).padding(.top, 14)
             }
             .padding(EdgeInsets(top: 12, leading: 12, bottom: 16, trailing: 12))
         }

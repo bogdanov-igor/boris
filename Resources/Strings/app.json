@@ -25,7 +25,6 @@
   "one": "%lld сессия работает",
   "other": "%lld сессии работают"
  },
- "%lld waiting for you": "%lld ждёт вас",
  "%lld%%": "%lld %%",
  "5 hours": "5 часов",
  "A dialog is open in Claude": "В Claude открыт диалог",

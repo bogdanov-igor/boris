@@ -326,6 +326,9 @@ struct SessionTokensCard: View {
                 Text(usage.map { WorkFormat.tokens($0.total) } ?? L("No data yet"))
                     .font(.system(size: usage == nil ? 12.5 : 20, weight: usage == nil ? .regular : .semibold).monospacedDigit())
                     .foregroundStyle(usage == nil ? Palette.text2 : Palette.text1)
+                if let estimate = UsageFormat.estimateLine(model.usage.book?.estimate(session: session.id)) {
+                    Text(estimate).font(.system(size: 11.5)).foregroundStyle(Palette.text3).fixedSize(horizontal: false, vertical: true)
+                }
             } else {
                 HStack {
                     Text(L("Session tokens")).foregroundStyle(Palette.text2)

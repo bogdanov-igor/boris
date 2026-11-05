@@ -6,6 +6,10 @@ import SwiftUI
 extension AppModel {
     /// Whether the hotkey can open the mini window at this moment.
     var hotKeyWorks: Bool { settings.hotKeyEnabled && !hotKeyTaken }
+
+    var surfaceNumbers: SurfaceNumbers {
+        SurfaceNumbers(work: work, requests: requestCount, today: usage.book == nil ? nil : today, usage: world.usage)
+    }
 }
 
 /// Everything the surface needs from the model, read in one go, so that a change of any of it can be noticed.
@@ -25,7 +29,7 @@ struct SurfaceInputs: Equatable {
         switches = model.settings.surfaces
         choice = model.settings.surfaceScreen
         mode = model.settings.displayMode
-        numbers = SurfaceNumbers(work: model.work, requests: model.requestCount, today: model.today, usage: model.world.usage)
+        numbers = model.surfaceNumbers
         requests = model.hooks.pending.count
         quiet = model.quiet.isOn(now: model.now)
         language = model.settings.language

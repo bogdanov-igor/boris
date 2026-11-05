@@ -220,8 +220,8 @@ struct RequestCard: View {
             }
         case .unreadable:
             CardButtons {
-                if SessionOpener.canOpen(session, pid: pid), let session {
-                    CardButton(title: L("Open session"), hint: nil) { SessionOpener.open(session, pid: pid) }
+                if SessionNavigator.canOpen(session, pid: pid), let session {
+                    CardButton(title: L("Open session"), hint: nil) { SessionNavigator.open(session, model: model) }
                 }
                 if !draft.denying {
                     CardButton(title: L("Deny"), hint: denyHint) { openReason() }
@@ -352,8 +352,8 @@ struct RequestNoticeCard: View {
                 if offersConnecting {
                     CardButton(title: model.hooks.connection == .damaged ? L("Repair") : L("Connect answers"), hint: nil) { model.hooks.onConnect?() }
                 }
-                if SessionOpener.canOpen(session, pid: pid), let session {
-                    CardButton(title: isCowork ? L("Open Claude Desktop") : L("Open session"), hint: nil) { SessionOpener.open(session, pid: pid) }
+                if SessionNavigator.canOpen(session, pid: pid), let session {
+                    CardButton(title: isCowork ? L("Open Claude Desktop") : L("Open session"), hint: nil) { SessionNavigator.open(session, model: model) }
                 }
             }
         }

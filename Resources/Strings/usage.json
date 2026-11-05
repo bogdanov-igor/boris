@@ -1,4 +1,6 @@
 {
+ "%@ at API prices · estimate": "%@ по ценам API · оценка",
+ "%@ estimate": "%@ оценка",
  "%@, today %@. %@": "%@, сегодня %@. %@",
  "30 days": "30 дней",
  "7 days": "7 дней",
@@ -43,6 +45,7 @@
  "Real extra spend": "Реальные доплаты",
  "Refresh": "Обновить",
  "Refresh limits": "Обновлять лимиты",
+ "Refresh limits now": "Обновить лимиты",
  "Refresh now": "Обновить сейчас",
  "Spent through the gateway": "Потрачено через шлюз",
  "Subagents": "Субагенты",

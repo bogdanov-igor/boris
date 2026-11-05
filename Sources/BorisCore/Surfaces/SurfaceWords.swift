@@ -15,12 +15,13 @@ public struct SurfaceNumbers: Sendable, Equatable {
 
     public var waiting: Int
     public var agents: Int
-    public var tokensToday: Int
+    /// Nil until the first pass over the logs is done, which is not the same as zero.
+    public var tokensToday: Int?
     public var usage: UsageSnapshot?
     /// The fullest context among what is at work.
     public var context: Context?
 
-    public init(waiting: Int = 0, agents: Int = 0, tokensToday: Int = 0, usage: UsageSnapshot? = nil, context: Context? = nil) {
+    public init(waiting: Int = 0, agents: Int = 0, tokensToday: Int? = 0, usage: UsageSnapshot? = nil, context: Context? = nil) {
         self.waiting = waiting
         self.agents = agents
         self.tokensToday = tokensToday
@@ -28,7 +29,8 @@ public struct SurfaceNumbers: Sendable, Equatable {
         self.context = context
     }
 
-    public init(work: WorkModel, requests: Int, today: TokenUsage, usage: UsageSnapshot?) {
+    /// - Parameter today: nil until the first pass over the logs is done.
+    public init(work: WorkModel, requests: Int, today: TokenUsage?, usage: UsageSnapshot?) {
         var fullest: Context?
         for session in work.sessions where session.state.isActive {
             for node in session.root.flattened where node.state.isActive {
@@ -37,7 +39,7 @@ public struct SurfaceNumbers: Sendable, Equatable {
                 }
             }
         }
-        self.init(waiting: requests, agents: work.workingAgents, tokensToday: today.total, usage: usage, context: fullest)
+        self.init(waiting: requests, agents: work.workingAgents, tokensToday: today?.total, usage: usage, context: fullest)
     }
 }
 
@@ -54,13 +56,15 @@ public struct SurfaceLine: Sendable, Equatable {
 
 /// The last thing that broke, in words made here. The text of the error itself never gets into them.
 public struct SurfaceFailure: Sendable, Equatable {
+    public var sessionId: String
     public var name: String
     public var nameIsFolder: Bool
     public var who: String
     public var what: String
     public var at: Date?
 
-    public init(name: String, nameIsFolder: Bool, who: String, what: String, at: Date?) {
+    public init(sessionId: String, name: String, nameIsFolder: Bool, who: String, what: String, at: Date?) {
+        self.sessionId = sessionId
         self.name = name
         self.nameIsFolder = nameIsFolder
         self.who = who
@@ -95,7 +99,8 @@ public enum SurfaceWords {
             var parts: [String] = []
             if quiet { parts.append(L("Quiet")) }
             if numbers.agents > 0 { parts.append(WorkPhrases.agents(numbers.agents)) }
-            if numbers.tokensToday > 0 { parts.append(WorkFormat.tokens(numbers.tokensToday)) }
+            // Room is short here, so what is not known yet is left out rather than shown as zero.
+            if let tokens = numbers.tokensToday, tokens > 0 { parts.append(WorkFormat.tokens(tokens)) }
             if let limit = numbers.usage?.windows.first(where: { $0.kind == .fiveHour }) {
                 parts.append(L("5 h %@", WorkFormat.percent(limit.percent)))
             }
@@ -113,7 +118,11 @@ public enum SurfaceWords {
     /// The row of numbers in the technical mode. What is not known is left out.
     public static func numbersRow(_ numbers: SurfaceNumbers, now: Date, timeZone: TimeZone = .current) -> [String] {
         var parts: [String] = []
-        if numbers.tokensToday > 0 { parts.append(L("Today %@", WorkFormat.tokens(numbers.tokensToday))) }
+        if numbers.tokensToday == nil {
+            parts.append(L("Today %@", UsageFormat.total(nil)))
+        } else if let tokens = numbers.tokensToday, tokens > 0 {
+            parts.append(L("Today %@", WorkFormat.tokens(tokens)))
+        }
         for window in numbers.usage?.windows ?? [] {
             switch window.kind {
             case .fiveHour:
@@ -161,11 +170,11 @@ public enum SurfaceWords {
             guard let at = session.lastActivity, now.timeIntervalSince(at) < failureFreshFor, at > latest?.at ?? .distantPast else { continue }
             let nodes = session.root.flattened
             if let node = nodes.first(where: { $0.state == .failed }) {
-                latest = SurfaceFailure(name: session.displayName, nameIsFolder: session.nameIsFolder, who: who(node, mode: mode), what: what(node, mode: mode), at: at)
+                latest = SurfaceFailure(sessionId: session.id, name: session.displayName, nameIsFolder: session.nameIsFolder, who: who(node, mode: mode), what: what(node, mode: mode), at: at)
             } else if let node = nodes.first(where: { $0.state == .interrupted }) {
                 // A workflow can be cut off while its session counts as finished.
                 let what = mode == .simple ? L("Cut off: Claude Code closed") : L("Interrupted: the process closed")
-                latest = SurfaceFailure(name: session.displayName, nameIsFolder: session.nameIsFolder, who: who(node, mode: mode), what: what, at: at)
+                latest = SurfaceFailure(sessionId: session.id, name: session.displayName, nameIsFolder: session.nameIsFolder, who: who(node, mode: mode), what: what, at: at)
             }
         }
         return latest

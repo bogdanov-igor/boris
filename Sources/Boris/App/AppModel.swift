@@ -107,8 +107,6 @@ final class AppModel {
     let walrus = WalrusStage()
     let walrusPage = WalrusPageState()
     let packShelf: WalrusPackShelf
-    /// The session a click on a notification asked to show.
-    var requestedSession: String?
 
     var onPresenceChange: (() -> Void)?
     /// Brings the main window forward, from wherever a session is being opened.
@@ -326,20 +324,22 @@ final class AppModel {
         case .usage:
             page = .spend
         case .session(let id):
-            requestedSession = id
-            page = .projects
+            openSession(id)
+            return
         case .requests(let id):
-            requestedSession = id
+            if let id, let row = hooks.queue.rows(now: Date()).first(where: { $0.session == id }) { hooks.selectedRow = row.id }
             page = .requests
         }
+        onShowMainWindow?()
     }
 
     // MARK: - Going around
 
     /// Opens a session from any surface.
-    func openSession(_ id: String) {
+    /// - Parameter agent: the agent its feed starts on. Nil shows them all.
+    func openSession(_ id: String, agent: String? = nil) {
         projectsRoute = .session(id)
-        feedAgent = nil
+        feedAgent = agent
         page = .projects
         refreshPastSessions()
         onShowMainWindow?()

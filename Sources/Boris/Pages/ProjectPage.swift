@@ -16,7 +16,7 @@ struct ProjectPage: View {
     private var pastColumns: [ColumnsLayout.Column] {
         var columns: [ColumnsLayout.Column] = [.fixed(96), .flex(1), .fixed(84), .fixed(76)]
         if showsAgents { columns.append(.fixed(46)) }
-        return columns + [.fixed(62), .fixed(146)]
+        return columns + [.fixed(62), .fixed(66), .fixed(146)]
     }
 
     var body: some View {
@@ -66,6 +66,7 @@ struct ProjectPage: View {
                     ProjectStateLabel(project: project, mode: mode, now: model.now).fixedSize()
                 }
                 Spacer(minLength: 0)
+                if let lead = project.lead { OpenSessionButton(model: model, session: lead) }
             }
             if mode == .technical, let path {
                 Text(([ProjectWords.folder(path)] + (project.lead?.place?.branch.map { [L("branch %@", $0)] } ?? [])).joined(separator: " · "))
@@ -80,9 +81,10 @@ struct ProjectPage: View {
     }
 
     private func stats(_ project: ProjectSummary) -> some View {
-        ColumnsLayout(columns: [.flex(1), .flex(1), .flex(1), .flex(2.6)], spacing: 10) {
+        ColumnsLayout(columns: [.flex(1), .flex(1), .flex(1), .flex(1), .flex(2.6)], spacing: 10) {
             stat(L("Sessions"), "\(project.sessions.count)", color: Palette.text1)
             stat(L("Tokens"), WorkFormat.tokens(project.inPeriod.total), color: Palette.text1)
+            stat(L("Estimate"), UsageFormat.estimateCell(project.estimate), color: Palette.text1)
             stat(L("Failures"), "\(project.failures)", color: project.failures > 0 ? Palette.redText : Palette.text1)
             TokensByDay(byDay: project.byDay, period: model.projectFilter.period, now: model.now)
         }
@@ -128,6 +130,7 @@ struct ProjectPage: View {
                         TableHeadCell(L("Lasted"), trailing: true)
                         if showsAgents { TableHeadCell(L("Agents"), trailing: true) }
                         TableHeadCell(L("Tokens"), trailing: true)
+                        TableHeadCell(L("Estimate"), trailing: true)
                         TableHeadCell(L("Outcome"))
                     }
                     .padding(.horizontal, 12)
@@ -162,6 +165,7 @@ struct ProjectPage: View {
                 TableCell(text: ProjectWords.duration(session, now: model.now) ?? "", trailing: true, font: .system(size: 12).monospacedDigit(), color: Palette.text2)
                 if showsAgents { TableCell(text: "\(session.agentCount)", trailing: true, font: .system(size: 12).monospacedDigit(), color: Palette.text2) }
                 TableCell(text: spent(session), trailing: true, font: .system(size: 12, weight: .semibold).monospacedDigit())
+                TableCell(text: UsageFormat.estimateCell(model.usage.book?.estimate(session: session.id)), trailing: true, font: .system(size: 11.5).monospacedDigit(), color: Palette.text2)
                 HStack(spacing: 6) {
                     StatusGlyph(kind: StatusGlyph.Kind(session.state), size: 14)
                     Text(WorkPhrases.outcome(session.state, mode: mode))
@@ -212,6 +216,7 @@ struct LiveSessionCard: View {
                 Spacer(minLength: 0)
                 Text(WorkPhrases.agents(max(session.workingAgents, 1))).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Palette.text2).lineLimit(1)
                 Text(model.usage.book?.spent(session: session.id).map { WorkFormat.tokens($0.total) } ?? "–").font(.system(size: 12.5, weight: .semibold).monospacedDigit()).lineLimit(1)
+                Text(UsageFormat.estimateCell(model.usage.book?.estimate(session: session.id))).font(.system(size: 12).monospacedDigit()).foregroundStyle(Palette.text2).lineLimit(1)
                 Button(L("Open session")) { model.openSession(session.id) }.buttonStyle(PlainActionStyle())
             }
             VStack(alignment: .leading, spacing: 3) {

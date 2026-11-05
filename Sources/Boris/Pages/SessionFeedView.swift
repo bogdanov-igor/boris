@@ -32,6 +32,8 @@ private struct SessionFeedContent: View {
     private var entries: [FeedEntry] { SessionFeed.visible(store.entries, agent: agent) }
 
     private var thinkers: [FeedStore.Thinker] {
+        // The simple view tells about everybody at once, and has no way to choose.
+        guard mode == .technical else { return store.thinking }
         switch agent {
         case .all: return store.thinking
         case .one(let id): return store.thinking.filter { $0.agentId == id }
@@ -44,6 +46,13 @@ private struct SessionFeedContent: View {
         }
         .readsFeed(store)
         .showsDiffs(of: store)
+        .onChange(of: model.feedAgent, initial: true) { _, chosen in
+            switch chosen {
+            case nil: agent = .all
+            case session.id: agent = .one(nil)
+            case let id?: agent = .one(id)
+            }
+        }
     }
 
     // MARK: - Technical
@@ -86,10 +95,10 @@ private struct SessionFeedContent: View {
 
     private var agentMenu: some View {
         Menu {
-            Button(L("All agents")) { agent = .all }
-            Button(L("Main agent")) { agent = .one(nil) }
+            Button(L("All agents")) { model.feedAgent = nil }
+            Button(L("Main agent")) { model.feedAgent = session.id }
             ForEach(store.agentIds, id: \.self) { id in
-                Button(store.agentName(id, session: session)) { agent = .one(id) }
+                Button(store.agentName(id, session: session)) { model.feedAgent = id }
             }
         } label: {
             HStack(spacing: 5) {
