@@ -11,8 +11,12 @@ public struct ActivityReader: Sendable {
     /// True when the file was too big to read from its start, so the feed begins part way.
     public private(set) var startedPartWay = false
     private var offset: UInt64?
+    private let window: UInt64
 
-    public init() {}
+    /// - Parameter window: how much of the end of a big file to start from.
+    public init(window: UInt64 = ActivityReader.startWindow) {
+        self.window = window
+    }
 
     /// Returns true when something new arrived.
     @discardableResult
@@ -20,12 +24,12 @@ public struct ActivityReader: Sendable {
         guard let size = FileInfo.size(url) else { return false }
         if let known = offset {
             if size < known {
-                self = ActivityReader()
+                self = ActivityReader(window: window)
                 return read(url)
             }
             return consume(url, size: size, from: known, skipFirstLine: false)
         }
-        var window = Self.startWindow
+        var window = window
         while true {
             startedPartWay = size > window
             log = ActivityLog()
@@ -38,23 +42,28 @@ public struct ActivityReader: Sendable {
     }
 
     /// The window may begin inside a record, so its first line is dropped. An unfinished last line waits for the next read.
+    /// Foundation keeps buffers and parsed records alive until the pool around them ends, and a screen reads hundreds of files in one go.
     private mutating func consume(_ url: URL, size: UInt64, from start: UInt64, skipFirstLine: Bool) -> Bool {
-        guard size > start, let handle = try? FileHandle(forReadingFrom: url) else { return false }
-        defer { try? handle.close() }
-        guard (try? handle.seek(toOffset: start)) != nil, let data = try? handle.readToEnd(), let lastNewline = data.lastIndex(of: 0x0A) else { return false }
-        var lines = data[data.startIndex..<lastNewline].split(separator: 0x0A)
-        if skipFirstLine, !lines.isEmpty { lines.removeFirst() }
-        let marker = Data("\"message\"".utf8)
-        var changed = false
-        for line in lines where line.range(of: marker) != nil {
-            guard let record = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] else { continue }
-            for event in Self.events(from: record) {
-                log.apply(event)
-                changed = true
+        autoreleasepool {
+            guard size > start, let handle = try? FileHandle(forReadingFrom: url) else { return false }
+            defer { try? handle.close() }
+            guard (try? handle.seek(toOffset: start)) != nil, let data = try? handle.readToEnd(), let lastNewline = data.lastIndex(of: 0x0A) else { return false }
+            var lines = data[data.startIndex..<lastNewline].split(separator: 0x0A)
+            if skipFirstLine, !lines.isEmpty { lines.removeFirst() }
+            let marker = Data("\"message\"".utf8)
+            var changed = false
+            for line in lines {
+                autoreleasepool {
+                    guard line.range(of: marker) != nil, let record = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] else { return }
+                    for event in Self.events(from: record) {
+                        log.apply(event)
+                        changed = true
+                    }
+                }
             }
+            offset = start + UInt64(lastNewline - data.startIndex + 1)
+            return changed
         }
-        offset = start + UInt64(lastNewline - data.startIndex + 1)
-        return changed
     }
 
     /// The writer has stopped, so a call without a result will not get one.
@@ -70,22 +79,48 @@ public struct ActivityReader: Sendable {
         let at = date(record["timestamp"] as? String)
         if type == "user", let text = promptText(record, content: message["content"]) { return [.prompt(text, at: at)] }
         guard let blocks = message["content"] as? [[String: Any]] else { return [] }
-        return blocks.compactMap { block in
+        return blocks.flatMap { block -> [ActivityEvent] in
             switch block["type"] as? String {
             case "tool_use":
-                guard let id = block["id"] as? String, let name = block["name"] as? String else { return nil }
-                return .toolUse(id: id, tool: name, input: input(name, block["input"] as? [String: Any] ?? [:]), at: at)
+                guard let id = block["id"] as? String, let name = block["name"] as? String else { return [] }
+                var events: [ActivityEvent] = [.toolUse(id: id, tool: name, input: input(name, block["input"] as? [String: Any] ?? [:]), at: at)]
+                if let (usage, _) = TranscriptReader.realUsage(record) { events.append(.tokens(id: id, usage)) }
+                return events
             case "tool_result":
-                guard let id = block["tool_use_id"] as? String else { return nil }
-                return .toolResult(id: id, isError: block["is_error"] as? Bool ?? false, text: resultText(block["content"]), at: at)
+                guard let id = block["tool_use_id"] as? String else { return [] }
+                var events: [ActivityEvent] = [.toolResult(id: id, isError: block["is_error"] as? Bool ?? false, text: resultText(block["content"]), at: at)]
+                let hunks = patch(record)
+                if !hunks.isEmpty {
+                    events.append(.patch(id: id, hunks))
+                } else if overwroteUnseen(record, block: block) {
+                    events.append(.overwrote(id: id))
+                }
+                return events
             case "text":
-                guard type == "assistant", let text = block["text"] as? String else { return nil }
-                return .text(text, at: at)
+                guard type == "assistant", let text = block["text"] as? String else { return [] }
+                return [.text(text, at: at)]
             default:
-                return nil
+                return []
             }
         }
     }
+
+    /// An agent's transcript has no patch, and a call that wrote over a file says only that it did.
+    private static func overwroteUnseen(_ record: [String: Any], block: [String: Any]) -> Bool {
+        record["toolUseResult"] == nil && resultText(block["content"])?.contains("has been updated") == true
+    }
+
+    /// What Claude Code itself says a call changed. Only a session's own transcript has this.
+    static func patch(_ record: [String: Any]) -> [DiffHunk] {
+        guard let result = record["toolUseResult"] as? [String: Any], let hunks = result["structuredPatch"] as? [[String: Any]] else { return [] }
+        return hunks.compactMap { hunk in
+            guard let lines = hunk["lines"] as? [String] else { return nil }
+            return DiffHunk(oldStart: hunk["oldStart"] as? Int ?? 1, newStart: hunk["newStart"] as? Int ?? 1, lines: lines)
+        }
+    }
+
+    /// Claude Code's own mark that the person stopped it. It comes as a user message with no tag around it.
+    private static let interruptionMark = "[Request interrupted"
 
     /// What a person wrote. Claude Code also records its own insertions as user messages: they are marked, or wrapped in a tag.
     private static func promptText(_ record: [String: Any], content: Any?) -> String? {
@@ -98,26 +133,37 @@ public struct ActivityReader: Sendable {
         } else {
             return nil
         }
-        return text.isEmpty || text.hasPrefix("<") ? nil : text
+        return text.isEmpty || text.hasPrefix("<") || text.hasPrefix(interruptionMark) ? nil : text
     }
 
     static func input(_ tool: String, _ input: [String: Any]) -> ToolInput {
         var result = ToolInput()
         switch tool {
-        case "Bash":
+        case "Bash", "Monitor":
             result.command = input["command"] as? String
             result.note = input["description"] as? String
         case "Edit":
             result.target = input["file_path"] as? String
             result.oldText = input["old_string"] as? String
             result.newText = input["new_string"] as? String
+        case "MultiEdit":
+            result.target = input["file_path"] as? String
+            let edits = input["edits"] as? [[String: Any]] ?? []
+            result.oldText = edits.compactMap { $0["old_string"] as? String }.joined(separator: "\n")
+            result.newText = edits.compactMap { $0["new_string"] as? String }.joined(separator: "\n")
         case "Write":
             result.target = input["file_path"] as? String
             result.newText = input["content"] as? String
-        case "Read", "NotebookEdit":
+        case "NotebookEdit":
+            result.target = input["notebook_path"] as? String
+            result.newText = input["new_source"] as? String
+        case "Read":
             result.target = input["file_path"] as? String ?? input["notebook_path"] as? String
         case "Grep", "Glob":
             result.target = input["pattern"] as? String
+            result.note = input["path"] as? String
+        case "LS":
+            result.target = input["path"] as? String
         case "WebFetch":
             result.target = input["url"] as? String
         case "WebSearch":
@@ -127,10 +173,68 @@ public struct ActivityReader: Sendable {
             result.command = input["prompt"] as? String
         case "Skill":
             result.target = input["skill"] as? String
+        case "Workflow":
+            result.target = (input["scriptPath"] as? String).map { URL(fileURLWithPath: $0).lastPathComponent } ?? workflowName(input["script"] as? String)
         default:
-            break
+            result.target = mcpName(tool)
+            result.command = parameters(input)
         }
         return result
+    }
+
+    /// A script written on the spot has no file name, but it says its own name in `meta`.
+    private static func workflowName(_ script: String?) -> String? {
+        guard let match = script?.firstMatch(of: /meta\s*=\s*\{[^}]*?\bname\s*:\s*['"`]([^'"`]+)/) else { return nil }
+        return String(match.output.1)
+    }
+
+    /// `mcp__postgres__query` becomes `postgres · query`.
+    private static func mcpName(_ tool: String) -> String? {
+        guard tool.hasPrefix("mcp__") else { return nil }
+        let parts = tool.dropFirst("mcp__".count).components(separatedBy: "__")
+        return parts.joined(separator: " · ")
+    }
+
+    /// A tool Boris knows nothing about still shows what it was asked to do.
+    private static func parameters(_ input: [String: Any]) -> String? {
+        guard !input.isEmpty, let data = try? JSONSerialization.data(withJSONObject: input, options: [.sortedKeys]) else { return nil }
+        return ResultFormat.pretty(String(decoding: data, as: UTF8.self))
+    }
+
+    /// A whole call, read again from the transcript because the feed keeps only the start of long texts.
+    public struct FullStep: Sendable, Equatable {
+        public var input: ToolInput
+        public var hunks: [DiffHunk]
+        public var output: String?
+        /// The records of the call and of its result, exactly as Claude Code wrote them.
+        public var raw: String
+    }
+
+    /// Goes through the file, so it runs only when someone asks, and off the main thread. Nothing it returns is kept on disk.
+    public static func fullStep(_ id: String, in url: URL) -> FullStep? {
+        let needle = Data(id.utf8)
+        var full = FullStep(input: ToolInput(), hunks: [], output: nil, raw: "")
+        var foundCall = false
+        var raw: [String] = []
+        TranscriptReader.forEachLine(url) { line in
+            guard line.range(of: needle) != nil, let record = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
+                  let blocks = (record["message"] as? [String: Any])?["content"] as? [[String: Any]]
+            else { return }
+            for block in blocks {
+                if block["type"] as? String == "tool_use", block["id"] as? String == id, let name = block["name"] as? String {
+                    full.input = input(name, block["input"] as? [String: Any] ?? [:])
+                    foundCall = true
+                    raw.append(String(decoding: line, as: UTF8.self))
+                } else if block["type"] as? String == "tool_result", block["tool_use_id"] as? String == id {
+                    full.output = resultText(block["content"])
+                    full.hunks = patch(record)
+                    raw.append(String(decoding: line, as: UTF8.self))
+                }
+            }
+        }
+        guard foundCall else { return nil }
+        full.raw = raw.joined(separator: "\n")
+        return full
     }
 
     private static func resultText(_ content: Any?) -> String? {

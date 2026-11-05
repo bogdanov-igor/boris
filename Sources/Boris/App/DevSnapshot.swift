@@ -8,7 +8,8 @@ import SwiftUI
 enum DevSnapshot {
     static var isRequested: Bool {
         #if DEBUG
-        ProcessInfo.processInfo.environment["BORIS_SNAPSHOT"] != nil || ProcessInfo.processInfo.environment["BORIS_WALRUS_CPU"] != nil
+        let environment = ProcessInfo.processInfo.environment
+        return environment["BORIS_SNAPSHOT"] != nil || environment["BORIS_WALRUS_CPU"] != nil || environment["BORIS_FEED_CHECK"] != nil
         #else
         false
         #endif
@@ -39,6 +40,7 @@ enum DevSnapshot {
     /// `BORIS_SIZE=WIDTHxHEIGHT` sets the size of the windows that have one.
     static func runIfRequested() -> Bool {
         #if DEBUG
+        if DevFeedCheck.runIfRequested() { return true }
         let environment = ProcessInfo.processInfo.environment
         if WalrusDev.measureIfRequested() { return true }
         guard let folder = environment["BORIS_SNAPSHOT"] else { return false }
@@ -90,6 +92,7 @@ enum DevSnapshot {
         case spendUltra, spendTeam, spendGateway, spendGatewayBudget, spendApiKey, spendExtraOff, spendExtraNoLimit, spendFilling, spendFailed, spendZero, spendAncient
         case spendProjects, spendModels, spendPlaces, spendAgents, spendToday, spendMonth, spendEverything
         case project, projectDates, datesPicker, session, sessionTrouble, sessionPast, sessionGone, bigRun
+        case feed, feedWaiting, feedChanges, feedDiff, activityCommands
 
         var page: AppPage? {
             DevUsageData.Scenario(rawValue: rawValue) != nil ? .spend : AppPage(rawValue: rawValue)
@@ -149,6 +152,21 @@ enum DevSnapshot {
             if screen == .surfacesGone { settings.surfaceScreen = .screen(id: "gone", name: "Studio Monitor") }
             view = AnyView(SettingsView(model: model, connect: connect, actions: SettingsActions()))
             canvas = size ?? CGSize(width: 760, height: 720)
+        case .feed:
+            view = DevFeedScreens.feed(model)
+            canvas = size ?? CGSize(width: 609, height: 720)
+        case .feedWaiting:
+            view = DevFeedScreens.feed(model, id: "a1")
+            canvas = size ?? CGSize(width: 609, height: 300)
+        case .feedChanges:
+            view = DevFeedScreens.changes(model)
+            canvas = size ?? CGSize(width: 380, height: 240)
+        case .feedDiff:
+            view = DevFeedScreens.diff(model)
+            canvas = size ?? CGSize(width: 760, height: 560)
+        case .activityCommands:
+            view = DevFeedScreens.commands(model)
+            canvas = size ?? CGSize(width: 989, height: 400)
         default:
             switch screen {
             case .offer:

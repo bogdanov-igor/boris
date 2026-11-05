@@ -13,6 +13,17 @@ public enum ProcessInspector {
         info(pid: pid)?.kp_eproc.e_ppid
     }
 
+    /// The process itself and everything above it, up to the system's first process.
+    public static func ancestors(of pid: Int32) -> [Int32] {
+        var result: [Int32] = []
+        var current: Int32? = pid
+        while let value = current, value > 1, !result.contains(value) {
+            result.append(value)
+            current = parent(pid: value)
+        }
+        return result
+    }
+
     private static func info(pid: Int32) -> kinfo_proc? {
         var info = kinfo_proc()
         var size = MemoryLayout<kinfo_proc>.stride

@@ -6,6 +6,7 @@ import Foundation
 // `boris-dump` looks at the work, `boris-dump tokens` adds up the logs, `boris-dump losses` adds up what went wrong, using the cache in `BORIS_STATE_DIR` if it is set,
 // `boris-dump load` shows the load on this Mac by group, and with a number takes that many readings 3 seconds apart,
 // and `boris-dump limits` reads the limits. Money is never printed, only percent.
+// `boris-dump activity [transcript]` says how each action in the logs is typed and what reading them costs. `boris-dump edits <session>` lists the changes of a session with their counts.
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let paths = ClaudePaths.resolve()
@@ -145,6 +146,84 @@ func load() async {
     }
 }
 
+func typed(_ tools: [String: Int]) {
+    for (tool, count) in tools.sorted(by: { $0.value > $1.value }) {
+        print("  \(WorkAction(tool: tool).rawValue.padding(toLength: 11, withPad: " ", startingAt: 0)) \(tool) \(count)")
+    }
+}
+
+/// One transcript, for a look at an older log.
+func activity(transcript: URL) {
+    var reader = ActivityReader(window: UInt64.max / 2)
+    reader.read(transcript)
+    var byTool: [String: Int] = [:]
+    for item in reader.log.items {
+        if case .step(let step) = item { byTool[step.tool, default: 0] += 1 }
+    }
+    typed(byTool)
+}
+
+/// How much memory this process holds right now, in megabytes.
+func footprint() -> Int {
+    var usage = rusage_info_v4()
+    let result = withUnsafeMutablePointer(to: &usage) { pointer in
+        pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(getpid(), RUSAGE_INFO_V4, $0) }
+    }
+    return result == 0 ? Int(usage.ri_phys_footprint) / (1024 * 1024) : 0
+}
+
+/// Reads every session the way the Activity page does, and counts instead of showing.
+func activity() async {
+    let engine = WorkEngine(paths: paths, others: others) { _ in }
+    let output = await engine.scanOnce()
+    let clock = ContinuousClock()
+    let began = clock.now
+    var byTool: [String: Int] = [:]
+    var files = 0
+    var feeds: [[FeedEntry]] = []
+    var readers: [String: SessionFeedReader] = [:]
+    for session in output.model.sessions {
+        guard let transcript = await engine.sessionTranscript(session.id) else { continue }
+        var reader = SessionFeedReader(window: 512 * 1024)
+        reader.read(transcript: transcript)
+        let logs = reader.logs { _ in false }
+        files += logs.count
+        feeds.append(SessionFeed.merged(sessionId: session.id, logs: logs))
+        readers[session.id] = reader
+    }
+    let first = clock.now - began
+    let merged = SessionFeed.merged(feeds)
+    let secondBegan = clock.now
+    for session in output.model.sessions {
+        guard let transcript = await engine.sessionTranscript(session.id) else { continue }
+        readers[session.id]?.read(transcript: transcript)
+    }
+    print("sessions \(feeds.count), files \(files), records \(feeds.reduce(0) { $0 + $1.count }), first read \(first), next read \(clock.now - secondBegan), shown \(merged.count), memory held \(footprint()) MB")
+    for entry in merged {
+        if let step = entry.step { byTool[step.tool, default: 0] += 1 }
+    }
+    typed(byTool)
+}
+
+func edits(_ prefix: String) async {
+    let engine = WorkEngine(paths: paths, others: others) { _ in }
+    let output = await engine.scanOnce()
+    let session = output.model.sessions.first { $0.id.hasPrefix(prefix) }?.id ?? prefix
+    guard let transcript = await engine.sessionTranscript(session) else {
+        print("no transcript for \(prefix)")
+        return
+    }
+    var reader = SessionFeedReader()
+    reader.read(transcript: transcript)
+    for log in reader.logs(live: { _ in true }) {
+        for item in log.log.items {
+            guard case .step(let step) = item, step.isChange else { continue }
+            let whole = reader.files(agentId: log.agentId).lazy.compactMap { ActivityReader.fullStep(step.id, in: $0) }.first
+            print("\(step.tool) \(step.fileName ?? "?") · \(step.state) · +\(step.added.map(String.init) ?? "?") -\(step.removed.map(String.init) ?? "?") · hunks \(step.hunks.count) · cut \(step.isCut) · whole patch +\(whole?.hunks.flatMap(\.lines).filter { $0.hasPrefix("+") }.count ?? 0) -\(whole?.hunks.flatMap(\.lines).filter { $0.hasPrefix("-") }.count ?? 0), new text \(whole?.input.newText?.components(separatedBy: "\n").count ?? 0) lines · agent \(log.agentId?.prefix(8) ?? "main")")
+        }
+    }
+}
+
 if arguments.first == "tokens" {
     await tokens()
 } else if arguments.first == "load" {
@@ -153,6 +232,12 @@ if arguments.first == "tokens" {
     await losses()
 } else if arguments.first == "limits" {
     limits()
+} else if arguments.first == "activity", arguments.count > 1 {
+    activity(transcript: URL(fileURLWithPath: arguments[1]))
+} else if arguments.first == "activity" {
+    await activity()
+} else if arguments.first == "edits", arguments.count > 1 {
+    await edits(arguments[1])
 } else {
     await work()
 }

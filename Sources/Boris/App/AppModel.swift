@@ -185,6 +185,14 @@ final class AppModel {
         Task { await engine?.noteWake(at: Date()) }
     }
 
+    /// Where a session's transcript is, for a feed that is on screen.
+    func sessionTranscript(_ id: String) async -> URL? {
+        #if DEBUG
+        if let file = transcriptsForCheck[id] { return file }
+        #endif
+        return await engine?.sessionTranscript(id)
+    }
+
     /// Open windows get fresher data, and closed ones cost nothing. Closing one says nothing about the other.
     func setLookingClosely(_ closely: Bool, from surface: LookingSurface = .mainWindow) {
         if closely { surfacesOpen.insert(surface) } else { surfacesOpen.remove(surface) }
@@ -447,6 +455,10 @@ final class AppModel {
         if let mood { self.mood = mood }
         if let outfit { self.outfit = outfit }
     }
+
+    /// Invented feed records for snapshots and test files for the off-screen check, so no real transcript is read.
+    var feedForSnapshot: DevFeed?
+    var transcriptsForCheck: [String: URL] = [:]
 
     func showForSnapshot(work: WorkModel, world: WorldSnapshot, today: TokenUsage, mood: Mood, outfit: Outfit = .none, offer: Bool = false) {
         self.work = work
