@@ -104,9 +104,139 @@ struct SessionFeedTests {
 
     @Test("Счётчик новых записей после прокрутки вверх") func newRecords() {
         #expect(SessionFeed.newCount(ids: ["a", "b", "c"], seen: nil) == 0)
-        #expect(SessionFeed.newCount(ids: ["a", "b", "c"], seen: "c") == 0)
-        #expect(SessionFeed.newCount(ids: ["a", "b", "c"], seen: "a") == 2)
-        #expect(SessionFeed.newCount(ids: ["b", "c"], seen: "gone") == 2)
+        #expect(SessionFeed.newCount(ids: ["a", "b", "c"], seen: ["a", "b", "c"]) == 0)
+        #expect(SessionFeed.newCount(ids: ["a", "b", "c"], seen: ["a"]) == 2)
+    }
+
+    @Test("Счётчик новых: исчезнувшая запись не делает новыми все остальные") func newRecordsWhenSomethingWent() {
+        // The oldest were dropped while new ones came.
+        #expect(SessionFeed.newCount(ids: ["c", "d", "e"], seen: ["a", "b", "c"]) == 2)
+        // A filter was turned on: the rest is hidden, and nothing shown is new.
+        #expect(SessionFeed.newCount(ids: ["b", "d"], seen: ["a", "b", "c", "d"]) == 0)
+    }
+
+    @Test("Счётчик новых в простом виде: идущий шаг закончился и влился в строку перед ним") func newRecordsWhenLinesJoin() {
+        let before = FeedSummary.lines(entries(use("a", target: "/x/a"), done("a"), use("b", target: "/x/b")))
+        #expect(before.count == 2)
+        let after = FeedSummary.lines(entries(use("a", target: "/x/a"), done("a"), use("b", target: "/x/b"), done("b")))
+        #expect(after.count == 1)
+        #expect(SessionFeed.newCount(ids: after.map(\.id), seen: Set(before.map(\.id))) == 0)
+    }
+
+    @Test("Пока человек читает старое, записи у предела остаются на своих местах") func keepingOlder() {
+        func feed(_ events: ActivityEvent...) -> [FeedEntry] {
+            var log = ActivityLog()
+            events.forEach { log.apply($0) }
+            return SessionFeed.merged(sessionId: "s", logs: [AgentLog(agentId: nil, log: log)])
+        }
+        let shown = feed(use("a", ago: 1), use("b", ago: 2), use("c", ago: 3))
+        // "a" has been dropped and "b" got its result.
+        let next = feed(use("b", ago: 2), done("b"), use("c", ago: 3), use("d", ago: 4))
+        let kept = SessionFeed.keepingOlder(shown, next: next)
+        #expect(kept.map(\.item.id) == ["a", "b", "c", "d"])
+        #expect(kept[1].step?.state == .done)
+        #expect(SessionFeed.keepingOlder(next, next: next) == next)
+        // A record dropped from the middle goes back to the middle, as agents reach their limits separately.
+        let middle = feed(use("a", ago: 1), use("c", ago: 3))
+        #expect(SessionFeed.keepingOlder(shown, next: middle).map(\.item.id) == ["a", "b", "c"])
+    }
+
+    // MARK: - Opening steps
+
+    private func step(_ id: String, _ state: StepState) -> ActivityStep {
+        ActivityStep(id: id, tool: "Bash", kind: .shell, input: ToolInput(), state: state)
+    }
+
+    @Test("Упавший и идущий шаги раскрыты сразу, остальные нет") func openByDefault() {
+        let folding = FeedFolding()
+        #expect(folding.isOpen(step("a", .running)))
+        #expect(folding.isOpen(step("a", .failed)))
+        #expect(!folding.isOpen(step("a", .done)))
+        #expect(!folding.isOpen(step("a", .unfinished)))
+    }
+
+    @Test("Успешный шаг раскрывается по нажатию и сворачивается обратно") func openByClick() {
+        var folding = FeedFolding()
+        folding.toggle(step("a", .done))
+        #expect(folding.isOpen(step("a", .done)))
+        #expect(!folding.isOpen(step("b", .done)))
+        folding.toggle(step("a", .done))
+        #expect(!folding.isOpen(step("a", .done)))
+    }
+
+    @Test("То, что человек сделал руками, остаётся, когда шаг закончился") func foldingKeepsChoice() {
+        var folding = FeedFolding()
+        // Closed while running: it does not jump open when it finishes.
+        folding.toggle(step("a", .running))
+        #expect(!folding.isOpen(step("a", .running)))
+        #expect(!folding.isOpen(step("a", .done)))
+        #expect(!folding.isOpen(step("a", .failed)))
+        // Left alone while running: it folds away when it finishes well.
+        #expect(folding.isOpen(step("b", .running)))
+        #expect(!folding.isOpen(step("b", .done)))
+        // Opened after it finished, and a state change does not close it.
+        folding.toggle(step("c", .done))
+        #expect(folding.isOpen(step("c", .failed)))
+    }
+
+    // MARK: - An agent written to two files
+
+    @Test("Два файла одного агента становятся одним журналом") func joinedParts() {
+        let older = log(use("a", ago: 1), done("a"), .text("first", at: at(2)), use("open", ago: 3), use("both", ago: 4))
+        let newer = log(use("both", ago: 5), done("both"), .text("second", at: at(6)), use("b", ago: 7))
+        let joined = ActivityLog.joined([older, newer])
+        #expect(joined.items.map(\.id) == ["a", "note-1", "open", "both", "1-note-1", "b"])
+        let states = Dictionary(uniqueKeysWithValues: joined.items.compactMap { item -> (String, StepState)? in
+            if case .step(let step) = item { return (step.id, step.state) }
+            return nil
+        })
+        // The older file gets no more results, the call found in both is told by the newer one, and the newer file is still going.
+        #expect(states["open"] == .unfinished)
+        #expect(states["both"] == .done)
+        #expect(states["b"] == .running)
+        #expect(Set(joined.items.map(\.id)).count == joined.items.count)
+    }
+
+    @Test("Один файл и ни одного: ничего лишнего") func joinedSimple() {
+        let one = log(use("a"))
+        #expect(ActivityLog.joined([one]) == one)
+        #expect(ActivityLog.joined([one]).current != nil)
+        #expect(ActivityLog.joined([]).items.isEmpty)
+    }
+
+    @Test("Вместе не больше предела, и видно, что старое отброшено") func joinedLimit() {
+        var first = ActivityLog()
+        var second = ActivityLog()
+        for index in 0..<300 {
+            first.apply(use("a\(index)"))
+            second.apply(use("b\(index)"))
+        }
+        let joined = ActivityLog.joined([first, second])
+        #expect(joined.items.count == ActivityLog.limit)
+        #expect(joined.items.last?.id == "b299")
+        #expect(joined.dropped)
+    }
+
+    // MARK: - Long texts
+
+    @Test("Обрезка длинного текста не ломает букву", arguments: [0, 1])
+    func cutInsideLetter(shift: Int) {
+        // Two bytes to a letter, so one of these two puts the limit inside a letter on each side.
+        let text = String(repeating: "a", count: shift) + String(repeating: "я", count: 5000)
+        var log = ActivityLog()
+        log.apply(.prompt(text, at: nil))
+        log.apply(.toolUse(id: "a", tool: "Bash", input: ToolInput(command: text), at: nil))
+        log.apply(.toolResult(id: "a", isError: false, text: text, at: nil))
+        guard case .prompt(_, let prompt, _) = log.items[0], case .step(let step) = log.items[1] else {
+            Issue.record("no records")
+            return
+        }
+        #expect(prompt.hasSuffix("\n…"))
+        #expect(!prompt.contains("\u{FFFD}"))
+        #expect(step.input.command?.contains("\u{FFFD}") == false)
+        #expect(step.output?.hasPrefix("…\n") == true)
+        #expect(step.output?.contains("\u{FFFD}") == false)
+        #expect(step.isCut)
     }
 
     // MARK: - Changed files
@@ -243,6 +373,30 @@ struct SessionFeedTests {
         #expect(step.diff(context: true).map(\.kind) == [.context, .removed, .removed, .added, .context])
         #expect(step.diff(context: true).map(\.number) == [40, 41, 42, 41, 42])
         #expect(!step.isCut)
+    }
+
+    @Test("Неудавшаяся правка ничего не изменила: строк для счёта нет, а текст попытки виден") func failedChange() {
+        var log = ActivityLog()
+        log.apply(.toolUse(id: "a", tool: "Edit", input: ToolInput(target: "/x/a", oldText: "1", newText: "2\n3"), at: nil))
+        #expect(log.current?.added == 2)
+        #expect(log.current?.removed == 1)
+        log.apply(.toolResult(id: "a", isError: true, text: "String to replace not found", at: nil))
+        guard case .step(let step) = log.items[0] else {
+            Issue.record("no step")
+            return
+        }
+        #expect(step.state == .failed)
+        #expect(step.added == nil)
+        #expect(step.removed == nil)
+        #expect(!step.diff().isEmpty)
+        let lines = FeedSummary.lines(SessionFeed.merged(sessionId: "s", logs: [AgentLog(agentId: nil, log: log)]))
+        #expect(lines.first?.added == 0)
+        #expect(lines.first?.removed == 0)
+        // Only a change is forgotten: a failed command never had counts.
+        var shell = ActivityLog()
+        shell.apply(.toolUse(id: "b", tool: "Bash", input: ToolInput(command: "ls"), at: nil))
+        shell.apply(.toolResult(id: "b", isError: true, text: "no", at: nil))
+        #expect(shell.items.count == 1)
     }
 
     @Test("Длинная правка обрезана, а счётчик верный") func cutPatch() {

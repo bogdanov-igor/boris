@@ -17,15 +17,14 @@ private struct SessionFeedContent: View {
 
     @State private var store: FeedStore
     @State private var agent = AgentFilter.all
-    /// Steps the person opened or closed by hand. Everything else follows the default.
-    @State private var toggled: Set<String> = []
+    @State private var folding = FeedFolding()
 
     init(model: AppModel, session: WorkSession) {
         self.model = model
         self.session = session
         _store = State(initialValue: FeedStore.forSession(session, model: model))
         #if DEBUG
-        _toggled = State(initialValue: model.feedForSnapshot?.opened ?? [])
+        _folding = State(initialValue: FeedFolding(opened: model.feedForSnapshot?.opened ?? []))
         #endif
     }
 
@@ -56,17 +55,18 @@ private struct SessionFeedContent: View {
                 agentMenu
                 Spacer(minLength: 0)
                 CopyLink(title: L("Copy all"), font: .system(size: 12)) {
-                    WorkPhrases.plainText(entries, names: names, cwd: session.cwd)
+                    let (entries, names, cwd) = (entries, names, session.cwd)
+                    return await Task.detached { WorkPhrases.plainText(entries, names: names, cwd: cwd) }.value
                 }
                 .padding(.horizontal, 8)
             }
             .padding(.horizontal, 16)
             .frame(height: 40)
             Rectangle().fill(Palette.separator).frame(height: 1)
-            if store.loaded, entries.isEmpty, thinkers.isEmpty {
+            if entries.isEmpty, thinkers.isEmpty {
                 empty
             } else {
-                FollowingScroll(ids: entries.map(\.id)) {
+                FollowingScroll(ids: entries.map(\.id), store: store) {
                     LazyVStack(alignment: .leading, spacing: 3) {
                         if store.startedPartWay { partWayNote }
                         ForEach(entries) { row($0) }
@@ -123,19 +123,13 @@ private struct SessionFeedContent: View {
                 agent: store.agentName(entry.agentId, session: session),
                 cwd: session.cwd,
                 now: model.now,
-                isOpen: isOpen(step),
+                isOpen: folding.isOpen(step),
                 waiting: SessionFeed.isWaiting(entry, session: session),
                 store: store
             ) {
-                if toggled.contains(step.id) { toggled.remove(step.id) } else { toggled.insert(step.id) }
+                folding.toggle(step)
             }
         }
-    }
-
-    /// A step that failed or is still going is what the person came to see, so it starts open.
-    private func isOpen(_ step: ActivityStep) -> Bool {
-        let openByDefault = step.state == .running || step.state == .failed
-        return openByDefault != toggled.contains(step.id)
     }
 
     private func clock(_ date: Date) -> String {
@@ -149,14 +143,16 @@ private struct SessionFeedContent: View {
         return at.map { L("You · %@", clock($0)) } ?? L("You")
     }
 
-    /// Past a few, names say nothing: a big workflow can have a hundred agents thinking at once.
+    /// The simple view names nobody, so one line says it all. Past a few, names say nothing either: a big workflow can have a hundred agents thinking at once.
     @ViewBuilder private func thinkingRows(named: Bool) -> some View {
         let thinkers = thinkers
-        if thinkers.count > 3 {
-            FeedThinkingRow(agent: named ? WorkPhrases.agents(thinkers.count) : nil)
+        if !named {
+            if !thinkers.isEmpty { FeedThinkingRow(agent: nil) }
+        } else if thinkers.count > 3 {
+            FeedThinkingRow(agent: WorkPhrases.agents(thinkers.count))
         } else {
             ForEach(thinkers) { thinker in
-                FeedThinkingRow(agent: named ? store.agentName(thinker.agentId, session: session) : nil)
+                FeedThinkingRow(agent: store.agentName(thinker.agentId, session: session))
             }
         }
     }
@@ -169,7 +165,7 @@ private struct SessionFeedContent: View {
     }
 
     private var empty: some View {
-        Text(L("No records yet"))
+        Text(store.loaded ? L("No records yet") : L("Reading the logs…"))
             .font(.system(size: 12.5))
             .foregroundStyle(Palette.text2)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -181,15 +177,15 @@ private struct SessionFeedContent: View {
         let lines = FeedSummary.lines(store.entries)
         return VStack(alignment: .leading, spacing: 0) {
             Text(L("What’s done")).font(.system(size: 13, weight: .semibold)).padding(.bottom, 6)
-            if store.loaded, lines.isEmpty, thinkers.isEmpty {
+            if lines.isEmpty, thinkers.isEmpty {
                 empty
             } else {
-                FollowingScroll(ids: lines.map(\.id)) {
+                FollowingScroll(ids: lines.map(\.id), store: store) {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(lines) { line in
                             FeedLineRow(line: line, now: model.now, store: store, session: session)
                         }
-                        if !thinkers.isEmpty { thinkingRows(named: false) }
+                        thinkingRows(named: false)
                     }
                 }
             }
@@ -222,13 +218,15 @@ private struct FeedLineRow: View {
             } label: {
                 HStack(spacing: 10) {
                     StatusGlyph(kind: waiting ? .waiting : StatusGlyph.Kind(line.state), size: 14).frame(width: 16)
-                    Text(line.text)
+                    Text(waiting ? WorkPhrases.waiting(session.waitingFor, mode: .simple) : line.text)
                         .font(.system(size: 13))
                         .lineLimit(2)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     ChangeCounts(added: line.added, removed: line.removed)
-                    if let step = runningStep {
-                        StepTimer(step: step, waiting: waiting, size: 11.5)
+                    if waiting {
+                        // The words on the left already say so.
+                    } else if let step = runningStep {
+                        StepTimer(step: step, size: 11.5)
                     } else if let at = line.at {
                         Text(WorkPhrases.time(at, now: now, seconds: false))
                             .font(.system(size: 11.5).monospacedDigit())
@@ -248,7 +246,8 @@ private struct FeedLineRow: View {
             .buttonStyle(.plain)
             if isOpen {
                 VStack(alignment: .leading, spacing: 0) {
-                    if line.kind == .read {
+                    // A change that failed has nothing to show but the name of its file.
+                    if line.kind == .read || line.state == .failed {
                         ForEach(line.files, id: \.self) { path in
                             Text(URL(fileURLWithPath: path).lastPathComponent)
                                 .font(.system(size: 12))

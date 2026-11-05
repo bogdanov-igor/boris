@@ -41,6 +41,8 @@ extension DevData {
             "+        guard !token.isExpired else { return .expired }",
             "+        guard try verifySignature(token) else { return .invalid }",
         ] + (0..<14).map { "+        log(\"шаг \($0)\")" } + ["     }"])]))
+        // A change that failed, in the long data set: it says why, and it has no counts.
+        if long { use(&main, "e2", "Edit", ToolInput(target: auth, oldText: "guard token.isValid\nelse", newText: "guard token.isFresh"), ago: 170, took: 0.1, error: true, output: "String to replace not found in file.") }
         use(&main, "b0", "Bash", ToolInput(note: "Сборка", command: "swift build --product Boris"), ago: 150, took: 3, error: true, output: "error: cannot find 'verifySignature' in scope\nerror: fatal error encountered during compilation")
         use(&main, "b1", "Bash", ToolInput(note: "Запускает тесты", command: long ? "swift test --filter AuthTests --parallel --num-workers 4 --enable-code-coverage --very-long-flag-that-goes-on-and-on-and-on-without-end" : "swift test"), ago: 14, took: nil, output: nil)
 
@@ -51,6 +53,8 @@ extension DevData {
         use(&finding, "h2", "Grep", ToolInput(target: "isExpired", note: "/x/boris/src"), ago: 60, took: 0.3)
 
         var shop = ActivityLog()
+        // A session of another day, in the long data set.
+        if long { use(&shop, "s0", "Read", ToolInput(target: "/x/shop-api/schema.sql"), ago: 3 * 86400, took: 0.3) }
         use(&shop, "s1", "mcp__postgres__query", ToolInput(target: "postgres · query", command: "sql: select count(*) from orders"), ago: 2600, took: 0.8)
         use(&shop, "s2", "Bash", ToolInput(command: "npm run migrate"), ago: 2500, took: nil)
         var landing = ActivityLog()

@@ -65,7 +65,7 @@ private struct SessionChangesContent: View {
                 .font(.system(size: technical ? 11.5 : 13, weight: .semibold))
                 .foregroundStyle(technical ? Palette.text2 : Palette.text1)
             if files.isEmpty {
-                Text(technical ? L("No files changed in this session.") : L("Nothing has changed yet."))
+                Text(!store.loaded ? L("Reading the logs…") : technical ? L("No files changed in this session.") : L("Nothing has changed yet."))
                     .font(.system(size: 12))
                     .foregroundStyle(Palette.text2)
             } else {

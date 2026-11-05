@@ -7,7 +7,8 @@ import SwiftUI
 @MainActor
 enum SessionNavigator {
     static func open(_ session: WorkSession, model: AppModel) {
-        let process = (model.world.sessions + model.world.endedSessions).first { $0.sessionId == session.id }?.pid
+        // A session that has ended has no process, and its old number may belong to another program by now.
+        let process = model.world.sessions.first { $0.sessionId == session.id }?.pid
         let owner = process.flatMap { $0 > 0 ? ownerApp(pid: $0) : nil }
         let plan = SessionJump.plan(
             environment: session.environment,

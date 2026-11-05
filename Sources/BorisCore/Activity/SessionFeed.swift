@@ -65,6 +65,13 @@ public enum SessionFeed {
         return dated.suffix(limit).map(\.entry)
     }
 
+    /// What a feed shows while the person reads older records. Those the limit has just dropped stay where they were, or what they are reading would move under them.
+    public static func keepingOlder(_ shown: [FeedEntry], next: [FeedEntry]) -> [FeedEntry] {
+        let ids = Set(next.map(\.id))
+        let gone = shown.filter { !ids.contains($0.id) }
+        return gone.isEmpty ? next : merged([gone, next], limit: .max)
+    }
+
     /// The task an agent was given is shown only when that agent is looked at alone: among all agents it would read as the person's own words.
     public static func visible(_ entries: [FeedEntry], agent: AgentFilter) -> [FeedEntry] {
         switch agent {
@@ -105,11 +112,11 @@ public enum SessionFeed {
         return names
     }
 
-    /// How many records came after the last one the person saw.
-    public static func newCount(ids: [String], seen: String?) -> Int {
+    /// How many records came after the person left the end. `seen` is what was there at that moment, nil while they are at the end.
+    /// A record that has gone says nothing: the oldest get dropped, a line of the simple view joins the one before it, and a filter hides records that are not new.
+    public static func newCount(ids: [String], seen: Set<String>?) -> Int {
         guard let seen else { return 0 }
-        guard let index = ids.lastIndex(of: seen) else { return ids.count }
-        return ids.count - index - 1
+        return ids.filter { !seen.contains($0) }.count
     }
 
     /// The files a session changed, each once, most recently changed last. A call that failed changed nothing.
@@ -125,6 +132,33 @@ public enum SessionFeed {
             files.append(updated)
         }
         return files
+    }
+}
+
+/// Which steps of a feed are open. A step that failed or is still going starts open, as that is what the person came to see.
+/// What they did by hand stays as they left it, also once the step has finished.
+public struct FeedFolding: Sendable, Equatable {
+    private var opened: Set<String>
+    private var closed: Set<String> = []
+
+    public init(opened: Set<String> = []) {
+        self.opened = opened
+    }
+
+    public func isOpen(_ step: ActivityStep) -> Bool {
+        if opened.contains(step.id) { return true }
+        if closed.contains(step.id) { return false }
+        return step.state == .running || step.state == .failed
+    }
+
+    public mutating func toggle(_ step: ActivityStep) {
+        if isOpen(step) {
+            opened.remove(step.id)
+            closed.insert(step.id)
+        } else {
+            closed.remove(step.id)
+            opened.insert(step.id)
+        }
     }
 }
 

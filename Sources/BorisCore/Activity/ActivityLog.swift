@@ -149,6 +149,16 @@ public enum ActivityItem: Sendable, Equatable, Identifiable {
         case .note(_, _, let at), .prompt(_, _, let at): return at
         }
     }
+
+    /// Notes and prompts are numbered within their file, so a later file of the same agent starts the numbers again.
+    fileprivate func inPart(_ part: Int) -> ActivityItem {
+        guard part > 0 else { return self }
+        switch self {
+        case .step: return self
+        case .note(let id, let text, let at): return .note(id: "\(part)-\(id)", text: text, at: at)
+        case .prompt(let id, let text, let at): return .prompt(id: "\(part)-\(id)", text: text, at: at)
+        }
+    }
 }
 
 /// The feed of one agent or session. Transcripts may repeat a record, so steps are matched by id.
@@ -190,6 +200,11 @@ public struct ActivityLog: Sendable, Equatable {
             step.state = isError ? .failed : .done
             step.finishedAt = at
             step.output = text.map { Self.tail($0, Self.outputLimit) }
+            // A change that failed changed nothing, so it has no lines to count.
+            if isError, step.isChange {
+                step.added = nil
+                step.removed = nil
+            }
             items[index] = .step(step)
         case .text(let text, let at):
             let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -236,6 +251,30 @@ public struct ActivityLog: Sendable, Equatable {
         }
     }
 
+    /// One agent's log from the files its work was written to, oldest first. An agent that goes on after its workflow has ended writes a new file under the same id.
+    /// An older file gets no more results, a call found in two files is told by the newer one, and notes of different files keep different ids.
+    public static func joined(_ parts: [ActivityLog]) -> ActivityLog {
+        guard parts.count > 1 else { return parts.first ?? ActivityLog() }
+        var result = ActivityLog()
+        var later: Set<String> = []
+        var kept: [[ActivityItem]] = []
+        for (index, part) in parts.enumerated().reversed() {
+            var old = part
+            if index < parts.count - 1 { old.closeRunning() }
+            let items = old.items.filter { item in
+                if case .step = item { return !later.contains(item.id) }
+                return true
+            }
+            kept.append(items.map { $0.inPart(index) })
+            later.formUnion(old.items.map(\.id))
+            result.dropped = result.dropped || part.dropped
+        }
+        let all = Array(kept.reversed().joined())
+        result.items = Array(all.suffix(limit))
+        result.dropped = result.dropped || all.count > limit
+        return result
+    }
+
     /// The counts are taken before this, so they stay right for a change that is cut.
     private static func head(_ hunks: [DiffHunk], _ limit: Int) -> [DiffHunk] {
         var room = limit
@@ -253,12 +292,19 @@ public struct ActivityLog: Sendable, Equatable {
         return kept
     }
 
+    /// A limit counted in bytes can fall inside a letter, which would show as a broken character, so the cut moves to the letter's edge.
     private static func head(_ text: String, _ limit: Int) -> String {
-        text.utf8.count <= limit ? text : String(decoding: text.utf8.prefix(limit), as: UTF8.self) + "\n…"
+        guard text.utf8.count > limit else { return text }
+        var end = text.utf8.index(text.startIndex, offsetBy: limit)
+        while end > text.startIndex, end.samePosition(in: text.unicodeScalars) == nil { end = text.utf8.index(before: end) }
+        return String(text[..<end]) + "\n…"
     }
 
     private static func tail(_ text: String, _ limit: Int) -> String {
-        text.utf8.count <= limit ? text : "…\n" + String(decoding: text.utf8.suffix(limit), as: UTF8.self)
+        guard text.utf8.count > limit else { return text }
+        var start = text.utf8.index(text.endIndex, offsetBy: -limit)
+        while start < text.endIndex, start.samePosition(in: text.unicodeScalars) == nil { start = text.utf8.index(after: start) }
+        return "…\n" + String(text[start...])
     }
 }
 

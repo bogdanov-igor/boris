@@ -138,8 +138,8 @@ func edits(_ prefix: String) async {
     reader.read(transcript: transcript)
     for log in reader.logs(live: { _ in true }) {
         for item in log.log.items {
-            guard case .step(let step) = item, step.isChange, let file = reader.file(agentId: log.agentId) else { continue }
-            let whole = ActivityReader.fullStep(step.id, in: file)
+            guard case .step(let step) = item, step.isChange else { continue }
+            let whole = reader.files(agentId: log.agentId).lazy.compactMap { ActivityReader.fullStep(step.id, in: $0) }.first
             print("\(step.tool) \(step.fileName ?? "?") · \(step.state) · +\(step.added.map(String.init) ?? "?") -\(step.removed.map(String.init) ?? "?") · hunks \(step.hunks.count) · cut \(step.isCut) · whole patch +\(whole?.hunks.flatMap(\.lines).filter { $0.hasPrefix("+") }.count ?? 0) -\(whole?.hunks.flatMap(\.lines).filter { $0.hasPrefix("-") }.count ?? 0), new text \(whole?.input.newText?.components(separatedBy: "\n").count ?? 0) lines · agent \(log.agentId?.prefix(8) ?? "main")")
         }
     }

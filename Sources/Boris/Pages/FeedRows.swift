@@ -14,6 +14,13 @@ extension StatusGlyph.Kind {
     }
 }
 
+extension ActivityStep {
+    /// A path keeps its file name when it is cut. A command keeps its start, as its end alone says nothing.
+    var targetTruncation: Text.TruncationMode {
+        kind == .read || isChange ? .middle : .tail
+    }
+}
+
 /// `+12 −3`, each number in its own colour, or nothing for a call with no change to count.
 struct ChangeCounts: View {
     var added: Int?
@@ -89,7 +96,7 @@ struct FeedPromptCard: View {
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if isLong {
-                Button(unfolded ? L("Show less") : L("Show all")) { unfolded.toggle() }
+                Button(unfolded ? L("Show less") : L("Show all of it")) { unfolded.toggle() }
                     .buttonStyle(.plain)
                     .font(.system(size: 11))
                     .foregroundStyle(Palette.text2)
@@ -222,7 +229,7 @@ struct FeedStepRow: View {
                     title
                         .font(.system(size: 11.5, design: .monospaced))
                         .lineLimit(1)
-                        .truncationMode(.middle)
+                        .truncationMode(step.targetTruncation)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     ChangeCounts(added: step.added, removed: step.removed)
                     StepTimer(step: step, waiting: waiting)
@@ -262,14 +269,14 @@ struct StepDetails: View {
     var store: FeedStore
     var technical: Bool
 
-    private var hasDiff: Bool { step.isChange && !step.diff().isEmpty }
     private var showsOutput: Bool { step.kind != .read && !(step.output ?? "").isEmpty }
 
     var body: some View {
+        let hasDiff = step.isChange && !step.diff().isEmpty
         VStack(alignment: .leading, spacing: 4) {
-            if hasDiff {
-                DiffBlock(entry: entry, step: step, cwd: cwd, store: store)
-            } else if step.input.command != nil || showsOutput {
+            if hasDiff { DiffBlock(entry: entry, step: step, cwd: cwd, store: store) }
+            // A change that went well has nothing to add, one that failed says why here.
+            if hasDiff ? step.state == .failed && showsOutput : step.input.command != nil || showsOutput {
                 outputBlock
             }
             if technical { facts }
@@ -410,7 +417,7 @@ struct DiffBlock: View {
             Button {
                 store.shownDiff = DiffRequest(title: title, entries: [entry])
             } label: {
-                Text(total > shown.count ? Self.moreTitle(total - shown.count) : L("Show all"))
+                Text(total > shown.count ? Self.moreTitle(total - shown.count) : L("Show all of it"))
                     .font(.system(size: 11))
                     .foregroundStyle(Palette.text2)
                     .padding(.horizontal, 8)
@@ -438,16 +445,22 @@ struct DiffSheet: View {
     var entries: [FeedEntry]
     var store: FeedStore
     @Environment(\.dismiss) private var dismiss
-    @State private var full: [String: ActivityReader.FullStep] = [:]
+    /// The lines of a long change, once it has been read again from its transcript.
+    @State private var whole: [String: [DiffLines.Line]] = [:]
 
     private var namesFiles: Bool { Set(entries.compactMap { $0.step?.input.target }).count > 1 }
 
     private func lines(_ step: ActivityStep) -> [DiffLines.Line] {
-        guard let whole = full[step.id] else { return step.diff(context: true) }
+        whole[step.id] ?? step.diff(context: true)
+    }
+
+    /// Comparing two long texts takes a while, and the window has to stay alive meanwhile.
+    private func wholeLines(_ step: ActivityStep, _ found: ActivityReader.FullStep) async -> [DiffLines.Line] {
         var copy = step
-        copy.input = whole.input
-        copy.hunks = whole.hunks
-        return copy.diff(context: true)
+        copy.input = found.input
+        copy.hunks = found.hunks
+        let changed = copy
+        return await Task.detached(priority: .userInitiated) { changed.diff(context: true) }.value
     }
 
     var body: some View {
@@ -496,7 +509,7 @@ struct DiffSheet: View {
         .frame(minWidth: 680, idealWidth: 760, minHeight: 460, idealHeight: 560)
         .task {
             for entry in entries where entry.step?.isCut == true {
-                if let whole = await store.full(entry), let id = entry.step?.id { full[id] = whole }
+                if let step = entry.step, let found = await store.full(entry) { whole[step.id] = await wholeLines(step, found) }
             }
         }
     }

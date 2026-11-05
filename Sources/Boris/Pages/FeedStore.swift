@@ -16,9 +16,16 @@ final class FeedStore {
 
     private(set) var entries: [FeedEntry] = []
     private(set) var thinking: [Thinker] = []
+    /// True once every agent has been read, so an empty feed really is empty.
     private(set) var loaded = false
     private(set) var startedPartWay = false
     private(set) var fileNames: [String: String] = [:]
+    /// Someone is reading older records, so the oldest stay until they come back to the end.
+    @ObservationIgnored var keepsOldest = false {
+        didSet {
+            if !keepsOldest, oldValue { lastLive = nil }
+        }
+    }
     /// A change someone asked to see in full. It is opened from the top of the page, as a sheet on a lazy row would close when the row leaves the screen.
     var shownDiff: DiffRequest?
 
@@ -29,6 +36,7 @@ final class FeedStore {
     @ObservationIgnored private var fallback: WorkSession?
     @ObservationIgnored private var readers: [String: SessionFeedReader] = [:]
     @ObservationIgnored private var lastLive: Set<String>?
+    @ObservationIgnored private var lookedOnce = false
     @ObservationIgnored private var viewers = 0
     @ObservationIgnored private var loop: Task<Void, Never>?
     @ObservationIgnored weak var hostWindow: NSWindow?
@@ -65,21 +73,10 @@ final class FeedStore {
         return [model.work.sessions.first { $0.id == sessionId } ?? fallback].compactMap { $0 }
     }
 
-    /// Reading goes on while any view of it is around.
+    /// Reading goes on while any view of it is around and its window is on screen.
     func viewerAppeared() {
         viewers += 1
-        guard loop == nil else { return }
-        #if DEBUG
-        if model.feedForSnapshot != nil { return }
-        #endif
-        loop = Task { [weak self] in
-            while !Task.isCancelled {
-                guard let self else { return }
-                await self.tick()
-                // The view gets its window a moment after it appears, and nobody should wait a whole interval for that.
-                try? await Task.sleep(for: self.hostWindow == nil ? .milliseconds(50) : Self.interval)
-            }
-        }
+        startReading()
     }
 
     func viewerLeft() {
@@ -89,14 +86,34 @@ final class FeedStore {
         loop = nil
     }
 
+    /// The window may have come back. One that has left is noticed by the reading itself, which then stops, so a closed window has no timer running.
+    func windowChanged() {
+        startReading()
+    }
+
     /// A closed window keeps its views, so being on the page is not enough.
     private var isOnScreen: Bool { hostWindow?.isVisible ?? false }
 
-    private func tick() async {
-        guard isOnScreen else {
-            release()
-            return
+    private func startReading() {
+        guard loop == nil, viewers > 0, isOnScreen else { return }
+        #if DEBUG
+        if model.feedForSnapshot != nil { return }
+        #endif
+        loop = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                guard self.isOnScreen else {
+                    self.release()
+                    self.loop = nil
+                    return
+                }
+                await self.tick()
+                try? await Task.sleep(for: Self.interval)
+            }
         }
+    }
+
+    private func tick() async {
         let sessions = sessions
         var files: [(session: WorkSession, file: URL)] = []
         for session in sessions {
@@ -108,27 +125,39 @@ final class FeedStore {
         let current = readers
         let sources = files
         // A big workflow can have hundreds of files, so the first look is only at the main agents, and the rest follow on the next tick.
-        let firstLook = !loaded
-        let result = await Task.detached(priority: .userInitiated) {
+        let firstLook = !lookedOnce
+        let reading = Task.detached(priority: .userInitiated) {
             Self.read(current, files: sources, live: live, force: force, window: window, withAgents: !firstLook)
-        }.value
+        }
+        // This can take seconds, and nobody should keep paying for it after leaving the page.
+        let result = await withTaskCancellationHandler { await reading.value } onCancel: { reading.cancel() }
         guard !Task.isCancelled, isOnScreen else { return }
         lastLive = firstLook ? nil : live
         readers = result.readers
-        if let merged = result.entries, merged != entries { entries = merged }
+        if let merged = result.entries {
+            let next = keepsOldest ? SessionFeed.keepingOlder(entries, next: merged) : merged
+            if next != entries { entries = next }
+        }
         if result.thinking != thinking { thinking = result.thinking }
         if result.names != fileNames { fileNames = result.names }
-        if result.partWay != startedPartWay { startedPartWay = result.partWay }
-        if !loaded { loaded = true }
+        // A feed at its limit has dropped what came before, also on a tick that brought nothing new.
+        let partWay = result.partWay || entries.count >= SessionFeed.limit
+        if partWay != startedPartWay { startedPartWay = partWay }
+        lookedOnce = true
+        if !firstLook, !loaded { loaded = true }
     }
 
     /// Text must not stay in memory behind a closed window. It is read again if the window comes back.
     private func release() {
-        guard loaded else { return }
+        guard lookedOnce else { return }
         readers = [:]
         lastLive = nil
         entries = []
         thinking = []
+        fileNames = [:]
+        shownDiff = nil
+        startedPartWay = false
+        lookedOnce = false
         loaded = false
     }
 
@@ -161,10 +190,13 @@ final class FeedStore {
         var readers = current
         var changed = force
         for (session, file) in files {
+            if Task.isCancelled { break }
             var reader = readers[session.id] ?? SessionFeedReader(window: window)
             if reader.read(transcript: file, withAgents: withAgents) { changed = true }
             readers[session.id] = reader
         }
+        // Nobody is waiting for the rest, and this result goes unused.
+        if Task.isCancelled { return ReadResult(readers: current, entries: nil, thinking: [], names: [:], partWay: false) }
         var feeds: [[FeedEntry]] = []
         var thinking: [Thinker] = []
         var names: [String: String] = [:]
@@ -177,16 +209,15 @@ final class FeedStore {
             names.merge(reader.names.compactMapValues { $0 }) { _, new in new }
             partWay = partWay || reader.startedPartWay
         }
-        // A feed at its limit has dropped what came before.
         let merged = changed ? SessionFeed.merged(feeds) : nil
-        return ReadResult(readers: readers, entries: merged, thinking: thinking, names: names, partWay: partWay || merged?.count == SessionFeed.limit)
+        return ReadResult(readers: readers, entries: merged, thinking: thinking, names: names, partWay: partWay)
     }
 
     /// The whole of a call, which the feed keeps only the start of. Read from the transcript, only when asked.
     func full(_ entry: FeedEntry) async -> ActivityReader.FullStep? {
-        guard let step = entry.step, let file = readers[entry.sessionId]?.file(agentId: entry.agentId) else { return nil }
+        guard let step = entry.step, let files = readers[entry.sessionId]?.files(agentId: entry.agentId) else { return nil }
         return await Task.detached(priority: .userInitiated) {
-            ActivityReader.fullStep(step.id, in: file)
+            files.lazy.compactMap { ActivityReader.fullStep(step.id, in: $0) }.first
         }.value
     }
 
@@ -204,6 +235,9 @@ final class FeedStore {
     }
 
     #if DEBUG
+    /// For the off-screen check.
+    var isReading: Bool { loop != nil }
+
     private func show(_ feed: DevFeed) {
         entries = feed.entries.filter { sessionId == nil || $0.sessionId == sessionId }
         thinking = feed.thinking.filter { sessionId == nil || $0.sessionId == sessionId }

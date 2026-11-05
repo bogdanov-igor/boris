@@ -42,7 +42,7 @@
  "Environment": "Среда",
  "Environment: %@": "Среда: %@",
  "Environment: all": "Среда: все",
- "Expanded": "Раскрыто",
+ "Expanded": "Развёрнуто",
  "Feed": "Лента",
  "Looked on the internet": "Искал в интернете",
  "Looked on the internet %lld times": {
@@ -81,6 +81,7 @@
   "one": "Прочитал %lld файл",
   "other": "Прочитал %lld файла"
  },
+ "Reading the logs…": "Чтение логов…",
  "Searched the files": "Искал в файлах",
  "Searched the files %lld times": {
   "few": "Искал в файлах %lld раза",
@@ -89,7 +90,7 @@
   "other": "Искал в файлах %lld раза"
  },
  "Session ID copied.": "Идентификатор сессии скопирован.",
- "Show all": "Показать всё",
+ "Show all of it": "Показать всё",
  "Show less": "Свернуть",
  "Showing the latest steps": "Показаны последние шаги",
  "Skill": "Скилл",

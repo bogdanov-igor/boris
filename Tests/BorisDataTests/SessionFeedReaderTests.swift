@@ -37,8 +37,8 @@ struct SessionFeedReaderTests {
         #expect(merged(reader).map(\.item.id) == ["main1", "sub1", "wf1"])
         #expect(reader.names["a1"] == "Проверка кода")
         #expect(reader.names["w1"] == nil)
-        #expect(reader.file(agentId: "w1")?.lastPathComponent == "agent-w1.jsonl")
-        #expect(reader.file(agentId: nil) == transcript)
+        #expect(reader.files(agentId: "w1").map(\.lastPathComponent) == ["agent-w1.jsonl"])
+        #expect(reader.files(agentId: nil) == [transcript])
     }
 
     @Test("Первый взгляд только на главного агента, остальные следом") func firstLook() {
@@ -92,6 +92,66 @@ struct SessionFeedReaderTests {
         #expect(state("a1") == .unfinished)
         // The same reader is not changed by this, so a result that comes later still lands.
         #expect(reader.logs { _ in true }.first { $0.agentId == "a1" }?.log.current != nil)
+    }
+
+    /// A workflow's agent that was written to again after the workflow ended: same id, a second file next to the session's agents, and no records in common.
+    private func agentWentOn() -> (TempFolder, URL) {
+        let folder = TempFolder()
+        let transcript = folder.write("p/s1.jsonl", toolUse("main1", second: 1))
+        let note = #"{"type":"assistant","timestamp":"2026-11-04T13:22:30.000Z","message":{"content":[{"type":"text","text":"note"}]}}"# + "\n"
+        // The older file is the bigger one, as it was on real logs.
+        let filler = (0..<40).map { toolUse("old\($0)", second: 2) + toolResult("old\($0)", second: 3) }.joined()
+        folder.write("p/s1/subagents/workflows/wf_1/agent-x.jsonl", filler + note + toolUse("left-open", second: 4))
+        folder.write("p/s1/subagents/agent-x.jsonl", note + toolUse("new1", second: 40))
+        folder.write("p/s1/subagents/agent-x.meta.json", #"{"description":"Проверка кода"}"#)
+        return (folder, transcript)
+    }
+
+    @Test("Агент с двумя файлами: видны оба, и повторное чтение ничего не перечитывает") func agentInTwoFiles() throws {
+        let (folder, transcript) = agentWentOn()
+        var reader = SessionFeedReader()
+        let first = reader.read(transcript: transcript)
+        #expect(first)
+        let ids = merged(reader).filter { $0.agentId == "x" }.map(\.item.id)
+        #expect(ids.contains("old0"))
+        #expect(ids.contains("old39"))
+        #expect(ids.contains("new1"))
+        #expect(reader.logs { _ in true }.filter { $0.agentId == "x" }.count == 1)
+        #expect(Set(merged(reader).map(\.id)).count == merged(reader).count)
+        #expect(reader.names["x"] == "Проверка кода")
+
+        // This is what used to read both files in full on every tick.
+        for _ in 0..<3 {
+            let idle = reader.read(transcript: transcript)
+            #expect(!idle)
+        }
+        let same = merged(reader).filter { $0.agentId == "x" }.map(\.item.id)
+        #expect(same == ids)
+
+        folder.append("p/s1/subagents/agent-x.jsonl", toolResult("new1", second: 41) + toolUse("new2", second: 42))
+        let more = reader.read(transcript: transcript)
+        #expect(more)
+        let steps = merged(reader).filter { $0.agentId == "x" }.compactMap(\.step)
+        #expect(steps.first { $0.id == "new1" }?.state == .done)
+        #expect(steps.last?.id == "new2")
+        // The older file will not get its result any more, while the agent itself still works.
+        #expect(steps.first { $0.id == "left-open" }?.state == .unfinished)
+        #expect(steps.last?.state == .running)
+    }
+
+    @Test("Агент с двумя файлами: весь текст ищется в обоих") func wholeStepInTwoFiles() throws {
+        let (folder, transcript) = agentWentOn()
+        _ = folder
+        var reader = SessionFeedReader()
+        reader.read(transcript: transcript)
+        let files = reader.files(agentId: "x")
+        #expect(files.count == 2)
+        // The newest first.
+        #expect(files.first?.path.contains("workflows") == false)
+        for id in ["old0", "new1"] {
+            #expect(files.lazy.compactMap { ActivityReader.fullStep(id, in: $0) }.first != nil)
+        }
+        #expect(reader.files(agentId: "nobody").isEmpty)
     }
 
     @Test("Лог удалён: лента пуста и ничего не падает") func missing() {
@@ -206,6 +266,30 @@ struct SessionFeedReaderTests {
         #expect(ActivityReader.fullStep("nothing", in: file) == nil)
     }
 
+    private func userText(_ content: String, extra: String = "") -> String {
+        #"{"type":"user","timestamp":"2026-11-04T13:22:00.000Z","message":{"content":\#(content)}\#(extra)}"# + "\n"
+    }
+
+    private func prompts(_ reader: ActivityReader) -> [String] {
+        reader.log.items.compactMap { if case .prompt(_, let text, _) = $0 { return text } else { return nil } }
+    }
+
+    @Test("Запросом считается только то, что написал человек") func onlyPersonsWords() {
+        let folder = TempFolder()
+        let file = folder.write("a.jsonl", [
+            userText(#""Почини тест""#),
+            userText(#"[{"type":"text","text":"И проверь сборку"}]"#),
+            userText(#"[{"type":"text","text":"[Request interrupted by user]"}]"#),
+            userText(#"[{"type":"text","text":"[Request interrupted by user for tool use]"}]"#),
+            userText(#""<command-name>/clear</command-name>""#),
+            userText(#""Вставлено системой""#, extra: #","isMeta":true"#),
+            userText(#""Сводка""#, extra: #","isCompactSummary":true"#),
+        ].joined())
+        var reader = ActivityReader()
+        reader.read(file)
+        #expect(prompts(reader) == ["Почини тест", "И проверь сборку"])
+    }
+
     @Test("Каждый инструмент получает верный тип и подпись", arguments: [
         ("Read", #"{"file_path":"/x/a.swift"}"#, WorkAction.read, "/x/a.swift"),
         ("Grep", #"{"pattern":"isExpired","path":"/x"}"#, .read, "isExpired /x"),
@@ -223,6 +307,7 @@ struct SessionFeedReaderTests {
         ("Agent", #"{"description":"Проверка кода","prompt":"long"}"#, .startAgent, "Проверка кода"),
         ("Task", #"{"description":"Проверка кода","prompt":"long"}"#, .startAgent, "Проверка кода"),
         ("Workflow", #"{"script":"long","scriptPath":"/x/audit.js"}"#, .startAgent, "audit.js"),
+        ("Workflow", #"{"script":"export const meta = {\n  name: 'audit-deps',\n  title: 'Аудит'\n}"}"#, .startAgent, "audit-deps"),
     ])
     func types(tool: String, input: String, action: WorkAction, target: String) throws {
         let folder = TempFolder()
@@ -232,6 +317,44 @@ struct SessionFeedReaderTests {
         let step = try #require(steps(reader).first)
         #expect(WorkAction(tool: step.tool) == action)
         #expect(WorkPhrases.target(step, cwd: nil) == target)
+    }
+
+    @Test("Скрипт без имени в meta просто остаётся без подписи") func workflowWithoutName() throws {
+        let folder = TempFolder()
+        let file = folder.write("a.jsonl", toolUse("t", "Workflow", #"{"script":"const name = 'x'"}"#))
+        var reader = ActivityReader()
+        reader.read(file)
+        #expect(try #require(steps(reader).first).input.target == nil)
+    }
+
+    @Test("Странные записи пропускаются, остальное читается", arguments: [
+        "not json at all",
+        "[]",
+        "null",
+        #"{"type":"assistant"}"#,
+        #"{"type":"assistant","message":"text"}"#,
+        #"{"type":"assistant","message":{"content":"text"}}"#,
+        #"{"type":"assistant","message":{"content":[1,"two",null]}}"#,
+        #"{"type":"assistant","message":{"content":[{"type":"tool_use"}]}}"#,
+        #"{"type":"assistant","message":{"content":[{"type":"tool_use","id":7,"name":"Read"}]}}"#,
+        #"{"type":"assistant","message":{"content":[{"type":"tool_use","id":"x","name":"Edit","input":"not an object"}]}}"#,
+        #"{"type":"user","message":{"content":[{"type":"tool_result"}]}}"#,
+        #"{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"nobody","content":42}]}}"#,
+        #"{"type":"user","toolUseResult":"Error","message":{"content":[{"type":"tool_result","tool_use_id":"nobody"}]}}"#,
+        #"{"type":"user","toolUseResult":{"structuredPatch":"no"},"message":{"content":[{"type":"tool_result","tool_use_id":"nobody"}]}}"#,
+        #"{"type":"user","toolUseResult":{"structuredPatch":[{"lines":[1,2]},{"lines":["",""," "]},7]},"message":{"content":[{"type":"tool_result","tool_use_id":"good"}]}}"#,
+    ])
+    func strangeRecords(line: String) throws {
+        let folder = TempFolder()
+        let file = folder.write("a.jsonl", toolUse("good") + line + "\n" + toolUse("after"))
+        var reader = ActivityReader()
+        reader.read(file)
+        let ids = steps(reader).map(\.id)
+        #expect(ids.contains("good"))
+        #expect(ids.last == "after")
+        for step in steps(reader) {
+            _ = step.diff(context: true)
+        }
     }
 
     @Test("Незнакомый инструмент показывает, о чём его попросили") func unknownTool() throws {

@@ -8,11 +8,12 @@ struct FollowingScroll<Content: View>: View {
     var ids: [String]
     /// A short feed sits at the bottom, as a log does.
     var alignsToBottom = false
+    var store: FeedStore
     @ViewBuilder var content: () -> Content
 
     @State private var following = true
-    /// The last record seen before the person scrolled away.
-    @State private var seen: String?
+    /// What was there when the person scrolled away. Nil while they are at the end.
+    @State private var seen: Set<String>?
     /// Each change sends the feed to its newest record, also when the person asked for that with the button.
     @State private var jumps = 0
 
@@ -56,8 +57,10 @@ struct FollowingScroll<Content: View>: View {
             }
         }
         .onChange(of: following) { _, now in
-            seen = now ? nil : ids.last
+            seen = now ? nil : Set(ids)
+            store.keepsOldest = !now
         }
+        .onAppear { store.keepsOldest = !following }
     }
 }
 
@@ -116,7 +119,7 @@ private final class FollowerView: NSView {
         }
         // A mouse wheel with steps scrolls without any live-scroll notification, so the move that follows its event is watched instead.
         wheelMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
-            if let self, event.window === self.window, self.isOverScrollView(event) { self.noteWheel(event) }
+            if let self, self.isMine(event) { self.noteWheel(event) }
             return event
         }
         scrollView.contentView.postsBoundsChangedNotifications = true
@@ -143,8 +146,19 @@ private final class FollowerView: NSView {
     /// This view lies behind the whole content, so its size changes with it: a new record, a record that got its result, a lazy row measured.
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
-        guard following else { return }
-        DispatchQueue.main.async { [weak self] in self?.holdAtBottom() }
+        DispatchQueue.main.async { [weak self] in self?.contentResized() }
+    }
+
+    private func contentResized() {
+        guard !following else {
+            holdAtBottom()
+            return
+        }
+        // The list got shorter under the person, as with a filter, and now they are at its end with nothing to go back to.
+        if !wheelJustMoved, distanceFromBottom <= Self.nearBottom {
+            following = true
+            onChange?(true)
+        }
     }
 
     private func noteWheel(_ event: NSEvent) {
@@ -152,8 +166,11 @@ private final class FollowerView: NSView {
         lastWheelTowardNewest = event.scrollingDeltaY < 0
     }
 
-    private func isOverScrollView(_ event: NSEvent) -> Bool {
-        guard let scrollView else { return false }
+    private func isMine(_ event: NSEvent) -> Bool {
+        #if DEBUG
+        if FeedScrollCheck.wheelHasNoWindow { return true }
+        #endif
+        guard event.window === window, let scrollView else { return false }
         return scrollView.bounds.contains(scrollView.convert(event.locationInWindow, from: nil))
     }
 
@@ -181,6 +198,14 @@ private final class FollowerView: NSView {
     }
 }
 
+#if DEBUG
+/// A wheel event made by hand for the off-screen check belongs to no window, as only the system can make one that does.
+@MainActor
+enum FeedScrollCheck {
+    static var wheelHasNoWindow = false
+}
+#endif
+
 /// Tells a feed which window it is in. A closed window keeps its views, so only the window knows whether anyone can see them.
 struct HostWindowProbe: NSViewRepresentable {
     var store: FeedStore
@@ -194,14 +219,26 @@ struct HostWindowProbe: NSViewRepresentable {
     func updateNSView(_ view: ProbeView, context: Context) {
         view.store = store
         store.hostWindow = view.window
+        store.windowChanged()
     }
 
     final class ProbeView: NSView {
         weak var store: FeedStore?
+        private var observers: [NSObjectProtocol] = []
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
+            observers.forEach(NotificationCenter.default.removeObserver)
+            observers = []
             store?.hostWindow = window
+            store?.windowChanged()
+            guard let window else { return }
+            // A reopened window becomes key, and one that was covered or minimized changes how much of it is seen.
+            for name in [NSWindow.didBecomeKeyNotification, NSWindow.didChangeOcclusionStateNotification, NSWindow.didDeminiaturizeNotification] {
+                observers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.store?.windowChanged() }
+                })
+            }
         }
     }
 }

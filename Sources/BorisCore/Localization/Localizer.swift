@@ -36,14 +36,26 @@ public enum Localizer {
     /// English is the source language and has no table: its text is the key itself.
     /// Falling back to the main bundle here would pick the system language instead of the chosen one.
     public static func use(_ language: AppLanguage, in main: Bundle = .main) {
-        let bundle = main.path(forResource: language.rawValue, ofType: "lproj").flatMap(Bundle.init(path:))
+        let bundle = bundle(language, in: main)
         table.withLock { $0 = bundle }
         chosen.withLock { $0 = language }
     }
 
     public static func string(_ key: String) -> String {
-        guard let bundle = table.withLock({ $0 }) else { return key }
-        return bundle.localizedString(forKey: key, value: key, table: nil)
+        string(key, in: table.withLock { $0 })
+    }
+
+    /// A string in a language that need not be the chosen one. Nothing changes for anyone else who is reading strings.
+    public static func string(_ key: String, language: AppLanguage, in main: Bundle = .main) -> String {
+        string(key, in: bundle(language, in: main))
+    }
+
+    private static func bundle(_ language: AppLanguage, in main: Bundle) -> Bundle? {
+        main.path(forResource: language.rawValue, ofType: "lproj").flatMap(Bundle.init(path:))
+    }
+
+    private static func string(_ key: String, in bundle: Bundle?) -> String {
+        bundle?.localizedString(forKey: key, value: key, table: nil) ?? key
     }
 }
 

@@ -35,13 +35,13 @@ struct ActivityPage: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 10)
             Rectangle().fill(Palette.separator).frame(height: 1)
-            if store.loaded, entries.isEmpty {
-                Text(store.entries.isEmpty ? L("No actions yet") : L("No actions match these filters"))
+            if entries.isEmpty {
+                Text(store.loaded ? (query == ActivityQuery() ? L("No actions yet") : L("No actions match these filters")) : L("Reading the logs…"))
                     .font(.system(size: 13))
                     .foregroundStyle(Palette.text2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                FollowingScroll(ids: entries.map(\.id), alignsToBottom: true) {
+                FollowingScroll(ids: entries.map(\.id), alignsToBottom: true, store: store) {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         if store.startedPartWay {
                             Text(L("Showing the latest steps"))
@@ -128,7 +128,8 @@ struct ActivityPage: View {
                 selection: $query.place
             )
             CopyLink(title: L("Copy all"), font: .system(size: 12), color: Palette.text1) {
-                WorkPhrases.plainText(entries, names: names(sessions), cwd: nil)
+                let names = names(sessions)
+                return await Task.detached { WorkPhrases.plainText(entries, names: names, cwd: nil) }.value
             }
             .padding(.horizontal, 10)
             .frame(height: 24)
@@ -219,10 +220,11 @@ private struct ActivityRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            // A record from another day says which day as well, and that takes a second line in this narrow column.
             Text(step.startedAt.map { WorkPhrases.time($0, now: now, seconds: true) } ?? "")
                 .font(.system(size: 11.5).monospacedDigit())
                 .foregroundStyle(Palette.text3)
-                .lineLimit(1)
+                .lineLimit(2)
                 .frame(width: 58, alignment: .leading)
             StatusGlyph(kind: waiting ? .waiting : StatusGlyph.Kind(step.state), size: 14)
             Text(WorkPhrases.action(WorkAction(tool: step.tool), tool: step.tool))
@@ -247,7 +249,7 @@ private struct ActivityRow: View {
                 Text(target)
                     .font(.system(size: 12, design: targetIsWords ? .default : .monospaced))
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                    .truncationMode(step.targetTruncation)
                 ChangeCounts(added: step.added, removed: step.removed)
                 Spacer(minLength: 0)
             }

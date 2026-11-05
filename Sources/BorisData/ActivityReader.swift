@@ -119,6 +119,9 @@ public struct ActivityReader: Sendable {
         }
     }
 
+    /// Claude Code's own mark that the person stopped it. It comes as a user message with no tag around it.
+    private static let interruptionMark = "[Request interrupted"
+
     /// What a person wrote. Claude Code also records its own insertions as user messages: they are marked, or wrapped in a tag.
     private static func promptText(_ record: [String: Any], content: Any?) -> String? {
         for mark in ["isMeta", "isCompactSummary", "isVisibleInTranscriptOnly"] where record[mark] as? Bool == true { return nil }
@@ -130,7 +133,7 @@ public struct ActivityReader: Sendable {
         } else {
             return nil
         }
-        return text.isEmpty || text.hasPrefix("<") ? nil : text
+        return text.isEmpty || text.hasPrefix("<") || text.hasPrefix(interruptionMark) ? nil : text
     }
 
     static func input(_ tool: String, _ input: [String: Any]) -> ToolInput {
@@ -171,12 +174,18 @@ public struct ActivityReader: Sendable {
         case "Skill":
             result.target = input["skill"] as? String
         case "Workflow":
-            result.target = (input["scriptPath"] as? String).map { URL(fileURLWithPath: $0).lastPathComponent }
+            result.target = (input["scriptPath"] as? String).map { URL(fileURLWithPath: $0).lastPathComponent } ?? workflowName(input["script"] as? String)
         default:
             result.target = mcpName(tool)
             result.command = parameters(input)
         }
         return result
+    }
+
+    /// A script written on the spot has no file name, but it says its own name in `meta`.
+    private static func workflowName(_ script: String?) -> String? {
+        guard let match = script?.firstMatch(of: /meta\s*=\s*\{[^}]*?\bname\s*:\s*['"`]([^'"`]+)/) else { return nil }
+        return String(match.output.1)
     }
 
     /// `mcp__postgres__query` becomes `postgres · query`.

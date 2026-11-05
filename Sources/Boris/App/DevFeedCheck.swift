@@ -44,6 +44,18 @@ enum DevFeedCheck {
         return nil
     }
 
+    /// One step of a mouse wheel. The event goes through this app's own queue, so the feed notices it as it does a real one. Nothing leaves this app.
+    /// An event made by hand belongs to no window and the view will not scroll for it, so the view is moved here, with no word about live scrolling, which is all a stepped wheel does.
+    private static func wheel(by distance: CGFloat, over view: NSScrollView) async {
+        guard let source = CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 1, wheel1: distance > 0 ? 3 : -3, wheel2: 0, wheel3: 0), let event = NSEvent(cgEvent: source) else { return }
+        NSApp.postEvent(event, atStart: false)
+        try? await Task.sleep(for: .milliseconds(30))
+        let bounds = view.contentView.bounds
+        let lowest = max(0, (view.documentView?.frame.height ?? 0) - bounds.height)
+        view.contentView.scroll(to: NSPoint(x: bounds.minX, y: min(lowest, max(0, bounds.minY - distance))))
+        view.reflectScrolledClipView(view.contentView)
+    }
+
     private static func picture(_ host: NSView, _ path: URL) {
         guard let image = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
         host.cacheDisplay(in: host.bounds, to: image)
@@ -75,6 +87,8 @@ enum DevFeedCheck {
         host.frame = bounds
         window.setFrameOrigin(NSPoint(x: -5000, y: -5000))
         window.orderBack(nil)
+        host.layoutSubtreeIfNeeded()
+        picture(host, folder.appendingPathComponent("0-reading.png"))
 
         // The feed reads once a second and lazy rows settle after that, so each step waits for its result to show.
         func settle(_ seconds: Double = 2.2) async {
@@ -141,6 +155,30 @@ enum DevFeedCheck {
         report("and it follows again", height() > beforeBack && distance() <= 8, "distance \(distance())")
         picture(host, folder.appendingPathComponent("4-back.png"))
 
+        // The same with a mouse wheel, which has no live scrolling to go by.
+        FeedScrollCheck.wheelHasNoWindow = true
+        await wheel(by: 300, over: view)
+        await settle(0.8)
+        report("a wheel step takes it away from the end", distance() > 8, "distance \(distance())")
+        let keptWheel = offset()
+        added = ""
+        for id in 70..<73 { added += step(id) }
+        append(added, to: file)
+        let beforeWheel = height()
+        await settle()
+        report("new records came in after the wheel", height() > beforeWheel, "height \(beforeWheel) -> \(height())")
+        report("it stays where the wheel left it", abs(offset() - keptWheel) < 1, "offset \(keptWheel) -> \(offset())")
+        picture(host, folder.appendingPathComponent("4b-wheel-up.png"))
+        await wheel(by: -distance(), over: view)
+        await settle(1)
+        report("the wheel back to the end follows again", distance() <= 8, "distance \(distance())")
+        added = ""
+        for id in 73..<75 { added += step(id) }
+        append(added, to: file)
+        let beforeWheelBack = height()
+        await settle()
+        report("and new records are followed after the wheel", height() > beforeWheelBack && distance() <= 8, "distance \(distance())")
+
         // A change as an agent's transcript writes it, opened with a click on its row, above the "Thinking" row.
         append(#"{"type":"assistant","timestamp":"2026-11-05T10:02:00.000Z","message":{"id":"m-edit","content":[{"type":"tool_use","id":"t-edit","name":"Edit","input":{"file_path":"/x/boris/src/auth.swift","old_string":"third\nkeep one\nkeep two\nsixth","new_string":"changed third\nkeep one\nkeep two\nchanged sixth\nadded"}}]}}"# + "\n" + #"{"type":"user","timestamp":"2026-11-05T10:02:01.000Z","message":{"content":[{"type":"tool_result","tool_use_id":"t-edit","content":"The file has been updated successfully."}]}}"# + "\n", to: file)
         await settle()
@@ -154,12 +192,43 @@ enum DevFeedCheck {
         window.orderOut(nil)
         await settle(1.5)
         let hidden = "\(height())"
-        append(step(70), to: file)
+        append(step(75), to: file)
         await settle(1.5)
         report("a closed window stops reading", "\(height())" == hidden)
+        let store = FeedStore.forSession(session, model: model)
+        report("and it has no timer left", !store.isReading)
         window.orderBack(nil)
+        // An off-screen window is not seen either way, so nothing tells it that it came back. A real one becomes key.
+        NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
         await settle(3)
         report("and it reads again when it comes back", distance() <= 8, "distance \(distance())")
+
+        // At the limit each new record drops the oldest. While the person reads, those stay, or what they read would move.
+        added = ""
+        for id in 76..<440 { added += step(id) }
+        append(added, to: file)
+        await settle(4)
+        report("the feed is at its limit", store.entries.count == ActivityLog.limit, "records \(store.entries.count)")
+        report("and it is at its end", distance() <= 8, "distance \(distance())")
+        // The feed went empty behind the closed window, so this is a new scroll view.
+        if let current = scroll() {
+            current.contentView.scroll(to: NSPoint(x: 0, y: max(0, offset() - 600)))
+            current.reflectScrolledClipView(current.contentView)
+            NotificationCenter.default.post(name: NSScrollView.didLiveScrollNotification, object: current)
+        }
+        await settle(0.5)
+        let oldest = store.entries.first?.id
+        let atLimit = offset()
+        added = ""
+        for id in 440..<445 { added += step(id) }
+        append(added, to: file)
+        await settle()
+        report("the oldest stay while the person reads", store.entries.first?.id == oldest && store.entries.count == ActivityLog.limit + 5, "records \(store.entries.count)")
+        report("and nothing moves", abs(offset() - atLimit) < 1, "offset \(atLimit) -> \(offset())")
+        picture(host, folder.appendingPathComponent("6-at-limit.png"))
+        click(at: NSPoint(x: bounds.midX, y: 30))
+        await settle()
+        report("back at the end the limit holds again", store.entries.count == ActivityLog.limit && distance() <= 8, "records \(store.entries.count), distance \(distance())")
         window.orderOut(nil)
         return passed
     }

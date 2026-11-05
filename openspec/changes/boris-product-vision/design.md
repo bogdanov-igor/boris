@@ -13,6 +13,7 @@
 | Дерево агентов | `subagents/**/*.meta.json`: `parentAgentId`, `spawnDepth`, `agentType`, `toolUseId` | Внутренний формат |
 | Workflow | Журнал, итоговый файл и скрипт с `meta.phases` в папке запуска; `workflows/wf_*.json`: `status`, `phases`, `agentCount`, `totalTokens` | Внутренний формат |
 | Токены | `message.usage` в транскриптах, считается по `message.id` | Внутренний формат |
+| Файлы агента | `subagents/agent-<id>.jsonl` и `subagents/workflows/wf_*/agent-<id>.jsonl`. Агент workflow, которому написали после конца запуска, пишет второй файл с тем же `id` рядом с агентами сессии (9 таких на 2045 файлов): записи в двух файлах почти не повторяются, это один агент | Внутренний формат |
 | Правки | `structuredPatch` в `toolUseResult`: только в транскрипте сессии. В транскриптах агентов этого поля нет (0 из 2071 правки), там строки сравниваются по `old_string` и `new_string`, а прежний текст перезаписанного файла неизвестен | Внутренний формат |
 | Лимиты и доплаты | `cachedUsageUtilization` в `~/.claude.json` | Внутренний формат |
 | Сбои | Итоговые файлы и конец транскрипта упавшего агента; `apiError`, `retryAttempt`, `streamCutCause`, `is_error` | Внутренний формат |
