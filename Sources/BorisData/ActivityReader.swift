@@ -42,23 +42,28 @@ public struct ActivityReader: Sendable {
     }
 
     /// The window may begin inside a record, so its first line is dropped. An unfinished last line waits for the next read.
+    /// Foundation keeps buffers and parsed records alive until the pool around them ends, and a screen reads hundreds of files in one go.
     private mutating func consume(_ url: URL, size: UInt64, from start: UInt64, skipFirstLine: Bool) -> Bool {
-        guard size > start, let handle = try? FileHandle(forReadingFrom: url) else { return false }
-        defer { try? handle.close() }
-        guard (try? handle.seek(toOffset: start)) != nil, let data = try? handle.readToEnd(), let lastNewline = data.lastIndex(of: 0x0A) else { return false }
-        var lines = data[data.startIndex..<lastNewline].split(separator: 0x0A)
-        if skipFirstLine, !lines.isEmpty { lines.removeFirst() }
-        let marker = Data("\"message\"".utf8)
-        var changed = false
-        for line in lines where line.range(of: marker) != nil {
-            guard let record = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] else { continue }
-            for event in Self.events(from: record) {
-                log.apply(event)
-                changed = true
+        autoreleasepool {
+            guard size > start, let handle = try? FileHandle(forReadingFrom: url) else { return false }
+            defer { try? handle.close() }
+            guard (try? handle.seek(toOffset: start)) != nil, let data = try? handle.readToEnd(), let lastNewline = data.lastIndex(of: 0x0A) else { return false }
+            var lines = data[data.startIndex..<lastNewline].split(separator: 0x0A)
+            if skipFirstLine, !lines.isEmpty { lines.removeFirst() }
+            let marker = Data("\"message\"".utf8)
+            var changed = false
+            for line in lines {
+                autoreleasepool {
+                    guard line.range(of: marker) != nil, let record = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] else { return }
+                    for event in Self.events(from: record) {
+                        log.apply(event)
+                        changed = true
+                    }
+                }
             }
+            offset = start + UInt64(lastNewline - data.startIndex + 1)
+            return changed
         }
-        offset = start + UInt64(lastNewline - data.startIndex + 1)
-        return changed
     }
 
     /// The writer has stopped, so a call without a result will not get one.

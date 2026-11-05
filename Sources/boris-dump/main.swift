@@ -84,6 +84,15 @@ func activity(transcript: URL) {
     typed(byTool)
 }
 
+/// How much memory this process holds right now, in megabytes.
+func footprint() -> Int {
+    var usage = rusage_info_v4()
+    let result = withUnsafeMutablePointer(to: &usage) { pointer in
+        pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(getpid(), RUSAGE_INFO_V4, $0) }
+    }
+    return result == 0 ? Int(usage.ri_phys_footprint) / (1024 * 1024) : 0
+}
+
 /// Reads every session the way the Activity page does, and counts instead of showing.
 func activity() async {
     let engine = WorkEngine(paths: paths, others: others) { _ in }
@@ -110,7 +119,7 @@ func activity() async {
         guard let transcript = await engine.sessionTranscript(session.id) else { continue }
         readers[session.id]?.read(transcript: transcript)
     }
-    print("sessions \(feeds.count), files \(files), records \(feeds.reduce(0) { $0 + $1.count }), first read \(first), next read \(clock.now - secondBegan), shown \(merged.count)")
+    print("sessions \(feeds.count), files \(files), records \(feeds.reduce(0) { $0 + $1.count }), first read \(first), next read \(clock.now - secondBegan), shown \(merged.count), memory held \(footprint()) MB")
     for entry in merged {
         if let step = entry.step { byTool[step.tool, default: 0] += 1 }
     }
