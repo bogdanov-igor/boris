@@ -72,6 +72,9 @@ final class AppModel {
     var settingsSection = SettingsSection.general
     var showIconNotice = false
     var hotKeyTaken = false
+    let walrus = WalrusStage()
+    let walrusPage = WalrusPageState()
+    let packShelf: WalrusPackShelf
 
     var onPresenceChange: (() -> Void)?
     var onEvent: ((BorisEvent, Reaction) -> Void)?
@@ -81,6 +84,9 @@ final class AppModel {
         self.settings = settings
         self.store = store
         hooks = HookController(settings: settings, live: live)
+        // Without a store nothing may touch Boris's real folder.
+        packShelf = WalrusPackShelf(folder: (store?.folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("boris-memory")).appendingPathComponent("Packs", isDirectory: true))
+        WalrusArt.shared.pack = packShelf.pack(id: settings.wardrobe.pack)
         var loaded = store?.loadState() ?? AppState()
         if loaded.firstLaunch == nil {
             loaded.firstLaunch = Date()
@@ -154,6 +160,11 @@ final class AppModel {
             let reaction = settings.matrix.reaction(for: event.kind)
             board.apply(event, reaction: reaction.mood, now: output.at)
             onEvent?(event, quiet.filter(reaction, kind: event.kind, now: output.at))
+            // Do not disturb silences his reactions too. His pose keeps telling the truth.
+            if !quiet.isOn(now: output.at) { walrus.hear(event) }
+            if let run = output.runs.first(where: { $0.runId == event.runId }), run.status.isTerminal {
+                state.awards.record(run.status, today: Self.dayKey(output.at))
+            }
             changed = true
         }
         if quiet.finish(now: output.at) != nil {
@@ -183,16 +194,24 @@ final class AppModel {
         now = date
         hasAlarm = board.hasAlarm
         mood = board.mood(work: work, usage: world.usage, limitPercent: Double(settings.usageHigh), broken: loaded && connectionStatus.isBroken, matrix: settings.matrix, now: date)
-        outfit = Wardrobe.outfit(at: date, settings: settings.wardrobe)
+        outfit = Wardrobe.outfit(at: date, settings: settings.wardrobe, rewardParty: state.awards.hasParty(today: Self.dayKey(date)))
+        walrus.upsideDown = settings.wardrobe.mode == .byDate && Wardrobe.isAprilFools(date)
         onPresenceChange?()
     }
 
     /// Opening the mini window confirms the alarm.
     func miniWindowDidOpen() {
-        board.acknowledge()
-        refreshPresence()
+        acknowledgeAlarm()
         setLookingClosely(true)
     }
+
+    /// The person has opened Boris, so he has done his job.
+    func acknowledgeAlarm() {
+        board.acknowledge()
+        refreshPresence()
+    }
+
+    var hasFish: Bool { state.awards.hasFish }
 
     func startQuiet(for duration: TimeInterval) {
         quiet.start(for: duration, now: Date())
@@ -268,6 +287,11 @@ final class AppModel {
     }
 
     #if DEBUG
+    func showWalrusForSnapshot(mood: Mood?, outfit: Outfit?) {
+        if let mood { self.mood = mood }
+        if let outfit { self.outfit = outfit }
+    }
+
     func showForSnapshot(work: WorkModel, world: WorldSnapshot, today: TokenUsage, mood: Mood, outfit: Outfit = .none, offer: Bool = false) {
         self.work = work
         self.world = world

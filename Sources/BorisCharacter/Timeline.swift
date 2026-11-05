@@ -222,6 +222,58 @@ public enum Timeline {
         return pose
     }
 
+    /// A play reaction on the simplified drawing. It has no back view, so turning away means looking away, and a spin turns him around in place.
+    public static func simpleAct(_ act: Act, t: CGFloat) -> SimplePose {
+        var pose = SimplePose()
+        switch act {
+        case .hoot:
+            pose.eyeLeft = .closed
+            pose.eyeRight = .closed
+            pose.jaw = 0.5 + 0.12 * sin(tau * t * 2)
+            pose.cigar = nil
+            pose.lift = -1
+            pose.smile = 0.35
+        case .yawn:
+            let e = sin(CGFloat.pi * t) * sin(CGFloat.pi * t)
+            pose.eyeLeft = .closed
+            pose.eyeRight = .closed
+            pose.jaw = 1.2 * e
+            pose.cigar = nil
+            pose.lift = -2 * e
+            pose.smile = 0.5 * e
+        case .poke:
+            let k = squashAmount(t)
+            let hard = k > 0.25
+            pose.eyeLeft = hard ? .squint : .open
+            pose.eyeRight = hard ? .squint : .lid
+            pose.cigar = hard ? .up : .flat
+            pose.bob = 2 * k
+        case .annoyed:
+            pose.eyeLeft = .lid
+            pose.eyeRight = .lid
+            pose.look = CGPoint(x: 2.4, y: 0)
+            pose.tilt = -4 + 0.5 * sin(tau * t)
+            pose.smile = -0.2
+        case .back:
+            pose.eyeLeft = .lid
+            pose.eyeRight = .lid
+            pose.look = CGPoint(x: -2.4, y: 0)
+            pose.tilt = 6
+            pose.bob = 0.5 * sin(tau * t)
+        case .wink:
+            let on = t > 0.2 && t < 0.7
+            pose.eyeRight = on ? .happy : .lid
+            pose.smile = on ? 0.55 : 0.1
+            pose.lift = on ? -1 : 0
+            pose.cigar = on ? .up : .flat
+        case .spin:
+            pose.tilt = 360 * t
+        case .dizzy:
+            return simple(.broken, t: t, mono: false)
+        }
+        return pose
+    }
+
     /// How squashed he is during a poke: a quick bounce that dies away.
     public static func squashAmount(_ t: CGFloat) -> CGFloat {
         let k = max(0, 1 - t * 3.2)

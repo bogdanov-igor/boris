@@ -49,6 +49,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     /// Redraws the icon, the counter and the mark from the model.
     func update() {
         guard let button = item.button else { return }
+        icon?.use(WalrusArt.shared.pack)
         icon?.show(model.mood, outfit: model.outfit)
         let count = model.requestCount
         button.title = count > 0 ? " \(count)" : ""
