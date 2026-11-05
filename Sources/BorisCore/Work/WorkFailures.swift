@@ -3,7 +3,10 @@ import Foundation
 /// Something that went wrong in a session, once per thing a person would act on: a workflow counts as one, however many of its agents fell.
 public struct WorkFailure: Sendable, Equatable, Identifiable {
     public enum Source: Sendable, Equatable {
+        /// Cut off: its process went away without a word.
         case session
+        /// Its last message is an error from the API.
+        case sessionError
         case agent(WorkNodeKind)
         case workflow(RunStatus, failed: Int, total: Int)
     }
@@ -38,6 +41,9 @@ extension WorkSession {
         var result: [WorkFailure] = []
         if state == .interrupted {
             result.append(WorkFailure(id: id, sessionId: id, project: projectName, name: displayName, source: .session, at: lastActivity))
+        }
+        if state == .failed {
+            result.append(WorkFailure(id: id, sessionId: id, project: projectName, name: displayName, source: .sessionError, cause: root.failure?.failureClass, resets: root.failure?.resets, at: lastActivity))
         }
         var stack = Array(root.children.reversed())
         while let node = stack.popLast() {

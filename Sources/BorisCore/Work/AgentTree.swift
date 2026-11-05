@@ -3,7 +3,8 @@ public struct AgentTreeRow: Sendable, Equatable, Identifiable {
     public enum Content: Sendable, Equatable {
         case agent(WorkNode)
         case workflow(WorkNode)
-        case phase(WorkflowPhase, workflowId: String)
+        /// - Parameter isOnly: without any named phase, its agents are simply the agents.
+        case phase(WorkflowPhase, workflowId: String, isOnly: Bool)
     }
 
     /// A workflow is drawn as a card made of its lines.
@@ -48,9 +49,10 @@ public enum AgentTree {
         let first = rows.count
         let edge = card ?? depth
         rows.append(AgentTreeRow(id: node.id, depth: depth, content: .workflow(node), edge: .middle, cardDepth: edge))
-        for phase in node.phases {
+        let phases = node.phases
+        for phase in phases {
             let key = phaseKey(workflow: node.id, phase: phase.title)
-            rows.append(AgentTreeRow(id: key, depth: depth, content: .phase(phase, workflowId: node.id), edge: .middle, cardDepth: edge))
+            rows.append(AgentTreeRow(id: key, depth: depth, content: .phase(phase, workflowId: node.id, isOnly: phases.count == 1), edge: .middle, cardDepth: edge))
             if expanded.contains(key) {
                 for agent in phase.agents { add(agent, depth: depth + 1, card: edge, expanded: expanded, to: &rows) }
             }

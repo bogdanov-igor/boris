@@ -36,7 +36,8 @@ extension WorkNode {
         let known = details.phases.isEmpty ? details.planned.map { PhaseGroup(title: $0, agents: []) } : details.phases
         var byTitle = Dictionary(grouping: children, by: \.phase)
         var result: [WorkflowPhase] = []
-        for group in known {
+        var seen: Set<String?> = []
+        for group in known where seen.insert(group.title).inserted {
             result.append(WorkflowPhase(title: group.title, isCurrent: group.isCurrent, agents: byTitle.removeValue(forKey: group.title) ?? []))
         }
         // Agents the final file knows and the plan does not. A list stays complete even when the two disagree.

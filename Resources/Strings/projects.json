@@ -67,6 +67,7 @@
  "Projects appear here when Claude starts working in a folder.": "Проекты появятся здесь, когда Claude начнёт работать в какой-нибудь папке.",
  "Projects will appear in a moment.": "Проекты появятся через мгновение.",
  "Reading Claude's logs…": "Чтение логов Claude…",
+ "Reading project files": "Читает файлы проекта",
  "Recent failures · %lld": "Свежие сбои · %lld",
  "Recently finished": "Недавно завершены",
  "Run ribbon: started %lld, done %lld, failed %lld, running %lld, cancelled %lld": "Лента запуска: стартовало %lld, готово %lld, упало %lld, идут %lld, отменено %lld",

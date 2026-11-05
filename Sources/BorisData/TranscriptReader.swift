@@ -3,7 +3,10 @@ import BorisCore
 
 public enum TranscriptReader {
     public struct Tail: Sendable, Equatable {
+        /// The very last line, whatever it is. In a session's log that is usually one of Claude's own records.
         public var last: LastRecord?
+        /// The newest message of the person or of Claude, which is what says how things ended.
+        public var lastMessage: LastRecord?
         public var usage: TokenUsage?
         public var model: String?
         /// The tool call still without a result, if any.
@@ -49,6 +52,7 @@ public enum TranscriptReader {
                 if result.gitBranch == nil { result.gitBranch = record["gitBranch"] as? String }
                 if !messageSeen, let type = record["type"] as? String, type == "assistant" || type == "user" {
                     messageSeen = true
+                    result.lastMessage = lastRecord(record)
                     result.turnEnded = type == "assistant" && closesTurn(record)
                 }
                 if result.usage == nil, let (usage, model) = realUsage(record) {

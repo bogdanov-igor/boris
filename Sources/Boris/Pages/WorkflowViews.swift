@@ -19,7 +19,7 @@ extension StatusGlyph.Kind {
     init(_ failure: WorkFailure) {
         switch failure.source {
         case .session: self = .interrupted
-        case .agent: self = failure.cause == .limit ? .limit : .failed
+        case .sessionError, .agent: self = failure.cause == .limit ? .limit : .failed
         case .workflow(let status, _, _): self = StatusGlyph.Kind(status)
         }
     }
@@ -42,6 +42,7 @@ struct WorkflowRibbon: View {
     var phases: [WorkflowPhase]
 
     private static let aheadWidth: CGFloat = 18
+    private static let narrowest: CGFloat = 3
 
     private func gap(before index: Int) -> CGFloat {
         guard index > 0 else { return 0 }
@@ -58,8 +59,7 @@ struct WorkflowRibbon: View {
         GeometryReader { frame in
             let gaps = phases.indices.reduce(CGFloat(0)) { $0 + gap(before: $1) }
             let ahead = CGFloat(phases.filter(\.isAhead).count) * Self.aheadWidth
-            let free = max(frame.size.width - gaps - ahead, 0)
-            let total = CGFloat(max(phases.reduce(0) { $0 + $1.total }, 1))
+            let widths = widths(free: max(frame.size.width - gaps - ahead, 0))
             HStack(spacing: 0) {
                 ForEach(Array(phases.enumerated()), id: \.element.id) { index, phase in
                     Color.clear.frame(width: gap(before: index), height: 1)
@@ -68,7 +68,7 @@ struct WorkflowRibbon: View {
                             .strokeBorder(Palette.text3, style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
                             .frame(width: Self.aheadWidth, height: 6)
                     } else {
-                        segments(phase, width: max(free * CGFloat(phase.total) / total, 3))
+                        segments(phase, width: widths[index])
                     }
                 }
             }
@@ -77,6 +77,17 @@ struct WorkflowRibbon: View {
         .frame(height: 8)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
+    }
+
+    /// Each phase by its share of the agents. A tiny one stays visible at the expense of the others, so the ribbon still ends where the line ends.
+    private func widths(free: CGFloat) -> [CGFloat] {
+        let total = CGFloat(max(phases.reduce(0) { $0 + $1.total }, 1))
+        func isTiny(_ phase: WorkflowPhase) -> Bool { free * CGFloat(phase.total) / total < Self.narrowest }
+        let started = phases.filter { !$0.isAhead }
+        let others = started.filter { !isTiny($0) }
+        let left = max(free - CGFloat(started.count - others.count) * Self.narrowest, 0)
+        let shares = CGFloat(max(others.reduce(0) { $0 + $1.total }, 1))
+        return phases.map { isTiny($0) ? Self.narrowest : left * CGFloat($0.total) / shares }
     }
 
     private func segments(_ phase: WorkflowPhase, width: CGFloat) -> some View {
@@ -100,10 +111,6 @@ struct WorkflowRibbon: View {
 
 /// Simple words for how far a phase has come.
 enum PhaseWords {
-    static func title(_ phase: WorkflowPhase, among phases: [WorkflowPhase]) -> String {
-        phase.title ?? (phases.contains { $0.title != nil } ? L("no phase") : L("agents"))
-    }
-
     /// `8 of 8 · done`, `1 of 4 · running`, `3 of 12 · failed 2`.
     static func summary(_ phase: WorkflowPhase) -> (text: String, color: Color) {
         if phase.isAhead { return (L("ahead, no agents yet"), Palette.text3) }

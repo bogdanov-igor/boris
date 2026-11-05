@@ -10,6 +10,7 @@ enum DevProjects {
     static let working = "b1"
     static let troubled = "a1"
     static let big = "big"
+    static let pastBroken = "p7"
 
     private static func run(_ id: String, name: String, status: RunStatus, phases: [PhaseGroup], plan: [String] = [], topFailure: FailureClass? = nil, now: Date) -> WorkflowDetails {
         let agents = phases.flatMap(\.agents)
@@ -140,12 +141,16 @@ enum DevProjects {
         let shop = long ? "/x/a-very-long-project-name-that-nobody-would-ever-want-to-type-by-hand-more-than-once" : "/x/shop-api"
         var copy = session("p4", shop, .terminal, daysAgo: 3, minutes: 58, state: .stopped, title: long ? "Очень длинное название сессии, которое Claude придумал сам и которое не помещается ни в одну колонку таблицы" : "Починить оплату")
         copy.place = GitPlace(branch: "fix/payments", isSeparateCopy: true, mainFolder: shop, folderName: "payments")
+        let inner = WorkNode(id: "p7b", kind: .subagent, parentId: "p7a", title: "Проверка схемы", state: .finished, contextTokens: 8_100)
+        var broken = session(pastBroken, shop, .vsCode, daysAgo: 5, minutes: 12, state: .failed, title: "Перенос базы", children: [WorkNode(id: "p7a", kind: .subagent, parentId: pastBroken, title: "Разбор миграций", state: .stopped, contextTokens: 31_000, children: [inner])])
+        broken.root.failure = FailureInfo(failureClass: .limit, resets: "18:40")
         return [
             session("p1", shop, .terminal, daysAgo: 1, minutes: 92, title: "Обновить зависимости", children: (1...4).map { WorkNode(id: "p1a\($0)", kind: .subagent, state: .finished) }),
             session("p2", shop, .vsCode, daysAgo: 2, minutes: 22, title: "Проверка заказов"),
             session("p3", shop, .vsCode, daysAgo: 3.2, minutes: 47),
             copy,
             session("p5", shop, .vsCode, daysAgo: 4, minutes: 34, state: .interrupted),
+            broken,
             session("p6", shop, .vsCode, daysAgo: 12, minutes: 6),
             session("e2", "/x/landing", .claudeDesktop, daysAgo: 2, minutes: 15),
             session("d9", "/x/boris", .terminal, daysAgo: 1.5, minutes: 40),
@@ -166,6 +171,7 @@ enum DevProjects {
         add("p4", ago: 3, 420_000)
         add("p5", ago: 4, 290_000)
         add("p6", ago: 12, 40_000)
+        add(pastBroken, ago: 5, 75_000)
         add(working, ago: 0, 1_750_000)
         add("d9", ago: 1, 3_110_000)
         add("e1", ago: 0, 24_000)

@@ -16,4 +16,9 @@ public struct GitPlace: Sendable, Equatable {
     }
 
     public var label: String? { branch ?? folderName }
+
+    /// The same copy, even when its branch was read at different moments or not at all.
+    public func isSameCopy(as other: GitPlace) -> Bool {
+        isSeparateCopy == other.isSeparateCopy && mainFolder == other.mainFolder && folderName == other.folderName
+    }
 }

@@ -170,7 +170,8 @@ private struct ProjectList: View {
                 TableCell(text: WorkFormat.tokens(projects.reduce(0) { $0 + $1.today.total }), trailing: true, font: .system(size: 12, weight: .semibold).monospacedDigit())
             }
             TableCell(text: WorkFormat.tokens(projects.reduce(0) { $0 + $1.inPeriod.total }), trailing: true, font: .system(size: 12, weight: .semibold).monospacedDigit())
-            TableCell(text: "\(projects.reduce(0) { $0 + $1.failures })", trailing: true, font: .system(size: 12, weight: .semibold).monospacedDigit(), color: Palette.redText)
+            let failures = projects.reduce(0) { $0 + $1.failures }
+            TableCell(text: "\(failures)", trailing: true, font: .system(size: 12, weight: .semibold).monospacedDigit(), color: failures > 0 ? Palette.redText : Palette.text2)
             Color.clear
         }
         .padding(.horizontal, 12)

@@ -9,6 +9,7 @@ public actor SessionHistory {
         let modified: Date?
         let info: SessionInfo
         let outcome: WorkState
+        let failure: FailureInfo?
         let place: GitPlace?
     }
 
@@ -54,6 +55,7 @@ public actor SessionHistory {
                 var session = session
                 session.root = Self.settled(session.root)
                 session.root.state = known[session.id]?.outcome ?? .finished
+                session.root.failure = known[session.id]?.failure
                 session.state = session.root.state
                 return session
             }
@@ -67,14 +69,16 @@ public actor SessionHistory {
         info.title = TranscriptReader.title(in: file)
         info.contextTokens = tail.usage?.context
         info.model = tail.model
-        return Known(modified: modified, info: info, outcome: outcome(tail), place: GitPlaceReader.place(folder: origin.cwd, branch: tail.gitBranch ?? origin.gitBranch))
+        let ended = outcome(tail)
+        return Known(modified: modified, info: info, outcome: ended, failure: ended == .failed ? FailureClassifier.classify(tail.lastMessage) : nil, place: GitPlaceReader.place(folder: origin.cwd, branch: tail.gitBranch ?? origin.gitBranch))
     }
 
-    /// How the session ended, from the last thing in its log.
+    /// How the session ended, from its last message. Claude's own records come after it, and a log without any message has nothing to say.
     private static func outcome(_ tail: TranscriptReader.Tail) -> WorkState {
-        if tail.last?.isApiError == true { return .failed }
-        if tail.turnEnded || tail.last == nil { return .finished }
-        return tail.last?.text?.hasPrefix("[Request interrupted") == true ? .stopped : .interrupted
+        guard let last = tail.lastMessage else { return .finished }
+        if last.isApiError { return .failed }
+        if tail.turnEnded { return .finished }
+        return last.text?.hasPrefix("[Request interrupted") == true ? .stopped : .interrupted
     }
 
     /// Whatever had not finished when its session ended will never finish now.

@@ -49,11 +49,11 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
-        model.setLookingClosely(true)
+        model.setLookingClosely(true, from: .mainWindow)
     }
 
     func windowWillClose(_ notification: Notification) {
-        model.setLookingClosely(false)
+        model.setLookingClosely(false, from: .mainWindow)
     }
 }
 

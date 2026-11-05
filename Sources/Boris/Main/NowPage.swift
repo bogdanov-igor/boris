@@ -15,6 +15,9 @@ struct NowPage: View {
         let digest = NowDigest(model.work, now: model.now)
         if !model.world.claudeFolderFound {
             FolderMissing(model: model)
+        } else if !model.loaded {
+            // Before the first scan nothing is known, which is not the same as nothing going on.
+            Color.clear
         } else if digest.isQuiet, model.requestCount == 0 {
             idle
         } else {

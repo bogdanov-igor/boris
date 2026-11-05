@@ -96,6 +96,25 @@ struct AgentTreeTests {
         #expect(phases.allSatisfy { $0.isAhead })
     }
 
+    @Test("План с одной и той же фазой дважды даёт одну строку")
+    func repeatedPhaseInPlan() {
+        let phases = workflow([agent("a", phase: "Поиск")], phases: ["Поиск", "Поиск", "Итог"]).phases
+        #expect(phases.map(\.title) == ["Поиск", "Итог"])
+        #expect(phases.first?.total == 1)
+    }
+
+    @Test("Единственная безымянная фаза знает, что она одна, а рядом с именованными нет")
+    func onlyPhase() {
+        func isOnly(_ node: WorkNode) -> [Bool] {
+            AgentTree.rows(root: WorkNode(id: "s", kind: .main, children: [node]), expanded: []).compactMap { row in
+                if case .phase(let phase, _, let only) = row.content, phase.title == nil { return only }
+                return nil
+            }
+        }
+        #expect(isOnly(workflow([agent("a", phase: nil)], phases: [nil])) == [true])
+        #expect(isOnly(workflow([agent("a", phase: nil), agent("b", phase: "Поиск")], phases: ["Поиск"])) == [false])
+    }
+
     @Test("Агенты без фазы не теряются")
     func noPhase() {
         let phases = workflow([agent("a", phase: nil), agent("b", phase: "Поиск")], phases: ["Поиск"]).phases
@@ -179,6 +198,21 @@ struct NowDigestTests {
         #expect(result.isQuiet)
     }
 
+    @Test("Сессия, закончившаяся ошибкой API, это сбой с причиной, а не «Claude Code закрылся»")
+    func sessionError() throws {
+        var broken = session(state: .failed)
+        broken.title = "Перенос базы"
+        broken.root.failure = FailureInfo(failureClass: .limit, resets: "18:40")
+        let failure = try #require(digest(broken).failures.first)
+        #expect(failure.source == .sessionError)
+        #expect(broken.failureCount == 1)
+        #expect(WorkPhrases.failureName(failure, mode: .simple) == "Перенос базы")
+        #expect(WorkPhrases.failure(failure, mode: .simple) == "The limit ran out, it resets at 18:40")
+        #expect(WorkPhrases.failure(failure, mode: .technical) == "Limit, resets at 18:40")
+        let unknown = try #require(session(state: .failed).failures.first)
+        #expect(WorkPhrases.failure(unknown, mode: .simple) == "Something went wrong")
+    }
+
     @Test("Остановленный workflow это не сбой")
     func stoppedIsNotFailure() {
         let run = RunState(runId: "wf", sessionId: "s", name: "x", status: .stopped, lastWrite: now)
@@ -221,6 +255,7 @@ struct WorkflowWordsTests {
         #expect(WorkPhrases.workflowName("wf_123", mode: .simple) == "A big task")
         #expect(WorkPhrases.workflowName("wf_123", mode: .technical) == "wf_123")
         #expect(WorkPhrases.workflowName(nil, mode: .technical) == "Workflow")
+        #expect(WorkPhrases.workflowName("", mode: .technical) == "Workflow")
         #expect(WorkPhrases.workflowName("deps-audit", mode: .simple) == "Deps audit")
         #expect(WorkPhrases.workflowName("deps-audit", mode: .technical) == "deps-audit")
         #expect(WorkPhrases.workflowName("Аудит зависимостей", mode: .simple) == "Аудит зависимостей")
@@ -229,6 +264,7 @@ struct WorkflowWordsTests {
     @Test("Имя агента не повторяет фазу из заголовка над ним")
     func agentName() {
         #expect(WorkPhrases.agentName(WorkNode(id: "a", kind: .workflowAgent, title: "search:form", phase: "Search")) == "form")
+        #expect(WorkPhrases.agentName(WorkNode(id: "a", kind: .workflowAgent, title: "search:", phase: "Search")) == "search:")
         #expect(WorkPhrases.agentName(WorkNode(id: "a", kind: .main)) == "Main agent")
         #expect(WorkPhrases.agentName(WorkNode(id: "a", kind: .subagent, agentType: "scout")) == "scout")
         #expect(WorkPhrases.agentName(WorkNode(id: "a", kind: .fork)) == "Fork")
@@ -291,5 +327,9 @@ struct WorkPeriodTests {
         #expect(cowork.projectPath == nil)
         let plain = WorkSession(id: "s", cwd: "/x/app", state: .running, root: root)
         #expect(plain.projectPath == "/x/app")
+        let nameless = WorkSession(id: "abcdefghij", cwd: "", state: .running, root: root)
+        #expect(nameless.projectPath == nil)
+        #expect(nameless.displayName == "abcdefgh")
+        #expect(!nameless.nameIsFolder)
     }
 }

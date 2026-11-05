@@ -67,7 +67,7 @@ public enum WorkBuilder {
         }
         let place = world.places[id]
         for index in nodes.indices {
-            if let own = world.places[nodes[index].id], own.isSeparateCopy, own != place { nodes[index].place = own }
+            if let own = world.places[nodes[index].id], own.isSeparateCopy, place?.isSameCopy(as: own) != true { nodes[index].place = own }
         }
 
         let root = WorkNode(

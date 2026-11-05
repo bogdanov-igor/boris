@@ -19,11 +19,11 @@ struct AgentTreeLine: View {
         switch row.content {
         case .agent(let node):
             let inner = row.edge == .none ? 0 : CGFloat(row.depth - row.cardDepth) * Self.indent
-            carded(AgentLine(model: model, node: node, waitingFor: waitingFor).padding(.leading, inner))
+            carded(AgentLine(model: model, node: node, waitingFor: waitingFor, trailing: row.edge == .none ? 8 : 4).padding(.leading, inner))
         case .workflow(let node):
             carded(WorkflowLine(model: model, node: node))
-        case .phase(let phase, let workflowId):
-            carded(PhaseLine(model: model, phase: phase, workflowId: workflowId))
+        case .phase(let phase, let workflowId, let isOnly):
+            carded(PhaseLine(model: model, phase: phase, workflowId: workflowId, isOnly: isOnly))
         }
     }
 
@@ -82,6 +82,8 @@ private struct AgentLine: View {
     @Bindable var model: AppModel
     var node: WorkNode
     var waitingFor: WaitingReason?
+    /// In a card its right edge lines up with the card's other lines, whose numbers are next to it.
+    var trailing: CGFloat = 8
     @State private var hovering = false
 
     private var mode: DisplayMode { model.settings.displayMode }
@@ -116,6 +118,7 @@ private struct AgentLine: View {
                             .font(.system(size: 12.5, weight: node.kind == .main ? .semibold : .medium))
                             .lineLimit(1)
                             .truncationMode(.tail)
+                            .help(WorkPhrases.agentName(node))
                         if let place = node.place, place.isSeparateCopy { CopyBadge(place: place, mode: mode) }
                         Spacer(minLength: 4)
                         if let tokens {
@@ -141,7 +144,8 @@ private struct AgentLine: View {
                     }
                 }
             }
-            .padding(.horizontal, 8)
+            .padding(.leading, 8)
+            .padding(.trailing, trailing)
             .padding(.vertical, 5)
             .background(RoundedRectangle(cornerRadius: DesignMetrics.radiusMedium).fill(selected ? Palette.fill2 : hovering ? Palette.fill1 : .clear))
             .contentShape(Rectangle())
@@ -182,6 +186,7 @@ private struct WorkflowLine: View {
                         .font(.system(size: 12.5, weight: .semibold))
                         .lineLimit(1)
                         .truncationMode(.tail)
+                        .help(WorkPhrases.workflowName(node.title, mode: mode))
                     if let place = node.place, place.isSeparateCopy { CopyBadge(place: place, mode: mode) }
                     Spacer(minLength: 4)
                     Text(([WorkPhrases.agents(details.total)] + (spent.map { [WorkFormat.tokens($0)] } ?? [])).joined(separator: " · "))
@@ -221,10 +226,12 @@ private struct PhaseLine: View {
     @Bindable var model: AppModel
     var phase: WorkflowPhase
     var workflowId: String
+    var isOnly: Bool
     @State private var hovering = false
 
     private var key: String { AgentTree.phaseKey(workflow: workflowId, phase: phase.title) }
     private var open: Bool { model.expandedPhases.contains(key) }
+    private var title: String { phase.title ?? (isOnly ? L("agents") : L("no phase")) }
 
     var body: some View {
         let summary = PhaseWords.summary(phase)
@@ -236,11 +243,12 @@ private struct PhaseLine: View {
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(phase.isAhead ? Palette.text3 : Palette.text2)
                     .frame(width: 10)
-                Text(phase.title ?? L("no phase"))
+                Text(title)
                     .font(.system(size: 12, weight: phase.isCurrent ? .semibold : .regular))
                     .foregroundStyle(phase.title == nil ? Palette.text2 : Palette.text1)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    .help(title)
                 Spacer(minLength: 4)
                 Text(summary.text)
                     .font(.system(size: 11).monospacedDigit())

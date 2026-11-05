@@ -180,6 +180,43 @@ struct SessionHistoryTests {
         #expect(await SessionHistory(paths: ClaudePaths(root: folder.url)).sessions().first?.state == state)
     }
 
+    /// Claude writes its own records after the last message of a real log, so the very last line is almost never a message.
+    private static let serviceRecords = [#"{"type":"queue-operation","operation":"dequeue"}"#, #"{"type":"cost-state"}"#, #"{"type":"last-prompt"}"#].joined(separator: "\n")
+
+    @Test("Итог не меняют служебные записи после последнего сообщения", arguments: [
+        (#"{"type":"assistant","message":{"stop_reason":"end_turn"}}"#, WorkState.finished),
+        (#"{"type":"user","message":{"role":"user","content":[{"type":"text","text":"[Request interrupted by user for tool use]"}]}}"#, .stopped),
+        (#"{"type":"assistant","isApiErrorMessage":true,"message":{"stop_reason":"stop_sequence","content":[{"type":"text","text":"API Error"}]}}"#, .failed),
+        (#"{"type":"assistant","message":{"stop_reason":"tool_use","content":[{"type":"tool_use","id":"t","name":"Bash","input":{}}]}}"#, .interrupted),
+    ])
+    func outcomesUnderServiceRecords(end: String, state: WorkState) async {
+        let folder = TempFolder()
+        folder.write("projects/p/one.jsonl", transcript(cwd: "/x/app", end: end + "\n" + Self.serviceRecords))
+        #expect(await SessionHistory(paths: ClaudePaths(root: folder.url)).sessions().first?.state == state)
+    }
+
+    @Test("Лог без единого сообщения это не оборвавшаяся сессия и не сбой")
+    func noMessages() async throws {
+        let folder = TempFolder()
+        folder.write("projects/p/one.jsonl", #"{"type":"system","cwd":"/x/app","entrypoint":"cli"}"# + "\n" + #"{"type":"permission-mode"}"# + "\n")
+        let session = try #require(await SessionHistory(paths: ClaudePaths(root: folder.url)).sessions().first)
+        #expect(session.state == .finished)
+        #expect(session.failures.isEmpty)
+    }
+
+    @Test("Сессия на ошибке лимита показывает сбой с причиной и сбросом")
+    func brokenSessionSaysWhy() async throws {
+        let folder = TempFolder()
+        let error = #"{"type":"assistant","isApiErrorMessage":true,"error":"rate_limit","message":{"stop_reason":"stop_sequence","content":[{"type":"text","text":"You've hit your limit · resets 6:40pm"}]}}"#
+        folder.write("projects/p/one.jsonl", transcript(cwd: "/x/app", end: error + "\n" + Self.serviceRecords))
+        let session = try #require(await SessionHistory(paths: ClaudePaths(root: folder.url)).sessions().first)
+        let failure = try #require(session.failures.first)
+        #expect(session.failures.count == 1)
+        #expect(failure.source == .sessionError)
+        #expect(failure.cause == .limit)
+        #expect(failure.resets == "6:40pm")
+    }
+
     @Test("Незаконченный агент прошлой сессии не выглядит работающим")
     func nothingRunsInThePast() async {
         let folder = TempFolder()
@@ -520,6 +557,21 @@ struct ProjectBookTests {
         #expect(merged.map(\.id).sorted() == ["fresh", "idle", "live"])
         #expect(merged.first { $0.id == "live" }?.state == .running)
         #expect(merged.first { $0.id == "idle" }?.title == "из лога")
+    }
+
+    @Test("Законченная сессия без лога уходит из списка, как только логи прочитаны, а закончившаяся после чтения остаётся")
+    func deletedLogLeavesTheList() {
+        let work = WorkModel(projects: [WorkProject(path: "/x/app", sessions: [
+            session("live", "/x/app", state: .running, ago: 3600),
+            session("deleted", "/x/app", ago: 3600),
+            session("kept", "/x/app", ago: 3600),
+            session("fresh", "/x/app", ago: 5),
+        ])])
+        let logs = [session("kept", "/x/app", ago: 3600)]
+        let read = now.addingTimeInterval(-60)
+        #expect(ProjectBook.sessions(work: work, past: logs, logsReadAt: read).map(\.id).sorted() == ["fresh", "kept", "live"])
+        // Until the logs have been read, nothing can be said about them.
+        #expect(ProjectBook.sessions(work: work, past: []).map(\.id).sorted() == ["deleted", "fresh", "kept", "live"])
     }
 
     @Test("Книга токенов складывает по сессиям, агентам и запускам")

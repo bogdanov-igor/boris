@@ -33,6 +33,11 @@ enum ProjectsRoute: Hashable {
     case session(String)
 }
 
+/// A surface that wants fresh data while it is open.
+enum LookingSurface {
+    case mainWindow, miniWindow
+}
+
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general, sources, surfaces, notifications, connections, about
 
@@ -61,10 +66,12 @@ final class AppModel {
     private var board = MoodBoard()
     private var engine: WorkEngine?
     private var tokensVersion = -1
-    private var lookingClosely = false
+    private var surfacesOpen: Set<LookingSurface> = []
     private var focusedRuns: Set<String> = []
     private var pastRead = Date.distantPast
     private var pastReading = false
+    /// Grows when the engine changes, so that a read from the old folder is not taken for a read from the new one.
+    private var pastGeneration = 0
 
     private(set) var work = WorkModel()
     private(set) var world = WorldSnapshot(takenAt: Date())
@@ -133,6 +140,7 @@ final class AppModel {
         }
         self.engine = engine
         Task { await engine.start() }
+        if !surfacesOpen.isEmpty { sendFocus() }
         hooks.refresh()
     }
 
@@ -140,6 +148,11 @@ final class AppModel {
     func restartEngine() {
         let old = engine
         Task { await old?.stop() }
+        pastGeneration += 1
+        pastSessions = []
+        pastLoaded = false
+        pastReading = false
+        pastRead = .distantPast
         start()
     }
 
@@ -147,17 +160,24 @@ final class AppModel {
         Task { await engine?.noteWake(at: Date()) }
     }
 
-    /// Open windows get fresher data, and closed ones cost nothing.
-    func setLookingClosely(_ closely: Bool) {
-        lookingClosely = closely
-        Task { [focusedRuns] in await engine?.setFocus(runs: focusedRuns, lookingClosely: closely) }
+    /// Open windows get fresher data, and closed ones cost nothing. Closing one says nothing about the other.
+    func setLookingClosely(_ closely: Bool, from surface: LookingSurface = .mainWindow) {
+        if closely { surfacesOpen.insert(surface) } else { surfacesOpen.remove(surface) }
+        sendFocus()
     }
 
     /// The runs and agents of an open session are read more often. Closing the page gives that up.
     func focus(on runs: Set<String>) {
         guard runs != focusedRuns else { return }
         focusedRuns = runs
-        setLookingClosely(lookingClosely)
+        sendFocus()
+    }
+
+    /// A session is open only in the main window, and a closed window keeps its page, so its runs count only while it is open.
+    private func sendFocus() {
+        let runs = surfacesOpen.contains(.mainWindow) ? focusedRuns : []
+        let closely = !surfacesOpen.isEmpty
+        Task { await engine?.setFocus(runs: runs, lookingClosely: closely) }
     }
 
     private func receive(_ signal: HookSignal) {
@@ -177,7 +197,7 @@ final class AppModel {
             tokens = output.tokens
             spendIndex = SpendIndex(output.tokens)
         }
-        if page == .projects { refreshPastSessions() }
+        if page == .projects, surfacesOpen.contains(.mainWindow) { refreshPastSessions() }
         today = Self.spent(on: output.at, in: tokens)
 
         var changed = state.runs != output.runMemory || state.detector != output.detectorMemory
@@ -224,7 +244,7 @@ final class AppModel {
     func miniWindowDidOpen() {
         board.acknowledge()
         refreshPresence()
-        setLookingClosely(true)
+        setLookingClosely(true, from: .miniWindow)
     }
 
     func startQuiet(for duration: TimeInterval) {
@@ -263,29 +283,32 @@ final class AppModel {
 
     /// Reads the logs for past sessions, at most twice a minute: a log that Claude has deleted leaves the list soon after.
     func refreshPastSessions() {
-        guard let engine, !pastReading, Date().timeIntervalSince(pastRead) >= 30 else { return }
+        let began = Date()
+        guard let engine, !pastReading, began.timeIntervalSince(pastRead) >= 30 else { return }
         pastReading = true
         let owner = WeakModel(self)
+        let generation = pastGeneration
         Task.detached(priority: .utility) {
             let sessions = await engine.pastSessions()
-            await MainActor.run { owner.model?.pastSessionsRead(sessions) }
+            await MainActor.run { owner.model?.pastSessionsRead(sessions, at: began, generation: generation) }
         }
     }
 
-    private func pastSessionsRead(_ sessions: [WorkSession]) {
+    private func pastSessionsRead(_ sessions: [WorkSession], at began: Date, generation: Int) {
+        guard generation == pastGeneration else { return }
         pastSessions = sessions
         pastLoaded = true
         pastReading = false
-        pastRead = Date()
+        pastRead = began
     }
 
     /// Every session there is: what works from the live scan, the rest from the logs.
     var allSessions: [WorkSession] {
-        ProjectBook.sessions(work: work, past: pastSessions)
+        ProjectBook.sessions(work: work, past: pastSessions, logsReadAt: pastLoaded ? pastRead : nil)
     }
 
     func session(_ id: String) -> WorkSession? {
-        work.sessions.first { $0.id == id && $0.state.isActive } ?? pastSessions.first { $0.id == id } ?? work.sessions.first { $0.id == id }
+        allSessions.first { $0.id == id }
     }
 
     // MARK: - What the screens ask

@@ -57,11 +57,18 @@ public struct ProjectSummary: Sendable, Equatable, Identifiable {
 
 public enum ProjectBook {
     /// What is at work comes from the live scan, the rest from the logs. A session that ended a moment ago may not be in the logs' list yet.
-    public static func sessions(work: WorkModel, past: [WorkSession]) -> [WorkSession] {
+    /// One that ended before the logs were read and is not among them has had its log deleted, whatever the live scan still remembers.
+    /// - Parameter logsReadAt: when the logs were last read. Nil until they have been.
+    public static func sessions(work: WorkModel, past: [WorkSession], logsReadAt: Date? = nil) -> [WorkSession] {
         let active = work.sessions.filter(\.state.isActive)
         let activeIds = Set(active.map(\.id))
         let pastIds = Set(past.map(\.id))
-        return active + past.filter { !activeIds.contains($0.id) } + work.sessions.filter { !$0.state.isActive && !pastIds.contains($0.id) }
+        let newer = work.sessions.filter { session in
+            guard !session.state.isActive, !pastIds.contains(session.id) else { return false }
+            guard let logsReadAt else { return true }
+            return (session.lastActivity ?? session.startedAt ?? .distantPast) > logsReadAt
+        }
+        return active + past.filter { !activeIds.contains($0.id) } + newer
     }
 
     /// Every project with something to show in the period: who waits for the person or has failures first, those without a folder last.

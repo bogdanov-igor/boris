@@ -189,7 +189,7 @@ public struct WorkSession: Sendable, Equatable, Identifiable {
     /// The project this session belongs to: the main copy for a separate copy, and none for Cowork, whose folder lives inside a virtual machine.
     public var projectPath: String? {
         if environment == .cowork { return nil }
-        return place?.mainFolder ?? cwd
+        return place?.mainFolder ?? cwd.flatMap { $0.isEmpty ? nil : $0 }
     }
 
     /// Agents busy right now, whatever started them. A workflow is a script, so it is not one of them.

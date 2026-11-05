@@ -19,9 +19,8 @@ extension WorkPhrases {
 
     /// `Silktrace final verify` for `silktrace-final-verify`. An id is not a name.
     public static func workflowName(_ raw: String?, mode: DisplayMode) -> String {
-        guard let raw, !raw.isEmpty, !raw.hasPrefix("wf_") else {
-            return mode == .simple ? L("A big task") : (raw ?? L("Workflow"))
-        }
+        guard let raw, !raw.isEmpty else { return mode == .simple ? L("A big task") : L("Workflow") }
+        guard !raw.hasPrefix("wf_") else { return mode == .simple ? L("A big task") : raw }
         guard mode == .simple, !raw.contains(" ") else { return raw }
         let words = raw.split(whereSeparator: { $0 == "-" || $0 == "_" }).joined(separator: " ")
         return words.prefix(1).uppercased() + words.dropFirst()
@@ -48,7 +47,7 @@ extension WorkPhrases {
         switch failure.source {
         case .session:
             return simple ? "\(L("Cut off")): \(L("Claude Code closed"))" : "\(L("Interrupted")) · \(L("Claude Code closed"))"
-        case .agent:
+        case .sessionError, .agent:
             return simple ? hint(failure.cause, resets: failure.resets) : capitalized(cause(failure.cause, resets: failure.resets, mode: mode))
         case .workflow(let status, let failed, let total):
             let word = workflow(status, mode: mode)
@@ -78,7 +77,7 @@ extension WorkPhrases {
     /// Who it is, for a list of failures.
     public static func failureName(_ failure: WorkFailure, mode: DisplayMode) -> String {
         switch failure.source {
-        case .session:
+        case .session, .sessionError:
             return failure.name ?? L("Session")
         case .workflow:
             return workflowName(failure.name, mode: mode)
@@ -103,7 +102,8 @@ extension WorkPhrases {
         if node.kind == .main { return L("Main agent") }
         guard let title = node.title, !title.isEmpty else { return node.agentType ?? agentKind(node.kind) }
         guard let phase = node.phase, title.lowercased().hasPrefix(phase.lowercased() + ":") else { return title }
-        return String(title.dropFirst(phase.count + 1))
+        let rest = title.dropFirst(phase.count + 1)
+        return rest.isEmpty ? title : String(rest)
     }
 
     /// The second line of a row in the tree.

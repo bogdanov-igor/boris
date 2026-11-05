@@ -119,7 +119,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     func popoverDidClose(_ notification: Notification) {
-        model.setLookingClosely(false)
+        model.setLookingClosely(false, from: .miniWindow)
     }
 
     private func showContextMenu() {

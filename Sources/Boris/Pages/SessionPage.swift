@@ -156,7 +156,8 @@ private struct SessionContent: View {
         return HStack(alignment: .top, spacing: 24) {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(L("Now")).font(.system(size: 12)).foregroundStyle(Palette.text2)
+                    // A session that has ended is not doing anything «now», it is only known how it ended.
+                    Text(session.state.isActive ? L("Now") : L("Outcome")).font(.system(size: 12)).foregroundStyle(Palette.text2)
                     Text(WorkPhrases.occupation(session, mode: .simple))
                         .font(.system(size: 20, weight: .semibold))
                         .lineLimit(2)
