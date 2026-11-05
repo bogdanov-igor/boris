@@ -15,11 +15,14 @@ public struct WardrobeSettings: Codable, Sendable, Equatable {
     /// Month and day only: the year is never needed.
     public var userBirthday: MonthDay?
     public var firstLaunch: Date?
+    /// The pack in use instead of the built-in walrus, by its folder on the shelf.
+    public var pack: String?
 
-    public init(mode: WardrobeMode = .byDate, userBirthday: MonthDay? = nil, firstLaunch: Date? = nil) {
+    public init(mode: WardrobeMode = .byDate, userBirthday: MonthDay? = nil, firstLaunch: Date? = nil, pack: String? = nil) {
         self.mode = mode
         self.userBirthday = userBirthday
         self.firstLaunch = firstLaunch
+        self.pack = pack
     }
 }
 
