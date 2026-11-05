@@ -164,6 +164,10 @@ private struct PageContent: View {
                 Text(model.page.title).font(.system(size: 18, weight: .semibold))
                 Text(subtitle).font(.system(size: 12)).foregroundStyle(Palette.text2).lineLimit(1)
                 Spacer(minLength: 0)
+                if model.page == .spend {
+                    SpendHeaderControls(usage: model.usage)
+                        .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 5 }
+                }
             }
             .padding(.horizontal, 24)
             .frame(height: 52)

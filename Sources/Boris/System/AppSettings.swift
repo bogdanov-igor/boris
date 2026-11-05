@@ -39,6 +39,9 @@ final class AppSettings {
     var longTurnMinutes: Int { didSet { defaults?.set(longTurnMinutes, forKey: "longTurnMinutes") } }
     var usageLow: Int { didSet { defaults?.set(usageLow, forKey: "usageLow") } }
     var usageHigh: Int { didSet { defaults?.set(usageHigh, forKey: "usageHigh") } }
+    /// Fresh limits come from starting Claude Code for a moment, so this can be turned off.
+    var usageRefreshEnabled: Bool { didSet { defaults?.set(usageRefreshEnabled, forKey: "usageRefreshEnabled") } }
+    var usageRefreshMinutes: Int { didSet { defaults?.set(usageRefreshMinutes, forKey: "usageRefreshMinutes") } }
 
     init(defaults: UserDefaults? = .standard) {
         self.defaults = defaults
@@ -57,6 +60,8 @@ final class AppSettings {
         longTurnMinutes = defaults?.object(forKey: "longTurnMinutes") as? Int ?? 5
         usageLow = defaults?.object(forKey: "usageLow") as? Int ?? 80
         usageHigh = defaults?.object(forKey: "usageHigh") as? Int ?? 95
+        usageRefreshEnabled = defaults?.object(forKey: "usageRefreshEnabled") as? Bool ?? true
+        usageRefreshMinutes = defaults?.object(forKey: "usageRefreshMinutes") as? Int ?? 15
         Localizer.use(language)
         NSApp?.appearance = theme.appearance
     }

@@ -199,6 +199,12 @@ public struct TokenBook: Sendable {
         reports[period] ?? PeriodReport()
     }
 
+    /// True when the logs go back further than the chart of this period does. The sums still hold everything.
+    public func chartLeavesOutDays(_ period: UsagePeriod) -> Bool {
+        guard period == .all, let earliestDay, case .day(let first)? = report(period).chartDays.first?.key else { return false }
+        return earliestDay < first
+    }
+
     public func spent(onDay day: String) -> TokenUsage {
         days[day] ?? TokenUsage()
     }

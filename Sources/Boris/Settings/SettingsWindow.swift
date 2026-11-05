@@ -286,6 +286,7 @@ private struct ConnectionSettings: View {
         if let problem {
             Text(problem).font(.system(size: 11.5)).foregroundStyle(Palette.redText)
         }
+        UsageRefreshSettings(model: model)
         SettingsGroup(title: L("Diagnostics")) {
             checkRow(L("Claude's folder"), ok: status.claudeFolderFound, text: status.claudeFolderFound ? L("in order") : L("not found"))
             checkRow(L("File reading"), ok: !status.problems.contains(.filesUnreadable), text: status.problems.contains(.filesUnreadable) ? L("cannot read") : WorkFormat.ago(model.now.timeIntervalSince(status.lastRead)))

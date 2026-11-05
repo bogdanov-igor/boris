@@ -179,8 +179,12 @@ struct TokenBookTests {
         #expect(book.report(.today).chartDays.count == 1)
         #expect(book.report(.all).chartDays.count == 180)
         #expect(book.report(.all).chartDays.last?.key == .day("2026-11-05"))
-        // A chart can be cut, a sum cannot.
+        // A chart can be cut, a sum cannot, and the page has to say so.
         #expect(book.report(.all).usage.total == 200)
+        #expect(book.chartLeavesOutDays(.all))
+        #expect(!book.chartLeavesOutDays(.week))
+        #expect(!self.book([record(day: "2026-11-01"), record(day: "2026-11-05")]).chartLeavesOutDays(.all))
+        #expect(!self.book([]).chartLeavesOutDays(.all))
     }
 
     @Test("Дата из будущего не попадает в сегодня и неделю, но не теряется")

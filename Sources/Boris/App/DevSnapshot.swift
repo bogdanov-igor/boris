@@ -81,9 +81,11 @@ enum DevSnapshot {
         case now, projects, spend, requests, activity, losses, walrus, mini
         case general, sources, surfaces, notifications, connections, about
         case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
+        case spendUltra, spendTeam, spendGateway, spendApiKey, spendExtraOff, spendExtraNoLimit, spendFilling, spendFailed, spendZero, spendAncient
+        case spendProjects, spendModels, spendPlaces, spendAgents, spendToday, spendMonth, spendEverything
 
         var page: AppPage? {
-            AppPage(rawValue: rawValue)
+            DevUsageData.Scenario(rawValue: rawValue) != nil ? .spend : AppPage(rawValue: rawValue)
         }
 
         var section: SettingsSection? {
@@ -100,6 +102,7 @@ enum DevSnapshot {
         let model = AppModel(settings: settings, store: nil, live: false)
         let connect = ConnectFlow()
         data.fill(model)
+        DevUsageData.Scenario(rawValue: screen.rawValue)?.fill(model)
         if let page = screen.page { model.page = page }
         if let section = screen.section { model.settingsSection = section }
 

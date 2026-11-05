@@ -78,6 +78,10 @@ public enum DesignTokens {
     public static let monoBackground = TokenPair(blackAlpha: 0.05, whiteAlpha: 0.07)
     public static let meter = TokenPair(0x55555A, 0xB0B0B6)
     public static let meterTrack = TokenPair(blackAlpha: 0.09, whiteAlpha: 0.12)
+    public static let chartInput = TokenPair(0x3F6FC2, 0x6F9BEA)
+    public static let chartOutput = TokenPair(0x8558C9, 0xB08BEA)
+    public static let chartCacheRead = TokenPair(0x9FB4D3, 0x5B6E8C)
+    public static let chartCacheWrite = TokenPair(0x5F6F84, 0x9AA9BD)
 
     public static let statusRunning = TokenPair(0x1A6F75, 0x5CC0C6)
     public static let statusSmoke = TokenPair(0x8A8A92, 0x82828A)
