@@ -8,7 +8,7 @@ import SwiftUI
 enum DevSnapshot {
     static var isRequested: Bool {
         #if DEBUG
-        ProcessInfo.processInfo.environment["BORIS_SNAPSHOT"] != nil
+        ProcessInfo.processInfo.environment["BORIS_SNAPSHOT"] != nil || ProcessInfo.processInfo.environment["BORIS_WALRUS_CPU"] != nil
         #else
         false
         #endif
@@ -40,6 +40,7 @@ enum DevSnapshot {
     static func runIfRequested() -> Bool {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
+        if WalrusDev.measureIfRequested() { return true }
         guard let folder = environment["BORIS_SNAPSHOT"] else { return false }
         try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
         func list(_ key: String, _ all: [String]) -> [String] {
@@ -81,6 +82,7 @@ enum DevSnapshot {
         case now, projects, spend, requests, activity, losses, walrus, mini
         case general, sources, surfaces, notifications, connections, about
         case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
+        case walrusThemes, walrusPacks, walrusError, walrusLine, walrusSurfaces
 
         var page: AppPage? {
             AppPage(rawValue: rawValue)
@@ -100,6 +102,7 @@ enum DevSnapshot {
         let model = AppModel(settings: settings, store: nil, live: false)
         let connect = ConnectFlow()
         data.fill(model)
+        WalrusDev.dress(model)
         if let page = screen.page { model.page = page }
         if let section = screen.section { model.settingsSection = section }
 
@@ -109,6 +112,9 @@ enum DevSnapshot {
         case .mini:
             view = AnyView(MiniWindowView(model: model, openMain: {}))
             canvas = CGSize(width: 360, height: 0)
+        case .walrusSurfaces:
+            view = AnyView(WalrusDev.surfaces(model))
+            canvas = CGSize(width: 720, height: 280)
         case .general, .sources, .surfaces, .notifications, .connections, .about, .license:
             view = AnyView(SettingsView(model: model, connect: connect, actions: SettingsActions()))
             canvas = size ?? CGSize(width: 760, height: 720)
@@ -133,6 +139,10 @@ enum DevSnapshot {
                 data.fill(model, issues: [.unknownJournalEvent("x")])
             case .folderMissing:
                 data.fill(model, folderFound: false)
+            case .walrusThemes, .walrusPacks, .walrusError, .walrusLine:
+                WalrusDev.prepare(screen.rawValue, model: model, long: data == .long, empty: data == .empty)
+            case .walrus:
+                WalrusDev.prepare("walrus", model: model, long: data == .long, empty: data == .empty)
             default:
                 break
             }

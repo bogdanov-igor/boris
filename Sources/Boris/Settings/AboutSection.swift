@@ -53,7 +53,7 @@ struct AboutSection: View {
         ScrollView {
             VStack(spacing: 14) {
                 VStack(spacing: 2) {
-                    WalrusView(mood: .sleeping, outfit: model.outfit, size: 120)
+                    WalrusView(pose: .watch, outfit: model.outfit, size: 120)
                     Text(verbatim: "Boris").font(.system(size: 20, weight: .bold)).padding(.top, 6)
                     Text(L("Version %@", version)).font(.system(size: 12)).foregroundStyle(Palette.text2)
                 }

@@ -27,11 +27,14 @@ struct MiniWindowView: View {
         }
         .frame(width: 360)
         .background(Palette.pop)
+        .overlay(alignment: .topLeading) {
+            WalrusLineOverlay(stage: model.walrus, tail: .up, maxWidth: 300).padding(EdgeInsets(top: 58, leading: 14, bottom: 0, trailing: 0))
+        }
     }
 
     private var header: some View {
         HStack(spacing: 10) {
-            WalrusView(mood: model.mood, outfit: model.outfit, size: 40, style: .simple)
+            WalrusView(mood: model.mood, outfit: model.outfit, size: 40, style: .simple, stage: model.walrus) { _ = model.pokeWalrus() }
             VStack(alignment: .leading, spacing: 1) {
                 Text(headline.title)
                     .font(.system(size: 13, weight: .semibold))

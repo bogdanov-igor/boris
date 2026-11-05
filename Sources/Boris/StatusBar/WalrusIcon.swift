@@ -58,6 +58,7 @@ final class WalrusIcon {
     private var moving = false
     private var mood: Mood?
     private var outfit = Outfit.none
+    private var pack: WalrusPack?
     private var timer: Timer?
     private var phase = 0.0
     private var lastTick = Date()
@@ -73,6 +74,14 @@ final class WalrusIcon {
         frameView.setAccessibilityElement(false)
         button.addSubview(frameView, positioned: .below, relativeTo: nil)
         watchVisibility()
+    }
+
+    /// A pack's icon is a still template for each state, so all the rules below still hold: it just never moves.
+    func use(_ pack: WalrusPack?) {
+        guard pack != self.pack else { return }
+        self.pack = pack
+        frames = [:]
+        refresh()
     }
 
     func show(_ mood: Mood, outfit: Outfit) {
@@ -91,7 +100,7 @@ final class WalrusIcon {
     }
 
     private var mayMove: Bool {
-        guard let mood else { return false }
+        guard let mood, pack == nil else { return false }
         return PoseName(mood: mood).movesInMenuBar && hidden.isEmpty && !reduceMotion
     }
 
@@ -162,6 +171,10 @@ final class WalrusIcon {
 
     private func image(_ frame: Frame) -> NSImage {
         if let known = frames[frame] { return known }
+        if let pack, let icon = WalrusArt.shared.trayIcon(pack, pose: frame.name) {
+            frames[frame] = icon
+            return icon
+        }
         let pose = pose(frame)
         let image = NSImage(size: Renderer.iconPoints)
         for scale in [2, 1] {

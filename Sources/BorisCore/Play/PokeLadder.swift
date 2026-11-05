@@ -178,6 +178,11 @@ public struct Play: Sendable, Equatable {
         start(.yawn, now: now)
     }
 
+    /// Plays a reaction on request, as the Walrus page does.
+    public mutating func perform(_ act: Act, now: Date) {
+        start(act, now: now)
+    }
+
     public mutating func say(_ line: PlayLine, now: Date) {
         self.line = line
         lineEnd = now.addingTimeInterval(Self.lineFor)

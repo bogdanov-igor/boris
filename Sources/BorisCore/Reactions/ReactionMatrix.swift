@@ -27,14 +27,15 @@ public struct ReactionMatrix: Codable, Sendable, Equatable {
     public static func defaultReaction(_ kind: EventKind) -> Reaction {
         switch kind {
         case .completed: return Reaction(banner: true, sound: false, mood: .happy)
-        case .completedWithErrors, .allAgentsFailed, .failed, .interrupted: return Reaction(banner: true, sound: true, mood: .alarm)
+        case .completedWithErrors: return Reaction(banner: true, sound: true, mood: .hmm)
+        case .allAgentsFailed, .failed, .interrupted: return Reaction(banner: true, sound: true, mood: .alarm)
         case .stopped: return Reaction(banner: true, sound: false, mood: .hmm)
         case .silent: return Reaction(banner: true, sound: false, mood: .alert)
         case .waiting: return Reaction(banner: true, sound: true, mood: .watching)
-        case .sessionFinished: return Reaction(banner: true, sound: false, mood: .none)
+        case .sessionFinished: return Reaction(banner: true, sound: false, mood: .happy)
         case .limitReached: return Reaction(banner: true, sound: true, mood: .tired)
         case .limitNear: return Reaction(banner: true, sound: false, mood: .none)
-        case .sessionError: return Reaction(banner: true, sound: true, mood: .alert)
+        case .sessionError: return Reaction(banner: true, sound: true, mood: .alarm)
         }
     }
 

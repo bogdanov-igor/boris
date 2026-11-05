@@ -85,6 +85,11 @@ public struct ConnectionStatus: Sendable, Equatable {
         }
     }
 
+    /// Boris cannot read, or the connection the person made has stopped working. Hooks turned off on purpose are not broken.
+    public var isBroken: Bool {
+        problems.contains { $0 != .hooksDisabledInSettings && $0 != .hooksDisabledByPolicy }
+    }
+
     public var problems: [Problem] {
         var found: [Problem] = []
         if !claudeFolderFound { found.append(.claudeFolderMissing) }

@@ -7,13 +7,6 @@ enum MainPhrases {
     static func sessionsAtWork(_ count: Int) -> String {
         count == 1 ? L("%lld session at work", count) : L("%lld sessions at work", count)
     }
-
-    /// Until the walrus has his own lines, this says plainly how things are.
-    static func walrusLine(waiting: Int, working: Int) -> String {
-        if waiting > 0 { return L("%lld waiting for you", waiting) }
-        if working > 0 { return sessionsAtWork(working) }
-        return L("Quiet. Time to get something done.")
-    }
 }
 
 @MainActor
@@ -52,6 +45,10 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         model.setLookingClosely(true)
     }
 
+    func windowDidBecomeKey(_ notification: Notification) {
+        model.acknowledgeAlarm()
+    }
+
     func windowWillClose(_ notification: Notification) {
         model.setLookingClosely(false)
     }
@@ -80,6 +77,9 @@ struct MainWindowView: View {
                 ConnectSheet(model: model, connect: connect)
             }
         }
+        .overlay(alignment: .bottomLeading) {
+            WalrusLineOverlay(stage: model.walrus).padding(EdgeInsets(top: 0, leading: 218, bottom: 110, trailing: 0))
+        }
         .background(Palette.window)
         .foregroundStyle(Palette.text1)
         .ignoresSafeArea()
@@ -107,16 +107,8 @@ private struct Sidebar: View {
             }
             item(L("Settings"), selected: false, badge: 0) { openSettings(.general) }
             Spacer(minLength: 8)
-            VStack(spacing: 6) {
-                WalrusView(mood: model.mood, outfit: model.outfit, size: 170)
-                Text(MainPhrases.walrusLine(waiting: model.requestCount, working: model.activeSessions.count))
-                    .font(.system(size: 12))
-                    .foregroundStyle(Palette.text2)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.bottom, 10)
+            SidebarWalrus(model: model, openAbout: { openSettings(.about) })
+                .padding(.bottom, 10)
             ChoiceBar(options: [(DisplayMode.simple, L("Simple")), (DisplayMode.technical, L("Technical"))], selection: mode, label: L("View"), stretches: true)
         }
         .padding(EdgeInsets(top: 10, leading: 10, bottom: 12, trailing: 10))
@@ -163,7 +155,9 @@ private struct PageContent: View {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(model.page.title).font(.system(size: 18, weight: .semibold))
                 Text(subtitle).font(.system(size: 12)).foregroundStyle(Palette.text2).lineLimit(1)
+                if model.page == .walrus { WalrusPageTabs(model: model) }
                 Spacer(minLength: 0)
+                if model.page == .walrus { WalrusImportButton(model: model) }
             }
             .padding(.horizontal, 24)
             .frame(height: 52)
