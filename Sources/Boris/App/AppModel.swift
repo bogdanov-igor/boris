@@ -57,8 +57,9 @@ final class AppModel {
     private var board = MoodBoard()
     private var engine: WorkEngine?
     private var tokensVersion = -1
-    private var tokens: [TokenRecord] = []
 
+    let usage = UsageModel()
+    let usageRefresher: UsageRefresher
     private(set) var work = WorkModel()
     private(set) var world = WorldSnapshot(takenAt: Date())
     private(set) var runs: [RunState] = []
@@ -94,6 +95,7 @@ final class AppModel {
         packShelf = WalrusPackShelf(folder: (store?.folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("boris-memory")).appendingPathComponent("Packs", isDirectory: true))
         WalrusArt.shared.pack = packShelf.pack(id: settings.wardrobe.pack)
         notifications = NotificationHub(settings: settings, live: live)
+        usageRefresher = UsageRefresher(settings: settings)
         var loaded = store?.loadState() ?? AppState()
         if loaded.firstLaunch == nil {
             loaded.firstLaunch = Date()
@@ -106,6 +108,10 @@ final class AppModel {
         }
         hooks.onSignal = { [weak self] signal in self?.receive(signal) }
         load.sessions = { [weak self] in self?.sessionProcesses ?? [:] }
+        usage.onBuilt = { [weak self] in self?.tokensAddedUp() }
+        usageRefresher.onFinished = { [weak self] in
+            Task { await self?.engine?.usageChanged() }
+        }
     }
 
     func start() {
@@ -150,18 +156,22 @@ final class AppModel {
     }
 
     private func apply(_ output: WorkEngine.Output) {
-        work = output.model
+        work = usage.book?.applied(to: output.model) ?? output.model
         world = output.world
         runs = output.runs
         hookState = output.hooks
         tokenProgress = output.tokenProgress
         now = output.at
         loaded = true
+        usage.progress = output.tokenProgress
         if output.tokensVersion != tokensVersion {
             tokensVersion = output.tokensVersion
-            tokens = output.tokens
+            // Version zero means the first pass over the logs is not done, which is different from finding nothing.
+            if tokensVersion > 0 { usage.read(output.tokens) }
         }
-        today = Self.spent(on: output.at, in: tokens)
+        usage.noteTime(output.at)
+        today = usage.spentToday(output.at)
+        usageRefresher.refreshIfDue(now: output.at, liveSessions: output.world.sessions.count, account: output.world.account, fetchedAt: output.world.usage?.fetchedAt)
 
         var changed = state.runs != output.runMemory || state.detector != output.detectorMemory
         state.runs = output.runMemory
@@ -177,7 +187,7 @@ final class AppModel {
             // Do not disturb silences his reactions too. His pose keeps telling the truth.
             if !quietDuringScan { walrus.hear(event) }
             if let run = output.runs.first(where: { $0.runId == event.runId }), run.status.isTerminal {
-                state.awards.record(run.status, today: Self.dayKey(output.at))
+                state.awards.record(run.status, today: UsageModel.dayKey(output.at))
             }
             changed = true
         }
@@ -193,16 +203,10 @@ final class AppModel {
         refreshPresence()
     }
 
-    static func spent(on date: Date, in records: [TokenRecord]) -> TokenUsage {
-        let key = dayKey(date)
-        return records.lazy.filter { $0.day == key }.reduce(TokenUsage()) { $0 + $1.usage }
-    }
-
-    private static func dayKey(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
+    /// The sums were added up off the main thread, and now the numbers on the screens can use them.
+    private func tokensAddedUp() {
+        today = usage.spentToday(now)
+        if let book = usage.book { work = book.applied(to: work) }
     }
 
     func refreshPresence() {
@@ -210,7 +214,7 @@ final class AppModel {
         now = date
         hasAlarm = board.hasAlarm
         mood = board.mood(work: work, usage: world.usage, limitPercent: Double(settings.usageHigh), broken: loaded && connectionStatus.isBroken, matrix: settings.matrix, now: date)
-        outfit = Wardrobe.outfit(at: date, settings: settings.wardrobe, rewardParty: state.awards.hasParty(today: Self.dayKey(date)))
+        outfit = Wardrobe.outfit(at: date, settings: settings.wardrobe, rewardParty: state.awards.hasParty(today: UsageModel.dayKey(date)))
         walrus.upsideDown = settings.wardrobe.mode == .byDate && Wardrobe.isAprilFools(date)
         onPresenceChange?()
     }
@@ -266,8 +270,6 @@ final class AppModel {
     }
 
     // MARK: - What the screens ask
-
-    var tokenRecords: [TokenRecord] { tokens }
 
     /// Sessions waiting for the person, together with requests that are held here.
     var requestCount: Int {

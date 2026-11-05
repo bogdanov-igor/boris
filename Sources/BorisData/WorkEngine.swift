@@ -24,6 +24,11 @@ public actor WorkEngine {
     public struct TokenProgress: Sendable, Equatable {
         public var done: Int
         public var total: Int
+
+        public init(done: Int, total: Int) {
+            self.done = done
+            self.total = total
+        }
     }
 
     private let paths: ClaudePaths
@@ -239,13 +244,14 @@ public actor WorkEngine {
         let roots = [paths] + others()
         let index = index
         let engine = self
+        // What a cache brought back has to go out too, even when the logs did not change since.
+        let firstPass = tokensVersion == 0
         Task.detached(priority: .utility) {
-            await index.update(roots: roots) { done, total in
+            let changed = await index.update(roots: roots) { done, total in
                 guard done == total || done % 50 == 0 else { return }
                 Task { await engine.noteProgress(done: done, total: total) }
             }
-            let records = await index.records()
-            await engine.tokensRead(records)
+            await engine.tokensRead(changed || firstPass ? await index.records() : nil)
         }
     }
 
@@ -265,9 +271,12 @@ public actor WorkEngine {
         tokenProgress = TokenProgress(done: done, total: total)
     }
 
-    private func tokensRead(_ records: [TokenRecord]) {
-        tokens = records
-        tokensVersion += 1
+    /// - Parameter records: nil when nothing changed. Those who add the numbers up then have nothing to do.
+    private func tokensRead(_ records: [TokenRecord]?) {
+        if let records {
+            tokens = records
+            tokensVersion += 1
+        }
         tokenProgress = nil
         indexing = false
         if tokensChanged { planTokenRead(after: Self.indexInterval) }

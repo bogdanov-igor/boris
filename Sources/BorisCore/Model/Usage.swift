@@ -28,10 +28,12 @@ public struct UsageWindow: Sendable, Equatable, Identifiable {
 public struct UsageSnapshot: Sendable, Equatable {
     public var fetchedAt: Date?
     public var windows: [UsageWindow]
+    public var extra: ExtraSpend
 
-    public init(fetchedAt: Date? = nil, windows: [UsageWindow] = []) {
+    public init(fetchedAt: Date? = nil, windows: [UsageWindow] = [], extra: ExtraSpend = .noData) {
         self.fetchedAt = fetchedAt
         self.windows = windows
+        self.extra = extra
     }
 
     /// Age to show, only when the cache is older than half an hour.

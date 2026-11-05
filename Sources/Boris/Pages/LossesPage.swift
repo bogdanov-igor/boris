@@ -17,7 +17,7 @@ struct LossesPage: View {
                             KindsCard(book: book)
                             VStack(spacing: 10) {
                                 LostTokensCard(tokens: book.lostTokens)
-                                SpendCard(book: book)
+                                LossSpendCard(book: book)
                             }
                             .frame(maxHeight: .infinity, alignment: .top)
                         }
@@ -266,7 +266,7 @@ private struct LostTokensCard: View {
     }
 }
 
-private struct SpendCard: View {
+private struct LossSpendCard: View {
     var book: LossBook
 
     private static let skillsShown = 5

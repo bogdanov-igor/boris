@@ -87,9 +87,11 @@ enum DevSnapshot {
         case notchClosed, notchOpen, panelClosed, panelOpen, surfacesLast, surfacesHotKey, surfacesGone
         case lossesReading, lossesFiltered, lossesNothingMatches
         case notificationsQuiet, notificationsBot, notificationsOffline, notificationsConnect, notificationsPreview, quietRequests
+        case spendUltra, spendTeam, spendGateway, spendGatewayBudget, spendApiKey, spendExtraOff, spendExtraNoLimit, spendFilling, spendFailed, spendZero, spendAncient
+        case spendProjects, spendModels, spendPlaces, spendAgents, spendToday, spendMonth, spendEverything
 
         var page: AppPage? {
-            AppPage(rawValue: rawValue)
+            DevUsageData.Scenario(rawValue: rawValue) != nil ? .spend : AppPage(rawValue: rawValue)
         }
 
         var section: SettingsSection? {
@@ -110,6 +112,7 @@ enum DevSnapshot {
         data.fill(model)
         WalrusDev.dress(model)
         NotificationSnapshots.prepare(screen.rawValue, model: model)
+        DevUsageData.Scenario(rawValue: screen.rawValue)?.fill(model)
         if let page = screen.page { model.page = page }
         if let section = screen.section { model.settingsSection = section }
 

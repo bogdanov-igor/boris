@@ -82,6 +82,10 @@ public enum DesignTokens {
     public static let notch = TokenPair(0x000000, 0x000000)
     /// The panel that stands in for the notch on a screen without one.
     public static let panel = TokenPair(0xF6F6F7, 0x1C1C1E)
+    public static let chartInput = TokenPair(0x3F6FC2, 0x6F9BEA)
+    public static let chartOutput = TokenPair(0x8558C9, 0xB08BEA)
+    public static let chartCacheRead = TokenPair(0x9FB4D3, 0x5B6E8C)
+    public static let chartCacheWrite = TokenPair(0x5F6F84, 0x9AA9BD)
 
     public static let statusRunning = TokenPair(0x1A6F75, 0x5CC0C6)
     public static let statusSmoke = TokenPair(0x8A8A92, 0x82828A)

@@ -40,7 +40,7 @@ struct NowPage: View {
                 .foregroundStyle(Palette.text2)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 380)
-            Text(L("Tokens today: %@", WorkFormat.tokens(model.today.total)))
+            Text(L("Tokens today: %@", model.usage.todayText(model.today)))
                 .font(.system(size: 12).monospacedDigit())
                 .foregroundStyle(Palette.text3)
         }
@@ -82,8 +82,10 @@ struct NowPage: View {
         VStack(alignment: .leading, spacing: 16) {
             card {
                 Text(L("Tokens today")).font(.system(size: 12)).foregroundStyle(Palette.text2)
-                Text(WorkFormat.tokens(model.today.total)).font(.system(size: 24, weight: .semibold).monospacedDigit())
-                if mode == .technical {
+                Text(model.usage.todayText(model.today))
+                    .font(model.usage.book != nil ? .system(size: 24, weight: .semibold).monospacedDigit() : .system(size: 15).italic())
+                    .foregroundStyle(model.usage.book != nil ? Palette.text1 : Palette.text3)
+                if mode == .technical, model.usage.book != nil {
                     Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
                         GridRow { detail(L("Input"), model.today.input); detail(L("Output"), model.today.output) }
                         GridRow { detail(L("Cache, read"), model.today.cacheRead); detail(L("Cache, write"), model.today.cacheWrite) }

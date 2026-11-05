@@ -161,6 +161,10 @@ private struct PageContent: View {
                 Spacer(minLength: 0)
                 if model.page == .walrus { WalrusImportButton(model: model) }
                 if model.page == .losses { LossPeriodBar(store: model.losses) }
+                if model.page == .spend {
+                    SpendHeaderControls(usage: model.usage)
+                        .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 5 }
+                }
             }
             .padding(.horizontal, 24)
             .frame(height: 52)

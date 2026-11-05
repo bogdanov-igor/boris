@@ -42,6 +42,9 @@ final class AppSettings {
     var surfaces: SurfaceSwitches { didSet { save(surfaces, "surfaces") } }
     var surfaceScreen: SurfaceScreenChoice { didSet { save(surfaceScreen, "surfaceScreen") } }
     var notifications: NotificationPreferences { didSet { save(notifications, "notifications") } }
+    /// Fresh limits come from starting Claude Code for a moment, so this can be turned off.
+    var usageRefreshEnabled: Bool { didSet { defaults?.set(usageRefreshEnabled, forKey: "usageRefreshEnabled") } }
+    var usageRefreshMinutes: Int { didSet { defaults?.set(usageRefreshMinutes, forKey: "usageRefreshMinutes") } }
 
     init(defaults: UserDefaults? = .standard) {
         self.defaults = defaults
@@ -63,6 +66,8 @@ final class AppSettings {
         surfaces = Self.load(defaults, "surfaces") ?? SurfaceSwitches()
         surfaceScreen = Self.load(defaults, "surfaceScreen") ?? .followCursor
         notifications = Self.load(defaults, "notifications") ?? NotificationPreferences()
+        usageRefreshEnabled = defaults?.object(forKey: "usageRefreshEnabled") as? Bool ?? true
+        usageRefreshMinutes = defaults?.object(forKey: "usageRefreshMinutes") as? Int ?? 15
         Localizer.use(language)
         NSApp?.appearance = theme.appearance
     }

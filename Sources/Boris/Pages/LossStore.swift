@@ -61,7 +61,7 @@ final class LossStore {
     private func publish(_ model: AppModel) async {
         let chosen = period
         let live = Set(model.world.sessions.map(\.sessionId))
-        let fresh = await index.book(period: chosen, tokens: model.tokenRecords, live: live, now: Date())
+        let fresh = await index.book(period: chosen, tokens: model.usage.records, live: live, now: Date())
         if chosen == period, fresh != book { book = fresh }
     }
 

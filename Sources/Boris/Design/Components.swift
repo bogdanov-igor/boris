@@ -293,7 +293,8 @@ struct LimitsBlock: View {
                         Text(Self.title(window)).foregroundStyle(Palette.text2).lineLimit(1)
                         Meter(percent: window.percent, height: compact ? 4 : 5).frame(minWidth: 50)
                         Text(WorkFormat.percent(window.percent)).fontWeight(.semibold).monospacedDigit()
-                        Text(window.resetsAt.map { WorkFormat.resets($0, now: now) } ?? "").font(.system(size: 11)).foregroundStyle(Palette.text3).lineLimit(1)
+                        // The bar gives way, since the day of the reset is what must be read in full.
+                        Text(window.resetsAt.map { WorkFormat.resets($0, now: now) } ?? "").font(.system(size: 11)).foregroundStyle(Palette.text3).lineLimit(1).fixedSize()
                     }
                 }
             }

@@ -56,9 +56,11 @@ struct MiniWindowView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(L("Tokens today")).font(.system(size: 12)).foregroundStyle(Palette.text2)
                 Spacer(minLength: 8)
-                Text(WorkFormat.tokens(model.today.total)).font(.system(size: 12, weight: .semibold).monospacedDigit())
+                Text(model.usage.todayText(model.today))
+                    .font(model.usage.book != nil ? .system(size: 12, weight: .semibold).monospacedDigit() : .system(size: 12).italic())
+                    .foregroundStyle(model.usage.book != nil ? Palette.text1 : Palette.text3)
             }
-            if mode == .technical {
+            if mode == .technical, model.usage.book != nil {
                 HStack(spacing: 4) {
                     breakdown(L("in %@", WorkFormat.tokens(model.today.input)))
                     breakdown(L("out %@", WorkFormat.tokens(model.today.output)))

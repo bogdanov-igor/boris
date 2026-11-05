@@ -123,6 +123,7 @@ public struct WorldSnapshot: Sendable, Equatable {
     /// Ordinary agents, outside workflows.
     public var agents: [AgentSnapshot] = []
     public var usage: UsageSnapshot?
+    public var account = ClaudeAccount.unknown
     public var claudeFolderFound: Bool
     public var formatIssues: Set<FormatIssue>
     /// What ordinary sessions spent since the previous scan.

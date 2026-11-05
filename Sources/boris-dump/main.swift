@@ -4,7 +4,8 @@ import Foundation
 
 // Prints what Boris sees right now, without any interface. The text of prompts, commands and results is never printed.
 // `boris-dump` looks at the work, `boris-dump tokens` adds up the logs, `boris-dump losses` adds up what went wrong, using the cache in `BORIS_STATE_DIR` if it is set,
-// `boris-dump load` shows the load on this Mac by group, and with a number takes that many readings 3 seconds apart.
+// `boris-dump load` shows the load on this Mac by group, and with a number takes that many readings 3 seconds apart,
+// and `boris-dump limits` reads the limits. Money is never printed, only percent.
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let paths = ClaudePaths.resolve()
@@ -24,6 +25,34 @@ func tokens() async {
     print("total \(total.total): input \(total.input), output \(total.output), cache read \(total.cacheRead), cache write \(total.cacheWrite)")
     let byDay = Dictionary(grouping: records, by: \.day).mapValues { $0.reduce(0) { $0 + $1.usage.total } }
     for day in byDay.keys.sorted().suffix(5) { print("  \(day): \(byDay[day] ?? 0)") }
+    let byModel = Dictionary(grouping: records, by: { $0.model ?? "?" }).mapValues { $0.reduce(0) { $0 + $1.usage.total } }
+    for model in byModel.keys.sorted() {
+        print("  \(model): \(byModel[model] ?? 0)\(PriceTable.price(for: model) == nil ? " (no price)" : "")")
+    }
+    let building = clock.now
+    let book = TokenBook(records: records, now: Date())
+    print("records \(records.count), book built in \(clock.now - building), all time ≈ $\(Int(book.report(.all).estimate.dollars))")
+}
+
+func limits() {
+    guard let profile = UsageReader.profile(paths.profile, settings: paths.settings) else {
+        print("profile: cannot be read")
+        return
+    }
+    print("account: \(profile.account)")
+    guard let usage = profile.usage else {
+        print("limits: none reported")
+        return
+    }
+    print("limits, fetched \(usage.fetchedAt.map { "\(Int(Date().timeIntervalSince($0) / 60)) min ago" } ?? "?"):")
+    for window in usage.windows {
+        print("  \(window.id): \(String(format: "%.1f", window.percent))%")
+    }
+    switch usage.extra {
+    case .noData: print("extra: no data")
+    case .off: print("extra: off")
+    case .on(let used, let limit, _): print("extra: on, \(limit.map { String(format: "%.1f%% of the limit", used / $0 * 100) } ?? "no limit")")
+    }
 }
 
 func losses() async {
@@ -80,8 +109,7 @@ func work() async {
         let age = usage.fetchedAt.map { "\(Int(Date().timeIntervalSince($0) / 60)) min ago" } ?? "?"
         print("limits, fetched \(age):")
         for window in usage.windows {
-            let dollars = window.usedDollars.map { String(format: " · $%.2f of $%.2f", $0, window.limitDollars ?? 0) } ?? ""
-            print("  \(window.id): \(String(format: "%.1f", window.percent))%\(dollars)")
+            print("  \(window.id): \(String(format: "%.1f", window.percent))%")
         }
     }
     if !output.world.formatIssues.isEmpty { print("format issues: \(output.world.formatIssues)") }
@@ -123,6 +151,8 @@ if arguments.first == "tokens" {
     await load()
 } else if arguments.first == "losses" {
     await losses()
+} else if arguments.first == "limits" {
+    limits()
 } else {
     await work()
 }

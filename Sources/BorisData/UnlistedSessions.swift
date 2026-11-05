@@ -24,6 +24,7 @@ struct UnlistedSessions {
 
     /// Picks up transcripts in a project folder written since launch.
     mutating func look(in project: URL, now: Date) {
+        guard project.lastPathComponent != BorisPaths.usageProbeProject else { return }
         for name in FileInfo.names(in: project) where name.hasSuffix(".jsonl") {
             notice(session: String(name.dropLast(".jsonl".count)), transcript: project.appendingPathComponent(name), now: now, needsFreshFile: true)
         }

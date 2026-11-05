@@ -9,7 +9,7 @@ enum DevData: String {
 
     func fill(_ model: AppModel, offer: Bool = false, issues: Set<FormatIssue> = [], folderFound: Bool = true) {
         let now = Date()
-        let world = WorldSnapshot(
+        var world = WorldSnapshot(
             takenAt: now,
             usage: self == .empty ? nil : UsageSnapshot(fetchedAt: now.addingTimeInterval(-720), windows: [
                 UsageWindow(id: "five_hour", kind: .fiveHour, percent: 62, resetsAt: now.addingTimeInterval(8000)),
@@ -18,6 +18,9 @@ enum DevData: String {
             claudeFolderFound: folderFound,
             formatIssues: issues
         )
+        world.account = self == .empty ? .unknown : .signedIn
+        world.usage?.extra = .on(used: 12.4, limit: 50, currency: "USD")
+        model.usage.showForSnapshot(book: DevUsageData.book(for: self, now: now))
         let tokens = self == .empty ? TokenUsage() : TokenUsage(input: 520_000, output: 60_000, cacheRead: 1_170_000, cacheWrite: 90_000)
         let mood: Mood = self == .empty ? .sleeping : .waiting
         model.showForSnapshot(work: work(now: now), world: world, today: tokens, mood: mood, offer: offer)

@@ -1,30 +1,6 @@
 import BorisCore
 import Foundation
 
-/// What one transcript spent on one day with one model.
-public struct TokenRecord: Sendable, Equatable {
-    public var sessionId: String
-    /// Nil for the main agent's own transcript.
-    public var agentId: String?
-    public var runId: String?
-    public var cwd: String?
-    public var entrypoint: String?
-    public var day: String
-    public var model: String?
-    public var usage: TokenUsage
-
-    public init(sessionId: String, agentId: String? = nil, runId: String? = nil, cwd: String? = nil, entrypoint: String? = nil, day: String, model: String? = nil, usage: TokenUsage) {
-        self.sessionId = sessionId
-        self.agentId = agentId
-        self.runId = runId
-        self.cwd = cwd
-        self.entrypoint = entrypoint
-        self.day = day
-        self.model = model
-        self.usage = usage
-    }
-}
-
 /// Real spend from every transcript Claude still keeps.
 ///
 /// It reads only what was added since last time and remembers that in a cache file. The file holds nothing but numbers and ids,
@@ -210,8 +186,9 @@ public actor TokenIndex {
     /// The main transcript comes before its subagents, so a fork's repeats are the ones left out.
     static func transcripts(in roots: [ClaudePaths]) -> [URL] {
         var files: [URL] = []
+        let hidden = BorisPaths.usageProbeProject
         for root in roots {
-            for project in FileInfo.names(in: root.projects) where !project.hasPrefix(".") {
+            for project in FileInfo.names(in: root.projects) where !project.hasPrefix(".") && project != hidden {
                 let folder = root.projects.appendingPathComponent(project)
                 for name in FileInfo.names(in: folder) where !name.hasPrefix(".") {
                     let item = folder.appendingPathComponent(name)

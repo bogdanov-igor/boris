@@ -69,6 +69,8 @@ public enum WorkBuilder {
             title: info?.displayName,
             state: ownState,
             step: info?.currentStep,
+            contextTokens: info?.contextTokens,
+            model: info?.model,
             children: tree(nodes, rootId: id)
         )
         let waitingFor = WaitingReason(info?.waitingFor)

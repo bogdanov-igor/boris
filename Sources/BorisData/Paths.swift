@@ -92,6 +92,19 @@ public enum BorisPaths {
     public static var usageProbeFolder: URL {
         support.appendingPathComponent("usage-probe", isDirectory: true)
     }
+
+    /// The folder Claude Code keeps the transcripts of that place in: every character but letters and digits becomes a dash.
+    public static var usageProbeProject: String {
+        String(usageProbeFolder.path.unicodeScalars.map { $0.isASCII && CharacterSet.alphanumerics.contains($0) ? Character($0) : "-" })
+    }
+
+    /// Claude Code reports the folder with symlinks resolved, and the one it was given may have them, as in `/tmp`.
+    public static func isUsageProbe(cwd: String?) -> Bool {
+        guard let cwd, cwd.hasSuffix("usage-probe") || cwd.hasSuffix("usage-probe/") else { return false }
+        let own = usageProbeFolder
+        return URL(fileURLWithPath: cwd).standardizedFileURL.path == own.standardizedFileURL.path
+            || URL(fileURLWithPath: cwd).resolvingSymlinksInPath().path == own.resolvingSymlinksInPath().path
+    }
 }
 
 enum FileInfo {

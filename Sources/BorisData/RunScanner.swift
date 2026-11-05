@@ -63,6 +63,9 @@ public actor RunScanner {
     private var discoverNow = true
     private var lastDiscovery: Date = .distantPast
     private var usage: UsageSnapshot?
+    private var account = ClaudeAccount.unknown
+    /// The main agent's last known context and model. It does not change while a session is idle, so one read is enough then.
+    private var sessionContext: [String: (tokens: Int, model: String?)] = [:]
     private var usageModified: Date?
     private var usageChecked: Date = .distantPast
     private var focusRuns: Set<String> = []
@@ -154,18 +157,30 @@ public actor RunScanner {
             read.sessions += more.sessions
             read.unreadable += more.unreadable
         }
-        let ownFolder = BorisPaths.usageProbeFolder.path
-        var sessions = read.sessions.filter { SessionReader.isLive($0) && $0.cwd != ownFolder }
-        let ended = read.sessions.filter { !SessionReader.isLive($0) && $0.cwd != ownFolder && recentlyActive($0, now: now) }
-        sessions += unlistedSessions(listed: Set(read.sessions.map(\.sessionId)), now: now).filter { $0.cwd != ownFolder }
+        var sessions = read.sessions.filter { SessionReader.isLive($0) && !BorisPaths.isUsageProbe(cwd: $0.cwd) }
+        let ended = read.sessions.filter { !SessionReader.isLive($0) && !BorisPaths.isUsageProbe(cwd: $0.cwd) && recentlyActive($0, now: now) }
+        sessions += unlistedSessions(listed: Set(read.sessions.map(\.sessionId)), now: now).filter { !BorisPaths.isUsageProbe(cwd: $0.cwd) }
         applyTitles(&sessions, now: now)
         for index in sessions.indices where sessions[index].status != "idle" {
             let unnamedTool = WaitingReason(sessions[index].waitingFor) == .permission(tool: nil)
             guard followSessions || unnamedTool, let file = sessionTranscript(sessions[index].sessionId) else { continue }
-            let running = TranscriptReader.tail(file).running
+            let tail = TranscriptReader.tail(file)
+            let running = tail.running
+            if let usage = tail.usage { sessionContext[sessions[index].sessionId] = (usage.context, tail.model) }
             if followSessions { sessions[index].currentStep = running }
             // A request from a workflow agent is not in this file, so its tool stays unnamed.
             if unnamedTool, let tool = running?.tool { sessions[index].waitingFor = "approve \(tool)" }
+        }
+        if followSessions {
+            for index in sessions.indices {
+                let id = sessions[index].sessionId
+                if sessionContext[id] == nil, let file = sessionTranscript(id) {
+                    let tail = TranscriptReader.tail(file)
+                    if let usage = tail.usage { sessionContext[id] = (usage.context, tail.model) }
+                }
+                sessions[index].contextTokens = sessionContext[id]?.tokens
+                sessions[index].model = sessionContext[id]?.model
+            }
         }
         var sessionGrowth = TokenUsage()
         for session in sessions {
@@ -208,6 +223,7 @@ public actor RunScanner {
         let agents = singleAgentSnapshots(sessions: sessions, now: now, tokens: &agentTokens)
 
         var world = WorldSnapshot(takenAt: now, sessions: sessions, runs: snapshots, usage: usage, claudeFolderFound: folderFound, formatIssues: issues)
+        world.account = account
         world.endedSessions = ended
         world.agents = agents
         world.sessionTokenGrowth = sessionGrowth
@@ -575,6 +591,10 @@ public actor RunScanner {
         let modified = FileInfo.modified(paths.profile)
         guard modified != usageModified else { return }
         usageModified = modified
-        usage = UsageReader.read(paths.profile)
+        guard let profile = UsageReader.profile(paths.profile, settings: paths.settings) else { return }
+        // Once something is known, a failed read must not wipe it: the old value stays with its true age.
+        // Without a sign-in it is someone else's limits, and they go.
+        usage = profile.usage ?? (profile.account == .signedIn ? usage : nil)
+        account = profile.account
     }
 }
