@@ -4,7 +4,7 @@ import Foundation
 /// Tells a separate copy of a project from what Claude's logs say, without opening anything in the project.
 ///
 /// Projects often live in ~/Documents, and reading a file there would make macOS ask the person for access.
-/// Looking at whether `.git` is a file or a folder asks nothing, so that is as far as this goes.
+/// So this only looks at whether `.git` is a file or a folder, which is not reading it. That macOS stays silent about that has not been tried on a clean account yet.
 public enum GitPlaceReader {
     /// Where Claude Code itself puts the copies it makes.
     private static let claudeCopies = "/.claude/worktrees/"
