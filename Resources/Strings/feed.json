@@ -1,11 +1,68 @@
 {
+ "%@ s": "%@ с",
+ "A command failed": "Команда не сработала",
+ "A helper failed": "Помощник не справился",
+ "A helper is working on: %@": "Помощник работает: %@",
+ "A step failed": "Шаг не удался",
+ "Agent": "Агент",
+ "All": "Все",
+ "Asked a helper: %@": "Позвал помощника: %@",
+ "Changed %lld file": "Изменил %lld файл",
+ "Changed %lld files": {
+  "few": "Изменил %lld файла",
+  "many": "Изменил %lld файлов",
+  "one": "Изменил %lld файл",
+  "other": "Изменил %lld файла"
+ },
+ "Command": "Команда",
+ "Could not change a file": "Не удалось изменить файл",
+ "Could not get it from the internet": "Не удалось получить данные из интернета",
+ "Could not read a file": "Не удалось прочитать файл",
+ "Looked on the internet": "Искал в интернете",
+ "Looked on the internet %lld times": {
+  "few": "Искал в интернете %lld раза",
+  "many": "Искал в интернете %lld раз",
+  "one": "Искал в интернете %lld раз",
+  "other": "Искал в интернете %lld раза"
+ },
+ "Main agent": "Главный агент",
  "Open Claude Desktop": "Открыть Claude Desktop",
  "Open in Cursor": "Открыть в Cursor",
  "Open in VS Code": "Открыть в VS Code",
  "Open session": "Открыть сессию",
  "Open terminal": "Открыть терминал",
+ "Ran %lld command": "Выполнил %lld команду",
+ "Ran %lld commands": {
+  "few": "Выполнил %lld команды",
+  "many": "Выполнил %lld команд",
+  "one": "Выполнил %lld команду",
+  "other": "Выполнил %lld команды"
+ },
+ "Read": "Чтение",
+ "Read %lld file": "Прочитал %lld файл",
+ "Read %lld files": {
+  "few": "Прочитал %lld файла",
+  "many": "Прочитал %lld файлов",
+  "one": "Прочитал %lld файл",
+  "other": "Прочитал %lld файла"
+ },
+ "Searched the files": "Искал в файлах",
+ "Searched the files %lld times": {
+  "few": "Искал в файлах %lld раза",
+  "many": "Искал в файлах %lld раз",
+  "one": "Искал в файлах %lld раз",
+  "other": "Искал в файлах %lld раза"
+ },
  "Session ID copied.": "Идентификатор сессии скопирован.",
+ "Skill": "Скилл",
+ "Start agent": "Запуск агента",
  "The project folder is gone. Session ID copied.": "Папки проекта больше нет. Идентификатор сессии скопирован.",
+ "The search in the files failed": "Поиск по файлам не сработал",
  "This application is not installed.": "Это приложение не установлено.",
- "This session has no window to open. Session ID copied.": "У этой сессии нет окна, которое можно открыть. Идентификатор сессии скопирован."
+ "This session has no window to open. Session ID copied.": "У этой сессии нет окна, которое можно открыть. Идентификатор сессии скопирован.",
+ "This step did not finish": "Этот шаг не завершён",
+ "Used a skill": "Использовал скилл",
+ "Web search": "Поиск в интернете",
+ "Write": "Запись",
+ "You": "Вы"
 }

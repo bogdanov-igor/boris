@@ -46,6 +46,8 @@ struct LocalizationTests {
     @Test("Без таблицы перевода остаётся ключ на английском")
     func missingTable() {
         Localizer.use(.ru)
+        // Other tests running at the same time read this language, and Russian numbers would fail them.
+        defer { Localizer.use(.en) }
         #expect(L("Hello from a test") == "Hello from a test")
     }
 
