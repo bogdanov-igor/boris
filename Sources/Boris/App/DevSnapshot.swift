@@ -81,6 +81,7 @@ enum DevSnapshot {
         case now, projects, spend, requests, activity, losses, walrus, mini
         case general, sources, surfaces, notifications, connections, about
         case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
+        case notificationsQuiet, notificationsBot, notificationsOffline, notificationsConnect, notificationsPreview, quietRequests
 
         var page: AppPage? {
             AppPage(rawValue: rawValue)
@@ -88,6 +89,7 @@ enum DevSnapshot {
 
         var section: SettingsSection? {
             if self == .license { return .about }
+            if rawValue.hasPrefix("notifications"), self != .notificationsPreview { return .notifications }
             return SettingsSection(rawValue: rawValue)
         }
     }
@@ -100,6 +102,7 @@ enum DevSnapshot {
         let model = AppModel(settings: settings, store: nil, live: false)
         let connect = ConnectFlow()
         data.fill(model)
+        NotificationSnapshots.prepare(screen.rawValue, model: model)
         if let page = screen.page { model.page = page }
         if let section = screen.section { model.settingsSection = section }
 
@@ -109,7 +112,10 @@ enum DevSnapshot {
         case .mini:
             view = AnyView(MiniWindowView(model: model, openMain: {}))
             canvas = CGSize(width: 360, height: 0)
-        case .general, .sources, .surfaces, .notifications, .connections, .about, .license:
+        case .notificationsPreview:
+            view = AnyView(NotificationPreview(long: data == .long))
+            canvas = size ?? CGSize(width: 800, height: 1040)
+        case .general, .sources, .surfaces, .notifications, .connections, .about, .license, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
             view = AnyView(SettingsView(model: model, connect: connect, actions: SettingsActions()))
             canvas = size ?? CGSize(width: 760, height: 720)
         default:

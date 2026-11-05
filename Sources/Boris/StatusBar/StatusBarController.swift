@@ -153,8 +153,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         menu.addItem(withTitle: title, action: action, keyEquivalent: key).target = self
     }
 
-    /// Longer than anyone leaves a Mac on.
-    private static let indefinitely: TimeInterval = 10 * 365 * 24 * 3600
+    private static let indefinitely = QuietMode.indefinitely
 
     @objc private func openMain() { onOpenMain?() }
     @objc private func quietHour() { model.startQuiet(for: 3600) }
