@@ -26,6 +26,13 @@ enum AppPage: String, CaseIterable, Identifiable {
     }
 }
 
+/// Where the page «Projects» is: the list, one project (nil is «No project»), or one session.
+enum ProjectsRoute: Hashable {
+    case list
+    case project(String?)
+    case session(String)
+}
+
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general, sources, surfaces, notifications, connections, about
 
@@ -54,13 +61,20 @@ final class AppModel {
     private var board = MoodBoard()
     private var engine: WorkEngine?
     private var tokensVersion = -1
-    private var tokens: [TokenRecord] = []
+    private var focusedRuns: Set<String> = []
+    private var pastRead = Date.distantPast
+    private var pastReading = false
 
     private(set) var work = WorkModel()
     private(set) var world = WorldSnapshot(takenAt: Date())
     private(set) var runs: [RunState] = []
     private(set) var hookState = HookState()
     private(set) var today = TokenUsage()
+    private(set) var tokens: [TokenRecord] = []
+    private(set) var spendIndex = SpendIndex()
+    /// Every session in Claude's logs. Empty until the page «Projects» first asks.
+    private(set) var pastSessions: [WorkSession] = []
+    private(set) var pastLoaded = false
     private(set) var tokenProgress: WorkEngine.TokenProgress?
     private(set) var loaded = false
     private(set) var mood = Mood.sleeping
@@ -69,11 +83,19 @@ final class AppModel {
     private(set) var quiet: QuietMode
     private(set) var now = Date()
     var page = AppPage.now
+    var projectsRoute = ProjectsRoute.list
+    var projectFilter = ProjectFilter()
+    /// The open phases of workflows, kept while going from page to page.
+    var expandedPhases: Set<String> = []
+    /// The agent the session's feed is limited to. Nil shows all of them.
+    var feedAgent: String?
     var settingsSection = SettingsSection.general
     var showIconNotice = false
     var hotKeyTaken = false
 
     var onPresenceChange: (() -> Void)?
+    /// Brings the main window forward, from wherever a session is being opened.
+    var onShowMainWindow: (() -> Void)?
     var onEvent: ((BorisEvent, Reaction) -> Void)?
 
     /// - Parameter store: nil keeps everything in memory.
@@ -126,7 +148,14 @@ final class AppModel {
 
     /// Open windows get fresher data, and closed ones cost nothing.
     func setLookingClosely(_ closely: Bool) {
-        Task { await engine?.setFocus(runs: [], lookingClosely: closely) }
+        Task { [focusedRuns] in await engine?.setFocus(runs: focusedRuns, lookingClosely: closely) }
+    }
+
+    /// The runs and agents of an open session are read more often. Closing the page gives that up.
+    func focus(on runs: Set<String>) {
+        guard runs != focusedRuns else { return }
+        focusedRuns = runs
+        setLookingClosely(true)
     }
 
     private func receive(_ signal: HookSignal) {
@@ -144,7 +173,9 @@ final class AppModel {
         if output.tokensVersion != tokensVersion {
             tokensVersion = output.tokensVersion
             tokens = output.tokens
+            spendIndex = SpendIndex(output.tokens)
         }
+        if page == .projects { refreshPastSessions() }
         today = Self.spent(on: output.at, in: tokens)
 
         var changed = state.runs != output.runMemory || state.detector != output.detectorMemory
@@ -204,6 +235,55 @@ final class AppModel {
         quiet.cancel()
         state.quiet = quiet
         store?.save(state)
+    }
+
+    // MARK: - Going around
+
+    /// Opens a session from any surface.
+    func openSession(_ id: String) {
+        projectsRoute = .session(id)
+        feedAgent = nil
+        page = .projects
+        refreshPastSessions()
+        onShowMainWindow?()
+    }
+
+    func openProject(_ path: String?) {
+        projectsRoute = .project(path)
+        page = .projects
+    }
+
+    /// Choosing the page one is already on goes back to the top of it.
+    func choose(_ chosen: AppPage) {
+        if chosen == .projects, page == .projects { projectsRoute = .list }
+        page = chosen
+    }
+
+    /// Reads the logs for past sessions, at most twice a minute: a log that Claude has deleted leaves the list soon after.
+    func refreshPastSessions() {
+        guard let engine, !pastReading, Date().timeIntervalSince(pastRead) >= 30 else { return }
+        pastReading = true
+        let owner = WeakModel(self)
+        Task.detached(priority: .utility) {
+            let sessions = await engine.pastSessions()
+            await MainActor.run { owner.model?.pastSessionsRead(sessions) }
+        }
+    }
+
+    private func pastSessionsRead(_ sessions: [WorkSession]) {
+        pastSessions = sessions
+        pastLoaded = true
+        pastReading = false
+        pastRead = Date()
+    }
+
+    /// Every session there is: what works from the live scan, the rest from the logs.
+    var allSessions: [WorkSession] {
+        ProjectBook.sessions(work: work, past: pastSessions)
+    }
+
+    func session(_ id: String) -> WorkSession? {
+        work.sessions.first { $0.id == id && $0.state.isActive } ?? pastSessions.first { $0.id == id } ?? work.sessions.first { $0.id == id }
     }
 
     // MARK: - What the screens ask
@@ -276,6 +356,13 @@ final class AppModel {
         self.outfit = outfit
         loaded = true
         state.connectOfferDismissed = !offer
+    }
+
+    func showProjectsForSnapshot(past: [WorkSession], tokens: [TokenRecord]) {
+        pastSessions = past
+        pastLoaded = true
+        self.tokens = tokens
+        spendIndex = SpendIndex(tokens)
     }
     #endif
 }

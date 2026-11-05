@@ -51,6 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow = settings
 
         statusBar.onOpenMain = { [weak main] in main?.show() }
+        model.onShowMainWindow = { [weak main] in main?.show() }
         statusBar.onOpenSettings = { [weak settings] section in settings?.show(section) }
         main.onOpenSettings = { [weak settings] section in settings?.show(section) }
         actions.applyHotKey = { [weak self] in self?.registerHotKey() }

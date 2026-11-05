@@ -102,7 +102,7 @@ private struct Sidebar: View {
             Color.clear.frame(height: 38)
             ForEach(AppPage.allCases.filter { $0.isShown(in: model.settings.displayMode) }) { page in
                 item(page.title, selected: model.page == page, badge: page == .requests ? model.requestCount : 0) {
-                    model.page = page
+                    model.choose(page)
                 }
             }
             item(L("Settings"), selected: false, badge: 0) { openSettings(.general) }
@@ -160,14 +160,17 @@ private struct PageContent: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(model.page.title).font(.system(size: 18, weight: .semibold))
-                Text(subtitle).font(.system(size: 12)).foregroundStyle(Palette.text2).lineLimit(1)
-                Spacer(minLength: 0)
+            // The page of projects has a header of its own, with the way back and its filters.
+            if model.page != .projects {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(model.page.title).font(.system(size: 18, weight: .semibold))
+                    Text(subtitle).font(.system(size: 12)).foregroundStyle(Palette.text2).lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 24)
+                .frame(height: 52)
+                Rectangle().fill(Palette.separator).frame(height: 1)
             }
-            .padding(.horizontal, 24)
-            .frame(height: 52)
-            Rectangle().fill(Palette.separator).frame(height: 1)
             ConnectionNotices(model: model, connect: connect)
             page.frame(maxWidth: .infinity, maxHeight: .infinity)
         }

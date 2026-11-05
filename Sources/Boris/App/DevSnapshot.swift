@@ -81,6 +81,7 @@ enum DevSnapshot {
         case now, projects, spend, requests, activity, losses, walrus, mini
         case general, sources, surfaces, notifications, connections, about
         case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
+        case project, session, sessionTrouble, sessionGone, bigRun
 
         var page: AppPage? {
             AppPage(rawValue: rawValue)
@@ -133,6 +134,20 @@ enum DevSnapshot {
                 data.fill(model, issues: [.unknownJournalEvent("x")])
             case .folderMissing:
                 data.fill(model, folderFound: false)
+            case .project:
+                model.openProject("/x/shop-api")
+                if data == .long { model.openProject(model.work.projects.first?.path) }
+            case .session:
+                model.openSession(DevProjects.working)
+            case .sessionTrouble:
+                model.openSession(DevProjects.troubled)
+            case .sessionGone:
+                model.openSession("no-such-session")
+            case .bigRun:
+                data.fill(model)
+                model.openSession(DevProjects.big)
+                let phases = model.session(DevProjects.big)?.root.children.first?.phases ?? []
+                model.expandedPhases = Set(phases.map { AgentTree.phaseKey(workflow: "wf_big", phase: $0.title) })
             default:
                 break
             }
@@ -155,7 +170,38 @@ enum DevSnapshot {
             host.cacheDisplay(in: host.bounds, to: picture)
             try? picture.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
         }
+        if ProcessInfo.processInfo.environment["BORIS_MEASURE_SCROLL"] != nil { await measureScroll(in: host) }
         window.orderOut(nil)
+    }
+
+    /// `BORIS_MEASURE_SCROLL=1` goes down the first long list one step at a time and says what each step cost: a frame at 60 Hz has 16 ms.
+    private static func measureScroll(in host: NSView) async {
+        func scrollViews(in view: NSView) -> [NSScrollView] {
+            ((view as? NSScrollView).map { [$0] } ?? []) + view.subviews.flatMap(scrollViews)
+        }
+        guard let scroll = scrollViews(in: host).first(where: { ($0.documentView?.frame.height ?? 0) > $0.frame.height + 1 }) else {
+            print("scroll: nothing long enough to scroll")
+            return
+        }
+        var costs: [Double] = []
+        let clock = ContinuousClock()
+        var y: CGFloat = 0
+        while y < scroll.documentView?.frame.height ?? 0 {
+            let began = clock.now
+            scroll.contentView.scroll(to: NSPoint(x: 0, y: y))
+            scroll.reflectScrolledClipView(scroll.contentView)
+            host.layoutSubtreeIfNeeded()
+            host.displayIfNeeded()
+            let cost = clock.now - began
+            costs.append(Double(cost.components.attoseconds) / 1e15 + Double(cost.components.seconds) * 1000)
+            y += 40
+            // Lets the lazy list bring in what has just come into view, as a real run of the main loop would.
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        costs.sort()
+        let average = costs.reduce(0, +) / Double(max(costs.count, 1))
+        let height = scroll.documentView?.frame.height ?? 0
+        print(String(format: "scroll: list %.0f pt, %d steps, average %.2f ms, 95%% %.2f ms, worst %.2f ms", height, costs.count, average, costs[costs.count * 95 / 100], costs.last ?? 0))
     }
     #endif
 }
