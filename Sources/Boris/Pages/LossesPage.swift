@@ -273,7 +273,8 @@ private struct SpendCard: View {
 
     var body: some View {
         let top = book.skills.prefix(Self.skillsShown)
-        let others = book.skills.dropFirst(Self.skillsShown).reduce(0) { $0 + $1.calls }
+        let rest = book.skills.dropFirst(Self.skillsShown)
+        let others = rest.reduce(0) { $0 + $1.calls }
         LossCard(verticalPadding: 10) {
             Grid(alignment: .leading, horizontalSpacing: 4, verticalSpacing: 3) {
                 GridRow {
@@ -297,6 +298,7 @@ private struct SpendCard: View {
                         Text(L("others")).foregroundStyle(Palette.text2).padding(.leading, 10)
                         count(others).foregroundStyle(Palette.text2)
                     }
+                    .help(LossPhrases.skillCounts(rest))
                 }
                 estimate(L("Tokens on skills"), book.skillTokens)
                 GridRow {
@@ -432,12 +434,13 @@ private struct LossRow: View {
         mode == .simple ? LossPhrases.advice(entry) : LossPhrases.detail(entry)
     }
 
-    /// What is too long or too technical for a row. Nothing here is the text of a prompt or a result.
+    /// All of the row, which a narrow window cuts short, and what is too technical for it. Nothing here is the text of a prompt or a result.
     private var details: String {
-        guard mode == .technical else { return "" }
+        let row = "\(title) · \(detail)"
+        guard mode == .technical else { return row }
         let ids = [entry.sessionId, entry.agentId].compactMap { $0?.prefix(8) }.map(String.init)
         let code = [entry.code, entry.status.map(String.init)].compactMap { $0 }
-        return (ids + code + [entry.rawText].compactMap { $0 }).joined(separator: " · ")
+        return "\(row)\n\((ids + code).joined(separator: " · "))"
     }
 
     var body: some View {
@@ -449,7 +452,7 @@ private struct LossRow: View {
                     .font(.system(size: 12).monospacedDigit())
                     .foregroundStyle(Palette.text2)
                     .lineLimit(1)
-                    .frame(width: 78, alignment: .leading)
+                    .frame(width: 82, alignment: .leading)
                 Text(LossPhrases.kind(entry.kind))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(kindColor)

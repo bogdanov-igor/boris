@@ -105,6 +105,16 @@ struct LossBookTests {
         #expect(result.crashed == 1)
     }
 
+    @Test("Проект или среда, которых нет в этом периоде, ничего не прячут: меню в это время говорит «все»")
+    func filterGoneFromThePeriod() {
+        let entries = [entry("fresh", cwd: "/x/shop-api", entrypoint: "cli"), entry("old", ago: 40, cwd: "/y/boris", entrypoint: "claude-vscode")]
+        let week = book(entries, period: .week)
+        #expect(week.entries(kind: nil, project: "boris", environment: nil).map(\.id) == ["fresh"])
+        #expect(week.entries(kind: nil, project: nil, environment: .vsCode).map(\.id) == ["fresh"])
+        // In a period that has it, the same choice works again.
+        #expect(book(entries).entries(kind: nil, project: "boris", environment: nil).map(\.id) == ["old"])
+    }
+
     @Test("Новые записи идут первыми")
     func order() {
         #expect(book([entry("old", ago: 3), entry("new"), entry("mid", ago: 1)]).entries.map(\.id) == ["new", "mid", "old"])
@@ -164,7 +174,7 @@ struct LossBookTests {
         crash.resets = "2pm"
         #expect(LossPhrases.detail(crash) == "all 12 failed · session limit, resets 2pm")
         crash.count = 3
-        #expect(LossPhrases.detail(crash) == "3 of 12 failed · session limit, resets 2pm")
+        #expect(LossPhrases.detail(crash) == "3 of 12 agents failed · session limit, resets 2pm")
         crash.total = 1
         crash.count = 1
         #expect(LossPhrases.detail(crash) == "session limit, resets 2pm")
@@ -191,6 +201,16 @@ struct LossBookTests {
         #expect(LossPhrases.detail(denied) == "you declined the command")
         denied.denial = .rule
         #expect(LossPhrases.detail(denied) == "Bash: forbidden by a rule")
+    }
+
+    @Test("Скилл, не вошедший в короткий список, всё равно назван со своим точным числом вызовов")
+    func skillsLeftOut() {
+        let calls = [
+            LossCalls(day: "2026-11-05", kind: .skill, name: "pdf", calls: 9),
+            LossCalls(day: "2026-11-05", kind: .skill, name: "xlsx", calls: 3),
+            LossCalls(day: "2026-11-05", kind: .skill, calls: 2),
+        ]
+        #expect(LossPhrases.skillCounts(book([], calls: calls).skills.dropFirst()) == "xlsx 3\nUnnamed skill 2")
     }
 
     @Test("Неизвестная причина показывает исходный текст в техническом режиме и ничего лишнего в простом")

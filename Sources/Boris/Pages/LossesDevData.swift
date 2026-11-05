@@ -57,7 +57,7 @@ extension DevData {
             crash("c6", 2300, 4, .sleep, offset: 638),
             crash("c7", 2400, 3, .script, offset: 642, rawText: "TypeError: x is not a function"),
             crash("c8", 2500, 1, .unknown, offset: 645, rawText: unknownText),
-        ]
+        ] + (long ? [crash("c9", 2600, 2, .closed, offset: 0)] : [])
 
         var overloaded = entry("a1", 12, .apiError, title: "Миграции")
         overloaded.agentId = "a1"

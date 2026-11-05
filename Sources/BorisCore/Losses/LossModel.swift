@@ -215,7 +215,10 @@ public struct LossBook: Sendable, Equatable {
 
     /// The list as narrowed down by the page's filters. Nil lets everything through.
     public func entries(kind: LossKind?, project: String?, environment: WorkEnvironment?) -> [LossEntry] {
-        entries.filter { entry in
+        // A choice with no rows in this period is not on its menu either, and the menu says "all", so it must not hide anything.
+        let project = project.flatMap { projects.contains($0) ? $0 : nil }
+        let environment = environment.flatMap { environments.contains($0) ? $0 : nil }
+        return entries.filter { entry in
             (kind == nil || entry.kind == kind) && (project == nil || entry.project == project) && (environment == nil || entry.environment == environment)
         }
     }

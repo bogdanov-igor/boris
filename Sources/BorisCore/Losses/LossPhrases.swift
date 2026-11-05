@@ -9,7 +9,7 @@ public enum LossPhrases {
         case .toolError: return L("Tool error")
         case .retry: return L("Retry")
         case .cut: return L("Response cut")
-        case .denied: return L("Denied")
+        case .denied: return L("Refused")
         }
     }
 
@@ -69,7 +69,7 @@ public enum LossPhrases {
         case .crash:
             let cause = cause(entry)
             guard let total = entry.total, total > 1 else { return cause }
-            let share = entry.count == total ? L("all %lld failed", total) : L("%lld of %lld failed", entry.count, total)
+            let share = entry.count == total ? L("all %lld failed", total) : L("%lld of %lld agents failed", entry.count, total)
             return "\(share) · \(cause)"
         case .apiError, .cut:
             return cause(entry)
@@ -84,6 +84,11 @@ public enum LossPhrases {
         case .denied:
             return denial(entry)
         }
+    }
+
+    /// Each skill with its exact number of calls, one to a line, for those that a short list has no room for.
+    public static func skillCounts(_ skills: some Sequence<LossBook.SkillCount>) -> String {
+        skills.map { "\($0.name ?? L("Unnamed skill")) \($0.calls)" }.joined(separator: "\n")
     }
 
     /// `≈ 1,2 млн`: a number that says it is not exact.
