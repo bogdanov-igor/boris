@@ -12,11 +12,15 @@ struct ProjectPage: View {
 
     /// On a narrow window the number of agents gives its room to the name of the session.
     private var showsAgents: Bool { width >= 720 }
+    /// The Usage page has it too, and without the room the name of the session would be gone.
+    private var showsEstimate: Bool { width >= 760 }
 
     private var pastColumns: [ColumnsLayout.Column] {
         var columns: [ColumnsLayout.Column] = [.fixed(96), .flex(1), .fixed(84), .fixed(76)]
         if showsAgents { columns.append(.fixed(46)) }
-        return columns + [.fixed(62), .fixed(66), .fixed(146)]
+        columns.append(.fixed(62))
+        if showsEstimate { columns.append(.fixed(66)) }
+        return columns + [.fixed(146)]
     }
 
     var body: some View {
@@ -130,7 +134,7 @@ struct ProjectPage: View {
                         TableHeadCell(L("Lasted"), trailing: true)
                         if showsAgents { TableHeadCell(L("Agents"), trailing: true) }
                         TableHeadCell(L("Tokens"), trailing: true)
-                        TableHeadCell(L("Estimate"), trailing: true)
+                        if showsEstimate { TableHeadCell(L("Estimate"), trailing: true) }
                         TableHeadCell(L("Outcome"))
                     }
                     .padding(.horizontal, 12)
@@ -165,7 +169,7 @@ struct ProjectPage: View {
                 TableCell(text: ProjectWords.duration(session, now: model.now) ?? "", trailing: true, font: .system(size: 12).monospacedDigit(), color: Palette.text2)
                 if showsAgents { TableCell(text: "\(session.agentCount)", trailing: true, font: .system(size: 12).monospacedDigit(), color: Palette.text2) }
                 TableCell(text: spent(session), trailing: true, font: .system(size: 12, weight: .semibold).monospacedDigit())
-                TableCell(text: UsageFormat.estimateCell(model.usage.book?.estimate(session: session.id)), trailing: true, font: .system(size: 11.5).monospacedDigit(), color: Palette.text2)
+                if showsEstimate { TableCell(text: UsageFormat.estimateCell(model.usage.book?.estimate(session: session.id)), trailing: true, font: .system(size: 11.5).monospacedDigit(), color: Palette.text2) }
                 HStack(spacing: 6) {
                     StatusGlyph(kind: StatusGlyph.Kind(session.state), size: 14)
                     Text(WorkPhrases.outcome(session.state, mode: mode))

@@ -112,5 +112,7 @@ struct OpenSessionButton: View {
     var body: some View {
         Button(SessionJump.title(session.environment)) { SessionNavigator.open(session, model: model) }
             .buttonStyle(PlainActionStyle(height: height))
+            // A long name next to it gets cut, the button does not.
+            .fixedSize()
     }
 }

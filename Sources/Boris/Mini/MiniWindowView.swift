@@ -51,7 +51,7 @@ struct MiniWindowView: View {
     private var limits: some View {
         VStack(alignment: .leading, spacing: 7) {
             LimitsBlock(usage: model.world.usage, now: model.now, compact: true)
-            LimitsFreshness(model: model, compact: true)
+            if model.world.usage != nil || model.world.account == .signedIn { LimitsFreshness(model: model, compact: true) }
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(L("Tokens today")).font(.system(size: 12)).foregroundStyle(Palette.text2)
                 Spacer(minLength: 8)

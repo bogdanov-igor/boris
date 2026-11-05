@@ -162,7 +162,7 @@ enum DevProjects {
         func day(_ ago: Int) -> String { ProjectBook.dayKey(calendar.date(byAdding: .day, value: -ago, to: now) ?? now) }
         var records: [TokenRecord] = []
         func add(_ session: String, ago: Int, _ total: Int) {
-            records.append(TokenRecord(sessionId: session, cwd: "/x/shop-api", day: day(ago), model: "claude-sonnet-5-5", usage: TokenUsage(input: total * 22 / 100, output: total * 3 / 100, cacheRead: total * 70 / 100, cacheWrite: total * 5 / 100)))
+            records.append(TokenRecord(sessionId: session, cwd: "/x/shop-api", entrypoint: "cli", day: day(ago), model: "claude-sonnet-5-5", usage: TokenUsage(input: total * 22 / 100, output: total * 3 / 100, cacheRead: total * 70 / 100, cacheWrite: total * 5 / 100)))
         }
         add(troubled, ago: 0, 52_000)
         add("p1", ago: 1, 880_000)

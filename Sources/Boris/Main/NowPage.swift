@@ -168,7 +168,7 @@ struct NowPage: View {
             card {
                 Text(L("Limits")).font(.system(size: 12)).foregroundStyle(Palette.text2)
                 LimitsBlock(usage: model.world.usage, now: model.now, compact: false)
-                LimitsFreshness(model: model)
+                if model.world.usage != nil || model.world.account == .signedIn { LimitsFreshness(model: model) }
             }
             if !digest.finished.isEmpty {
                 card {
