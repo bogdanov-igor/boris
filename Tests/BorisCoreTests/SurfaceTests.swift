@@ -460,11 +460,18 @@ struct SurfaceWordsTests {
     func sessionTrailing() {
         let waiting = WorkSession(id: "a", state: .waiting, startedAt: now.addingTimeInterval(-3000), lastActivity: now.addingTimeInterval(-420), root: WorkNode(id: "a", kind: .main, state: .waiting))
         #expect(SurfaceWords.sessionTrailing(waiting, mode: .simple, now: now) == "7 min")
-        let running = WorkSession(id: "b", state: .running, root: WorkNode(id: "b", kind: .main, state: .running, tokens: TokenUsage(input: 80_000), children: [
+        // The root holds the whole session, its agents included, so they must not be counted twice.
+        let running = WorkSession(id: "b", state: .running, root: WorkNode(id: "b", kind: .main, state: .running, tokens: TokenUsage(input: 80_000, output: 4_200), children: [
             WorkNode(id: "b1", kind: .subagent, state: .running, tokens: TokenUsage(output: 4_200)),
         ]))
         #expect(SurfaceWords.sessionTrailing(running, mode: .simple, now: now) == "")
         #expect(SurfaceWords.sessionTrailing(running, mode: .technical, now: now) == "84.2K")
+        // Before the first pass over the logs only what its agents metered live is known.
+        let metered = WorkSession(id: "m", state: .running, root: WorkNode(id: "m", kind: .main, state: .running, children: [
+            WorkNode(id: "m1", kind: .subagent, state: .running, tokens: TokenUsage(input: 1_000)),
+            WorkNode(id: "m2", kind: .subagent, state: .running, tokens: TokenUsage(output: 500)),
+        ]))
+        #expect(SurfaceWords.sessionTrailing(metered, mode: .technical, now: now) == "1.5K")
         let empty = WorkSession(id: "c", state: .running, root: WorkNode(id: "c", kind: .main, state: .running))
         #expect(SurfaceWords.sessionTrailing(empty, mode: .technical, now: now) == "")
     }
