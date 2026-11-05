@@ -20,10 +20,28 @@ public struct LoadRequest: Sendable, Equatable {
 /// Reads the load straight from the kernel. No `ps` or `top` is started, and only this user's processes are looked at:
 /// everybody else's load is in the rest, which is what remains of the Mac's total.
 public actor MacLoadSampler {
-    private struct Seen {
+    /// What a reading keeps about a process until the next one. Its name and path do not stay here.
+    struct Seen: Equatable {
         var start: UInt64
         var cpuNanoseconds: UInt64
+        /// Tells one program from another without keeping its name.
+        var program: Int
         var mark: LoadGroup?
+
+        /// - Parameters:
+        ///   - before: what the last reading kept under this process number.
+        ///   - mark: asked only for a new process or program, because it means looking up the path.
+        /// - Returns: what to keep, and the CPU time spent since the last reading.
+        static func next(after before: Seen?, start: UInt64, cpuNanoseconds: UInt64, program: Int, mark: () -> LoadGroup?) -> (seen: Seen, spent: UInt64) {
+            // A number can be used again by a new process, which started at another moment.
+            // A process not seen before started after the last reading, so all its time was spent since then.
+            let sameProcess = before?.start == start ? before : nil
+            // A process that turns into another program keeps its number, its start and its CPU time, as a shell does when it hands over to Claude.
+            let sameProgram = sameProcess?.program == program ? sameProcess : nil
+            let spent = cpuNanoseconds &- (sameProcess?.cpuNanoseconds ?? 0)
+            let seen = Seen(start: start, cpuNanoseconds: cpuNanoseconds, program: program, mark: sameProgram.map(\.mark) ?? mark())
+            return (seen, spent <= cpuNanoseconds ? spent : 0)
+        }
     }
 
     private static let host = mach_host_self()
@@ -37,7 +55,7 @@ public actor MacLoadSampler {
     private let physicalMemory = ProcessInfo.processInfo.physicalMemory
     private let timebase: (numer: UInt64, denom: UInt64)
     private var pids = [Int32](repeating: 0, count: 4096)
-    private var seen: [Int32: Seen] = [:]
+    private(set) var seen: [Int32: Seen] = [:]
     private var previousAt: UInt64?
     private var previousTicks: (user: UInt32, system: UInt32, idle: UInt32, nice: UInt32)?
     private var lastCPU: Double?
@@ -83,20 +101,12 @@ public actor MacLoadSampler {
         var next: [Int32: Seen] = [:]
         var result: [LoadProcess] = []
         for pid in listOwnPids() {
-            guard let usage = Self.usage(of: pid), let parent = Self.parent(of: pid) else { continue }
+            guard let usage = Self.usage(of: pid), let info = Self.shortInfo(of: pid) else { continue }
             let nanoseconds = (usage.ri_user_time &+ usage.ri_system_time) * timebase.numer / timebase.denom
-            let start = usage.ri_proc_start_abstime
-            let known = seen[pid].flatMap { $0.start == start ? $0 : nil }
-            let mark = known != nil ? known?.mark : markOf(pid)
-            next[pid] = Seen(start: start, cpuNanoseconds: nanoseconds, mark: mark)
-
-            var cpu = 0.0
-            if let elapsed {
-                // A process not seen before started after the last reading, so all its time was spent since then.
-                let spent = nanoseconds &- (known?.cpuNanoseconds ?? 0)
-                cpu = LoadGrouping.percentOfMac(cpuNanoseconds: spent <= nanoseconds ? spent : 0, overNanoseconds: elapsed, cores: cores)
-            }
-            result.append(LoadProcess(pid: pid, parent: parent, mark: mark, cpu: cpu, memory: usage.ri_phys_footprint))
+            let (kept, spent) = Seen.next(after: seen[pid], start: usage.ri_proc_start_abstime, cpuNanoseconds: nanoseconds, program: info.program) { markOf(pid) }
+            next[pid] = kept
+            let cpu = elapsed.map { LoadGrouping.percentOfMac(cpuNanoseconds: spent, overNanoseconds: $0, cores: cores) } ?? 0
+            result.append(LoadProcess(pid: pid, parent: info.parent, mark: kept.mark, cpu: cpu, memory: usage.ri_phys_footprint))
         }
         seen = next
         return result
@@ -112,7 +122,7 @@ public actor MacLoadSampler {
         return pids[0..<max(0, Int(used) / stride)]
     }
 
-    /// Read once per process: its executable does not change while it lives, unlike everything else here.
+    /// Looks up the path, then forgets it: only what it says about the process stays.
     private func markOf(_ pid: Int32) -> LoadGroup? {
         if pid == ownPid { return .boris }
         guard let path = Self.path(of: pid) else { return nil }
@@ -128,11 +138,13 @@ public actor MacLoadSampler {
         return result == 0 ? usage : nil
     }
 
-    private static func parent(of pid: Int32) -> Int32? {
+    private static func shortInfo(of pid: Int32) -> (parent: Int32, program: Int)? {
         var info = proc_bsdshortinfo()
         let size = Int32(MemoryLayout<proc_bsdshortinfo>.stride)
         guard proc_pidinfo(pid, PROC_PIDT_SHORTBSDINFO, 0, &info, size) == size else { return nil }
-        return Int32(bitPattern: info.pbsi_ppid)
+        var hasher = Hasher()
+        withUnsafeBytes(of: info.pbsi_comm) { hasher.combine(bytes: $0) }
+        return (Int32(bitPattern: info.pbsi_ppid), hasher.finalize())
     }
 
     private static func path(of pid: Int32) -> String? {

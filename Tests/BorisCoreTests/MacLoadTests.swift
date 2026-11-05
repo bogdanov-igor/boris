@@ -61,6 +61,49 @@ struct MacLoadTests {
         #expect(groups[12] == .claude)
     }
 
+    @Test("Claude Desktop, Cowork и программа на SDK: у каждого своё, без двойного учёта")
+    func desktopCoworkAndProgram() {
+        let tree = [
+            // Claude Desktop with a helper, a chat MCP server and Claude Code on its Code tab, with a command of that session.
+            LoadProcess(pid: 10, parent: 1, mark: .claudeDesktop, cpu: 1, memory: 10),
+            LoadProcess(pid: 11, parent: 10, mark: .claudeDesktop, cpu: 2, memory: 20),
+            LoadProcess(pid: 12, parent: 10, cpu: 4, memory: 40),
+            LoadProcess(pid: 13, parent: 10, mark: .claude, cpu: 8, memory: 80),
+            LoadProcess(pid: 14, parent: 13, cpu: 16, memory: 160),
+            // The virtual machine hangs from launchd, not from Claude Desktop.
+            LoadProcess(pid: 20, parent: 1, mark: .cowork, cpu: 32, memory: 320),
+            // A program on the SDK is not Claude, what it starts is, and it writes no session file.
+            LoadProcess(pid: 30, parent: 1, cpu: 3, memory: 30),
+            LoadProcess(pid: 31, parent: 30, mark: .claude, cpu: 5, memory: 50),
+        ]
+        let groups = LoadGrouping.groups(of: tree, sessions: [])
+        #expect([10, 11, 12].allSatisfy { groups[$0] == .claudeDesktop })
+        #expect([13, 14, 31].allSatisfy { groups[$0] == .claude })
+        #expect(groups[20] == .cowork)
+        #expect(groups[30] == .rest)
+
+        let load = LoadGrouping.load(processes: tree, sessions: [:], totalCPU: 100, usedMemory: 1000, physicalMemory: 1000)
+        #expect(load.cpu?.part(.claudeDesktop)?.value == 7)
+        #expect(load.cpu?.part(.claude)?.value == 29)
+        #expect(load.cpu?.part(.cowork)?.value == 32)
+        #expect(load.cpu?.part(.rest)?.value == 32)
+        #expect(load.memory?.part(.claude)?.value == 29)
+        #expect(load.memory?.part(.rest)?.value == 32)
+    }
+
+    @Test("Брошенные процессы: команда умершей сессии в «Остальном», сам Claude остаётся Claude")
+    func orphans() {
+        let tree = [
+            LoadProcess(pid: 10, parent: 1),
+            LoadProcess(pid: 11, parent: 10),
+            LoadProcess(pid: 20, parent: 1, mark: .claude),
+        ]
+        let groups = LoadGrouping.groups(of: tree, sessions: [999])
+        #expect(groups[10] == .rest)
+        #expect(groups[11] == .rest)
+        #expect(groups[20] == .claude)
+    }
+
     @Test("Каждый процесс считается ровно один раз")
     func nothingCountedTwice() {
         let processes = editorTree

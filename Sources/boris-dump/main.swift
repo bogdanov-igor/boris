@@ -68,8 +68,10 @@ func work() async {
 }
 
 func load() async {
-    let engine = WorkEngine(paths: paths, others: others) { _ in }
-    let sessions = await engine.scanOnce().world.sessions.filter { $0.pid > 0 }
+    // Only the session files: the engine would add up the logs in the background, and this very process would show up as a loaded Boris.
+    let sessions = ([paths] + others().filter(\.processesAreHere))
+        .flatMap { SessionReader.read($0).sessions }
+        .filter { SessionReader.isLive($0) }
     let pids = Dictionary(sessions.map { ($0.sessionId, $0.pid) }) { first, _ in first }
     let sampler = MacLoadSampler(logRoots: { ([paths] + others()).map(\.projects) })
     func show(_ title: String, _ split: LoadSplit?) {
@@ -77,7 +79,7 @@ func load() async {
         print("\(title): \(split.points)% = " + split.parts.map { "\($0.group.rawValue) \($0.points)" }.joined(separator: " + "))
     }
     _ = await sampler.read(LoadRequest(sessions: pids, restart: true))
-    for _ in 0..<(arguments.dropFirst().first.flatMap(Int.init) ?? 1) {
+    for _ in 0..<max(arguments.dropFirst().first.flatMap(Int.init) ?? 1, 0) {
         try? await Task.sleep(for: .seconds(3))
         let load = await sampler.read(LoadRequest(sessions: pids))
         show("cpu", load.cpu)

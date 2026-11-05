@@ -215,6 +215,105 @@ struct MacLoadSamplerTests {
         #expect(again.cpuPending)
     }
 
+    @Test("Занятый заново номер это новый процесс, а exec новая программа того же процесса")
+    func reusedNumberAndExec() {
+        typealias Seen = MacLoadSampler.Seen
+        var asked = 0
+        func mark() -> LoadGroup? {
+            asked += 1
+            return .claude
+        }
+        let before = Seen(start: 1, cpuNanoseconds: 500, program: 7, mark: .vsCode)
+
+        let same = Seen.next(after: before, start: 1, cpuNanoseconds: 800, program: 7, mark: mark)
+        #expect(same.spent == 300)
+        #expect(same.seen.mark == .vsCode)
+        #expect(asked == 0, "looking up the path of every process on every reading would cost for nothing")
+
+        var unmarked = before
+        unmarked.mark = nil
+        #expect(Seen.next(after: unmarked, start: 1, cpuNanoseconds: 800, program: 7, mark: mark).seen.mark == nil)
+        #expect(asked == 0, "most processes say nothing about themselves, and they are not asked again either")
+
+        let reused = Seen.next(after: before, start: 2, cpuNanoseconds: 100, program: 7, mark: mark)
+        #expect(reused.spent == 100, "all its time is new, however the old one's compares")
+        #expect(reused.seen.mark == .claude)
+        #expect(asked == 1)
+
+        let exec = Seen.next(after: before, start: 1, cpuNanoseconds: 800, program: 9, mark: mark)
+        #expect(exec.spent == 300, "the process goes on, and so does its time")
+        #expect(exec.seen.mark == .claude)
+        #expect(asked == 2)
+
+        let new = Seen.next(after: nil, start: 3, cpuNanoseconds: 40, program: 7, mark: mark)
+        #expect(new.spent == 40)
+        #expect(new.seen.mark == .claude)
+
+        let backwards = Seen.next(after: before, start: 1, cpuNanoseconds: 400, program: 7, mark: mark)
+        #expect(backwards.spent == 0)
+    }
+
+    /// A shell that waits for a line and then becomes a program named `claude`. Started this way, the process keeps its number and start time.
+    @Test("Процесс, который стал другой программой через exec, узнаётся заново")
+    func execIsSeen() async throws {
+        let folder = TempFolder()
+        let claude = folder.url.appendingPathComponent("claude")
+        try FileManager.default.copyItem(at: URL(fileURLWithPath: "/bin/sleep"), to: claude)
+        // The system kills a copy of its own program unless the copy is signed anew.
+        let signing = Process()
+        signing.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+        signing.arguments = ["-f", "-s", "-", claude.path]
+        signing.standardError = FileHandle.nullDevice
+        try signing.run()
+        signing.waitUntilExit()
+        try #require(signing.terminationStatus == 0)
+
+        let shell = Process()
+        let input = Pipe()
+        shell.executableURL = URL(fileURLWithPath: "/bin/sh")
+        shell.arguments = ["-c", "read line; exec \"$0\" 20", claude.path]
+        shell.standardInput = input
+        try shell.run()
+        defer { shell.terminate() }
+        let pid = shell.processIdentifier
+
+        let sampler = sampler()
+        _ = await sampler.read(LoadRequest(restart: true))
+        // /bin/sh hands over to the real shell, so it is a shell only a moment later.
+        try await Task.sleep(for: .milliseconds(200))
+        _ = await sampler.read(LoadRequest())
+        #expect(await sampler.seen[pid]?.mark == nil)
+
+        input.fileHandleForWriting.write(Data("go\n".utf8))
+        var mark: LoadGroup?
+        for _ in 0..<100 where mark == nil {
+            try await Task.sleep(for: .milliseconds(20))
+            _ = await sampler.read(LoadRequest())
+            mark = await sampler.seen[pid]?.mark
+        }
+        #expect(mark == .claude)
+    }
+
+    @Test("Процессы, исчезающие во время замера, ничего не ломают, и части сходятся")
+    func vanishingProcesses() async throws {
+        let shell = Process()
+        shell.executableURL = URL(fileURLWithPath: "/bin/sh")
+        shell.arguments = ["-c", "i=0; while [ $i -lt 150 ]; do /usr/bin/true & i=$((i+1)); done; wait"]
+        try shell.run()
+        defer { shell.terminate() }
+        let sampler = sampler()
+        let request = LoadRequest(sessions: ["s": shell.processIdentifier])
+        _ = await sampler.read(LoadRequest(sessions: request.sessions, restart: true))
+        for _ in 0..<30 {
+            let load = await sampler.read(request)
+            if let cpu = load.cpu { #expect(cpu.parts.reduce(0) { $0 + $1.points } == cpu.points) }
+            if let memory = load.memory { #expect(memory.parts.reduce(0) { $0 + $1.points } == memory.points) }
+        }
+        shell.waitUntilExit()
+        // A session whose process has gone has nothing to show, and that is not a zero.
+        #expect(await sampler.read(request).sessions["s"] == nil)
+    }
+
     @Test("Размер логов складывается из размеров файлов, а без папки его нет")
     func logSize() throws {
         let folder = TempFolder()
