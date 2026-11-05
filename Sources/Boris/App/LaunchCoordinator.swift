@@ -23,6 +23,11 @@ final class LaunchCoordinator {
 
         guard !others.isEmpty else { return true }
 
+        #if DEBUG
+        // A developer's copy must not open the real copy's menu or make it quit. It shares its files too, so it simply does not start.
+        print("Another Boris is running, so this debug copy leaves it alone and quits.")
+        return false
+        #else
         if isAgentInstance {
             // launchd started us while a manually opened copy runs: that copy steps aside.
             post(Self.handOverNotification)
@@ -33,6 +38,7 @@ final class LaunchCoordinator {
         }
         post(Self.openMenuNotification)
         return false
+        #endif
     }
 
     /// Hands over from a manually opened copy to the launchd agent when autostart is on.
@@ -52,6 +58,8 @@ final class LaunchCoordinator {
     }
 
     func listen(openMenu: @escaping @MainActor () -> Void) {
+        // What the real copy says to its own kind is not for a developer's copy, which would come forward or quit because of it.
+        #if !DEBUG
         let center = DistributedNotificationCenter.default()
         observers.append(center.addObserver(forName: Self.openMenuNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { openMenu() }
@@ -59,6 +67,7 @@ final class LaunchCoordinator {
         observers.append(center.addObserver(forName: Self.handOverNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { NSApp.terminate(nil) }
         })
+        #endif
     }
 
     private func post(_ name: Notification.Name) {

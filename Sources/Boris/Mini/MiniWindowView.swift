@@ -25,6 +25,8 @@ struct MiniWindowView: View {
             Divider()
             footer
         }
+        // A text whose values stay the same would otherwise keep the old language while the window is open.
+        .id(model.settings.language)
         .frame(width: 360)
         .background(Palette.pop)
         .overlay(alignment: .topLeading) {

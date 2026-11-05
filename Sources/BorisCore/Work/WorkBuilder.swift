@@ -65,6 +65,7 @@ public enum WorkBuilder {
         for run in runs.sorted(by: { comesEarlier($0.startedAt, $0.runId, $1.startedAt, $1.runId) }) {
             nodes += workflowNodes(run, sessionId: id, tokens: world.runTokens[run.runId])
         }
+        nodes = joiningContinued(nodes)
         let place = world.places[id]
         for index in nodes.indices {
             if let own = world.places[nodes[index].id], own.isSeparateCopy, place?.isSameCopy(as: own) != true { nodes[index].place = own }
@@ -93,6 +94,27 @@ public enum WorkBuilder {
             place: place,
             root: root
         )
+    }
+
+    /// An agent that goes on after its workflow has ended writes a second file under the same id, and the scan finds it as an ordinary agent.
+    /// It is still one agent: it keeps its place and its name in the workflow, so the run's counts stay right, and the newer file says how it is doing.
+    private static func joiningContinued(_ nodes: [WorkNode]) -> [WorkNode] {
+        let inWorkflow = Set(nodes.filter { $0.kind == .workflowAgent }.map(\.id))
+        let continued = Dictionary(nodes.filter { ($0.kind == .subagent || $0.kind == .fork) && inWorkflow.contains($0.id) }.map { ($0.id, $0) }) { first, _ in first }
+        guard !continued.isEmpty else { return nodes }
+        return nodes.compactMap { node in
+            guard let newer = continued[node.id] else { return node }
+            guard node.kind == .workflowAgent else { return nil }
+            var joined = node
+            joined.state = newer.state
+            joined.step = newer.step
+            joined.contextTokens = newer.contextTokens ?? node.contextTokens
+            joined.tokens = newer.tokens ?? node.tokens
+            joined.model = newer.model ?? node.model
+            joined.failure = newer.failure
+            joined.lastActivity = newer.lastActivity ?? node.lastActivity
+            return joined
+        }
     }
 
     private static func comesEarlier(_ a: Date?, _ first: String, _ b: Date?, _ second: String) -> Bool {

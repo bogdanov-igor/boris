@@ -33,6 +33,32 @@ struct WorkModelTests {
         #expect(session.root.flattened.count == 6)
     }
 
+    @Test("Агент, продолживший работу после своего workflow, остаётся одним агентом на своём месте")
+    func continuedAgentStaysOne() throws {
+        var world = WorldSnapshot(takenAt: now, sessions: [info()])
+        // The newer file has no description of its own, so it knows nothing about the name.
+        var later = AgentSnapshot(id: "x", sessionId: "s1", state: .running, contextTokens: 500, model: "m", currentStep: StepBrief(kind: .read, tool: "Read"), lastWrite: now.addingTimeInterval(60))
+        later.description = nil
+        world.agents = [later, agent("other")]
+        let run = workflow(status: .completed, agents: [AgentRecord(key: "k", agentId: "x", label: "Поиск", phase: "Первая", state: .done)])
+        let session = try #require(WorkBuilder.build(world: world, runs: [run]).sessions.first)
+        let found = session.root.flattened.filter { $0.id == "x" }
+        #expect(found.count == 1)
+        let node = try #require(found.first)
+        #expect(node.kind == .workflowAgent)
+        #expect(node.parentId == "wf_1")
+        #expect(node.title == "Поиск")
+        #expect(node.phase == "Первая")
+        #expect(node.state == .running)
+        #expect(node.step?.tool == "Read")
+        #expect(node.contextTokens == 500)
+        #expect(node.lastActivity == now.addingTimeInterval(60))
+        // The run still counts it, and an ordinary agent next to it is left alone.
+        let phases = try #require(session.root.flattened.first { $0.kind == .workflow }).phases
+        #expect(phases.reduce(0) { $0 + $1.total } == 1)
+        #expect(session.root.flattened.first { $0.id == "other" }?.kind == .subagent)
+    }
+
     @Test("Все типы узлов на своих местах, workflow это обычный узел дерева")
     func allKinds() throws {
         var world = WorldSnapshot(takenAt: now, sessions: [info()])

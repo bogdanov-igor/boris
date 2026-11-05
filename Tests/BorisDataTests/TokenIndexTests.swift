@@ -32,6 +32,21 @@ struct TokenIndexTests {
         }
     }
 
+    @Test("Агент с двумя файлами под одним именем считается целиком и без повторов")
+    func agentWithTwoFiles() async {
+        let folder = TempFolder()
+        folder.write("projects/p/s.jsonl", line("main", input: 1000, output: 0))
+        folder.write("projects/p/s/subagents/workflows/wf_1/agent-x.jsonl", line("in-run", input: 10, output: 0) + line("both", input: 5, output: 0))
+        // Goes on after the workflow, with one message written in both.
+        folder.write("projects/p/s/subagents/agent-x.jsonl", line("both", input: 5, output: 0) + line("after", input: 200, output: 0))
+        let index = TokenIndex(cacheFile: nil, timeZone: utc)
+        await index.update(roots: [ClaudePaths(root: folder.url)])
+        let book = TokenBook(records: await index.records(), now: Date(timeIntervalSince1970: 1_793_000_000), timeZone: utc)
+        #expect(book.spent(agent: "x")?.total == 215)
+        #expect(book.spent(session: "s")?.total == 1215)
+        #expect(book.spent(mainAgentOf: "s")?.total == 1000)
+    }
+
     @Test("Один ответ, записанный несколько раз, считается один раз")
     func repeatsInFile() async {
         let folder = TempFolder()

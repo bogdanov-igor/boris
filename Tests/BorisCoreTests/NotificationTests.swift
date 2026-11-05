@@ -900,4 +900,31 @@ struct QuietNotificationTests {
         quiet.start(for: QuietMode.indefinitely, now: t0)
         #expect(quiet.isOn(now: at(365 * 24 * 3600)))
     }
+
+    @Test("Новое или пропавшее поле не стирает сохранённые настройки и получателя в Telegram", arguments: [
+        #"{"telegramChat":"@me","voiceOn":false}"#,
+        #"{"telegramChat":"@me","voiceOn":false,"someFieldFromTheFuture":{"a":[1,2,3]}}"#,
+        #"{"telegramChat":"@me","voiceOn":false,"volume":"громко"}"#,
+        #"{"telegramChat":"@me","voiceOn":false,"channels":["неизвестная тема",{"mac":true}]}"#,
+    ])
+    func preferencesSurviveAnotherVersion(json: String) throws {
+        let saved = try JSONDecoder().decode(NotificationPreferences.self, from: Data(json.utf8))
+        #expect(saved.telegramChat == "@me")
+        #expect(saved.voiceOn == false)
+        #expect(saved.volume == NotificationPreferences().volume)
+        #expect(saved.limitNearPercent == NotificationPreferences().limitNearPercent)
+    }
+
+    @Test("Настройки уведомлений сохраняются и читаются без потерь")
+    func preferencesRoundTrip() throws {
+        var preferences = NotificationPreferences()
+        preferences.channels[.failure] = ChannelChoice(mac: false, sound: true, telegram: false)
+        preferences.voiceOn = false
+        preferences.volume = 0.1
+        preferences.limitNearPercent = 70
+        preferences.telegramChat = "@me"
+        preferences.telegramDuringQuiet = false
+        let again = try JSONDecoder().decode(NotificationPreferences.self, from: JSONEncoder().encode(preferences))
+        #expect(again == preferences)
+    }
 }

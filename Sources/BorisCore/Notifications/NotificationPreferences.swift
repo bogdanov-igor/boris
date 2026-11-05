@@ -49,6 +49,13 @@ public struct ChannelChoice: Codable, Sendable, Equatable {
         self.sound = sound
         self.telegram = telegram
     }
+
+    public init(from decoder: Decoder) throws {
+        let saved = try decoder.container(keyedBy: CodingKeys.self)
+        mac = (try? saved.decodeIfPresent(Bool.self, forKey: .mac)) ?? false
+        sound = (try? saved.decodeIfPresent(Bool.self, forKey: .sound)) ?? false
+        telegram = (try? saved.decodeIfPresent(Bool.self, forKey: .telegram)) ?? false
+    }
 }
 
 /// What the person chose about notifications. The Telegram token is not here: it lives in the Keychain.
@@ -64,6 +71,21 @@ public struct NotificationPreferences: Codable, Sendable, Equatable {
     public var telegramDuringQuiet = true
 
     public init() {}
+
+    /// What another version saved may lack a field or have one that is not known here. Each field is read on its own,
+    /// so that one of them cannot cost the person all the others, the Telegram recipient among them. A new field goes here too.
+    public init(from decoder: Decoder) throws {
+        let saved = try decoder.container(keyedBy: CodingKeys.self)
+        func value<T: Decodable>(_ key: CodingKeys, _ standard: T) -> T {
+            (try? saved.decodeIfPresent(T.self, forKey: key)) ?? standard
+        }
+        channels = value(.channels, channels)
+        voiceOn = value(.voiceOn, voiceOn)
+        volume = value(.volume, volume)
+        limitNearPercent = value(.limitNearPercent, limitNearPercent)
+        telegramChat = value(.telegramChat, telegramChat)
+        telegramDuringQuiet = value(.telegramDuringQuiet, telegramDuringQuiet)
+    }
 
     public static func standard(_ topic: NotificationTopic) -> ChannelChoice {
         switch topic {

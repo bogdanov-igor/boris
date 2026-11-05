@@ -80,6 +80,8 @@ struct MainWindowView: View {
         .overlay(alignment: .bottomLeading) {
             WalrusLineOverlay(stage: model.walrus).padding(EdgeInsets(top: 0, leading: 218, bottom: 110, trailing: 0))
         }
+        // A text whose values stay the same would otherwise keep the old language while the window is open.
+        .id(model.settings.language)
         .background(Palette.window)
         .foregroundStyle(Palette.text1)
         .ignoresSafeArea()

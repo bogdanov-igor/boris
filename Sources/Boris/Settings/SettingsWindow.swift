@@ -78,6 +78,8 @@ struct SettingsView: View {
             Rectangle().fill(Palette.separator).frame(width: 1)
             content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        // A text whose values stay the same would otherwise keep the old language while the window is open.
+        .id(model.settings.language)
         .background(Palette.window)
         .foregroundStyle(Palette.text1)
         .ignoresSafeArea()

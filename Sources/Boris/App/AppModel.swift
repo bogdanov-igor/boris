@@ -65,6 +65,8 @@ final class AppModel {
     let losses = LossStore()
     let notifications: NotificationHub
     private let store: StateStore?
+    /// False reaches nothing of the person's: no other Claude folders, no files of Boris's own.
+    private let live: Bool
     private var state: AppState
     private var board = MoodBoard()
     private var engine: WorkEngine?
@@ -117,6 +119,7 @@ final class AppModel {
     init(settings: AppSettings = AppSettings(), store: StateStore? = StateStore(), live: Bool = true) {
         self.settings = settings
         self.store = store
+        self.live = live
         hooks = HookController(settings: settings, live: live)
         // Without a store nothing may touch Boris's real folder.
         packShelf = WalrusPackShelf(folder: (store?.folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("boris-memory")).appendingPathComponent("Packs", isDirectory: true))
@@ -145,19 +148,20 @@ final class AppModel {
     func start() {
         let paths = ClaudePaths.resolve(custom: settings.claudeFolder)
         let owner = WeakModel(self)
+        let others: @Sendable () -> [ClaudePaths] = { [live] in live ? ClaudeFolders.others(besides: paths) : [] }
         let engine = WorkEngine(
             paths: paths,
             runs: state.runs,
             detector: state.detector,
             status: settings.statusConfig,
             events: settings.detectorConfig,
-            tokenCache: BorisPaths.tokenIndex,
-            others: { ClaudeFolders.others(besides: paths) }
+            tokenCache: live ? BorisPaths.tokenIndex : nil,
+            others: others
         ) { output in
             Task { @MainActor in owner.model?.apply(output) }
         }
         self.engine = engine
-        let sampler = MacLoadSampler(logRoots: { ([paths] + ClaudeFolders.others(besides: paths)).map(\.projects) })
+        let sampler = MacLoadSampler(logRoots: { ([paths] + others()).map(\.projects) })
         load.reader = { await sampler.read($0) }
         Task { await engine.start() }
         if !surfacesOpen.isEmpty { sendFocus() }
@@ -178,6 +182,12 @@ final class AppModel {
         usage.reset()
         today = TokenUsage()
         start()
+    }
+
+    /// Nothing reads the logs after this. For whoever started a model and is done with it.
+    func stop() async {
+        await engine?.stop()
+        engine = nil
     }
 
     func noteWake() {
@@ -206,9 +216,12 @@ final class AppModel {
     }
 
     /// A session is open only in the main window, and a closed window keeps its page, so its runs count only while it is open.
+    var focusWanted: (runs: Set<String>, closely: Bool) {
+        (surfacesOpen.contains(.mainWindow) ? focusedRuns : [], !surfacesOpen.isEmpty)
+    }
+
     private func sendFocus() {
-        let runs = surfacesOpen.contains(.mainWindow) ? focusedRuns : []
-        let closely = !surfacesOpen.isEmpty
+        let (runs, closely) = focusWanted
         Task { await engine?.setFocus(runs: runs, lookingClosely: closely) }
     }
 
@@ -216,7 +229,7 @@ final class AppModel {
         Task { await engine?.receive(signal) }
     }
 
-    private func apply(_ output: WorkEngine.Output) {
+    func apply(_ output: WorkEngine.Output) {
         work = usage.book?.applied(to: output.model) ?? output.model
         hooks.note(work: output.model, now: output.at)
         world = output.world

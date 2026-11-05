@@ -44,8 +44,7 @@ public actor SessionHistory {
         world.endedSessions = []
         var tracker = RunTracker()
         let runs = tracker.resolve(world) { _ in nil }
-        let ownFolder = BorisPaths.usageProbeFolder.path
-        world.sessions = known.values.map(\.info).filter { $0.cwd != ownFolder }
+        world.sessions = known.values.map(\.info).filter { !BorisPaths.isUsageProbe(cwd: $0.cwd) }
         for entry in known.values { world.places[entry.info.sessionId] = entry.place }
         let listed = Set(world.sessions.map(\.sessionId))
 

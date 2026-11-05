@@ -19,6 +19,20 @@ public actor WorkEngine {
         public var tokens: [TokenRecord]
         /// How far the pass over the logs has come, while it is going.
         public var tokenProgress: TokenProgress?
+
+        public init(at: Date, model: WorkModel, world: WorldSnapshot, runs: [RunState] = [], hooks: HookState = HookState(), runMemory: [String: RunMemory] = [:], events: [BorisEvent] = [], detectorMemory: DetectorMemory = DetectorMemory(), tokensVersion: Int = 0, tokens: [TokenRecord] = [], tokenProgress: TokenProgress? = nil) {
+            self.at = at
+            self.model = model
+            self.world = world
+            self.runs = runs
+            self.hooks = hooks
+            self.runMemory = runMemory
+            self.events = events
+            self.detectorMemory = detectorMemory
+            self.tokensVersion = tokensVersion
+            self.tokens = tokens
+            self.tokenProgress = tokenProgress
+        }
     }
 
     public struct TokenProgress: Sendable, Equatable {

@@ -247,6 +247,11 @@ enum DevSnapshot {
         window.setFrameOrigin(NSPoint(x: -5000, y: -5000))
         window.orderBack(nil)
         try? await Task.sleep(for: .seconds(0.25))
+        // `BORIS_SWITCH_LANGUAGE=1` changes the language with the window open, as the setting does.
+        if ProcessInfo.processInfo.environment["BORIS_SWITCH_LANGUAGE"] != nil {
+            settings.language = language == .ru ? .en : .ru
+            try? await Task.sleep(for: .seconds(0.25))
+        }
         host.layoutSubtreeIfNeeded()
         if let picture = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
             host.cacheDisplay(in: host.bounds, to: picture)

@@ -16,8 +16,10 @@ protocol BannerPosting: AnyObject {
 final class NoBanners: BannerPosting {
     var onClick: ((NotificationRoute) -> Void)?
     var onPermissionChange: ((Bool) -> Void)?
+    /// What would have reached the person, for a test to look at.
+    private(set) var posted: [MacBanner] = []
     func refreshPermission() {}
-    func post(_ banner: MacBanner) {}
+    func post(_ banner: MacBanner) { posted.append(banner) }
     func remove(ids: [String]) {}
 }
 

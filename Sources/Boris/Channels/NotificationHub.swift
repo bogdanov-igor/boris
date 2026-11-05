@@ -50,6 +50,10 @@ final class NotificationHub {
         banners.refreshPermission()
     }
 
+    #if DEBUG
+    var bannersPostedForCheck: [MacBanner] { (banners as? NoBanners)?.posted ?? [] }
+    #endif
+
     /// What one scan found. `quiet` is whether do not disturb was on during it.
     func scanned(_ events: [(event: BorisEvent, reaction: Reaction)], quiet: Bool, now: Date) {
         let preferences = settings.notifications

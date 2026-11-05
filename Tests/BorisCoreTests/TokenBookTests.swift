@@ -267,4 +267,44 @@ struct TokenBookTests {
         #expect(session.root.tokens == nil)
         #expect(session.mainAgentTokens == nil)
     }
+
+    @Test("Сессия в отдельной копии проекта считается в основном проекте, а Cowork без проекта")
+    func projectsFollowTheSameRule() {
+        let book = TokenBook(records: [
+            TokenRecord(sessionId: "a", cwd: "/x/app", entrypoint: "cli", day: "2026-11-05", usage: TokenUsage(input: 1)),
+            TokenRecord(sessionId: "b", cwd: "/x/app/.claude/worktrees/fix", entrypoint: "cli", day: "2026-11-05", usage: TokenUsage(input: 2)),
+            TokenRecord(sessionId: "c", cwd: "/sessions/vm/outputs", entrypoint: "local-agent", day: "2026-11-05", usage: TokenUsage(input: 4)),
+        ], now: Date(timeIntervalSince1970: 1_793_000_000), timeZone: TimeZone(identifier: "UTC") ?? .current)
+        let lines = book.report(.all).lines(.projects)
+        #expect(lines.first { $0.key == .project("/x/app") }?.usage.total == 3)
+        #expect(lines.first { $0.key == .project(nil) }?.usage.total == 4)
+        #expect(lines.count == 2)
+    }
+
+    @Test("Оценка сессии считается по ценам её моделей, а без цены её нет")
+    func sessionEstimate() throws {
+        let priced = try #require(PriceTable.price(for: "claude-opus-5-5"))
+        let usage = TokenUsage(input: 1_000_000)
+        let book = TokenBook(records: [
+            TokenRecord(sessionId: "s", day: "2026-11-05", model: "claude-opus-5-5", usage: usage),
+            TokenRecord(sessionId: "u", day: "2026-11-05", model: "made-up-model", usage: usage),
+        ], now: Date(timeIntervalSince1970: 1_793_000_000), timeZone: TimeZone(identifier: "UTC") ?? .current)
+        #expect(book.estimate(session: "s")?.dollars == priced.cost(of: usage))
+        #expect(UsageFormat.estimateLine(book.estimate(session: "u")) == nil)
+        #expect(UsageFormat.estimateShort(book.estimate(session: "u")) == nil)
+        #expect(UsageFormat.estimateCell(book.estimate(session: "u")) == "–")
+        #expect(UsageFormat.estimateCell(nil) == "–")
+    }
+
+    @Test("Оценка всегда подписана как оценка")
+    func estimateIsLabelled() throws {
+        var estimate = SpendEstimate()
+        estimate.add(TokenUsage(input: 1_000_000), price: try #require(PriceTable.price(for: "claude-opus-5-5")))
+        let line = try #require(UsageFormat.estimateLine(estimate, locale: Locale(identifier: "en")))
+        #expect(line.hasPrefix("≈ "))
+        #expect(line.hasSuffix("at API prices · estimate"))
+        let short = try #require(UsageFormat.estimateShort(estimate, locale: Locale(identifier: "en")))
+        #expect(short.hasPrefix("≈ "))
+        #expect(short.hasSuffix(" estimate"))
+    }
 }
