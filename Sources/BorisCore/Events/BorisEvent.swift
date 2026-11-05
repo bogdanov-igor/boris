@@ -37,6 +37,11 @@ public struct BorisEvent: Sendable, Equatable, Identifiable {
     public var windowId: String?
     public var percent: Double?
     public var errorType: String?
+    public var environment: WorkEnvironment?
+    /// Claude waits for words from the person, not for a permission.
+    public var asksForAnswer: Bool
+    /// Found on the first look after a launch: it happened while Boris was closed.
+    public var whileAway: Bool
 
     public init(
         id: String,
@@ -56,7 +61,10 @@ public struct BorisEvent: Sendable, Equatable, Identifiable {
         affectedRuns: Int? = nil,
         windowId: String? = nil,
         percent: Double? = nil,
-        errorType: String? = nil
+        errorType: String? = nil,
+        environment: WorkEnvironment? = nil,
+        asksForAnswer: Bool = false,
+        whileAway: Bool = false
     ) {
         self.id = id
         self.kind = kind
@@ -76,8 +84,17 @@ public struct BorisEvent: Sendable, Equatable, Identifiable {
         self.windowId = windowId
         self.percent = percent
         self.errorType = errorType
+        self.environment = environment
+        self.asksForAnswer = asksForAnswer
+        self.whileAway = whileAway
     }
 
     /// Stopped and interrupted runs can be continued from their session.
     public var canResume: Bool { kind == .stopped || kind == .interrupted }
+
+    /// A run that failed because the limit ran out. The limit's own event speaks for it.
+    public var failedFromLimit: Bool {
+        guard topFailure == .limit else { return false }
+        return kind == .completedWithErrors || kind == .allAgentsFailed || kind == .failed
+    }
 }

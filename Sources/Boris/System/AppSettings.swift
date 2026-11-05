@@ -41,6 +41,7 @@ final class AppSettings {
     var usageHigh: Int { didSet { defaults?.set(usageHigh, forKey: "usageHigh") } }
     var surfaces: SurfaceSwitches { didSet { save(surfaces, "surfaces") } }
     var surfaceScreen: SurfaceScreenChoice { didSet { save(surfaceScreen, "surfaceScreen") } }
+    var notifications: NotificationPreferences { didSet { save(notifications, "notifications") } }
 
     init(defaults: UserDefaults? = .standard) {
         self.defaults = defaults
@@ -61,6 +62,7 @@ final class AppSettings {
         usageHigh = defaults?.object(forKey: "usageHigh") as? Int ?? 95
         surfaces = Self.load(defaults, "surfaces") ?? SurfaceSwitches()
         surfaceScreen = Self.load(defaults, "surfaceScreen") ?? .followCursor
+        notifications = Self.load(defaults, "notifications") ?? NotificationPreferences()
         Localizer.use(language)
         NSApp?.appearance = theme.appearance
     }
@@ -70,7 +72,7 @@ final class AppSettings {
     }
 
     var detectorConfig: DetectorConfig {
-        DetectorConfig(longTurn: TimeInterval(longTurnMinutes) * 60, usageThresholds: [Double(usageLow), Double(usageHigh)])
+        DetectorConfig(longTurn: TimeInterval(longTurnMinutes) * 60, usageThresholds: [Double(notifications.limitNearPercent)])
     }
 
     private func save<T: Encodable>(_ value: T, _ key: String) {

@@ -51,6 +51,7 @@ final class AppModel {
     let hooks: HookController
     let load = MacLoadWatch()
     let losses = LossStore()
+    let notifications: NotificationHub
     private let store: StateStore?
     private var state: AppState
     private var board = MoodBoard()
@@ -78,6 +79,8 @@ final class AppModel {
     let walrus = WalrusStage()
     let walrusPage = WalrusPageState()
     let packShelf: WalrusPackShelf
+    /// The session a click on a notification asked to show.
+    var requestedSession: String?
 
     var onPresenceChange: (() -> Void)?
     var onEvent: ((BorisEvent, Reaction) -> Void)?
@@ -90,6 +93,7 @@ final class AppModel {
         // Without a store nothing may touch Boris's real folder.
         packShelf = WalrusPackShelf(folder: (store?.folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("boris-memory")).appendingPathComponent("Packs", isDirectory: true))
         WalrusArt.shared.pack = packShelf.pack(id: settings.wardrobe.pack)
+        notifications = NotificationHub(settings: settings, live: live)
         var loaded = store?.loadState() ?? AppState()
         if loaded.firstLaunch == nil {
             loaded.firstLaunch = Date()
@@ -162,18 +166,24 @@ final class AppModel {
         var changed = state.runs != output.runMemory || state.detector != output.detectorMemory
         state.runs = output.runMemory
         state.detector = output.detectorMemory
+        let quietDuringScan = quiet.isOn(now: output.at)
+        var news: [(event: BorisEvent, reaction: Reaction)] = []
         for event in output.events {
-            let reaction = settings.matrix.reaction(for: event.kind)
+            let wanted = settings.notifications.reaction(for: event, mood: settings.matrix.reaction(for: event.kind).mood)
+            let reaction = quiet.filter(wanted, kind: event.kind, now: output.at)
             board.apply(event, reaction: reaction.mood, now: output.at)
-            onEvent?(event, quiet.filter(reaction, kind: event.kind, now: output.at))
+            onEvent?(event, reaction)
+            news.append((event, reaction))
             // Do not disturb silences his reactions too. His pose keeps telling the truth.
-            if !quiet.isOn(now: output.at) { walrus.hear(event) }
+            if !quietDuringScan { walrus.hear(event) }
             if let run = output.runs.first(where: { $0.runId == event.runId }), run.status.isTerminal {
                 state.awards.record(run.status, today: Self.dayKey(output.at))
             }
             changed = true
         }
-        if quiet.finish(now: output.at) != nil {
+        notifications.scanned(news, quiet: quietDuringScan, now: output.at)
+        if let missed = quiet.finish(now: output.at) {
+            notifications.quietEnded(missed: missed, requestsWaiting: requestCount)
             changed = true
         }
         if changed {
@@ -226,9 +236,33 @@ final class AppModel {
     }
 
     func stopQuiet() {
-        quiet.cancel()
+        let missed = quiet.cancel()
         state.quiet = quiet
         store?.save(state)
+        if let missed { notifications.quietEnded(missed: missed, requestsWaiting: requestCount) }
+    }
+
+    /// The thresholds in the settings changed, so the running engine should use them.
+    func thresholdsChanged() {
+        let status = settings.statusConfig
+        let events = settings.detectorConfig
+        Task { await engine?.configure(status: status, events: events) }
+    }
+
+    /// Where a click on a notification leads.
+    func open(_ route: NotificationRoute) {
+        switch route {
+        case .now:
+            page = .now
+        case .usage:
+            page = .spend
+        case .session(let id):
+            requestedSession = id
+            page = .projects
+        case .requests(let id):
+            requestedSession = id
+            page = .requests
+        }
     }
 
     // MARK: - What the screens ask

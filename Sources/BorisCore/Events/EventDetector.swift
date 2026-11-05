@@ -7,13 +7,16 @@ public struct DetectorMemory: Codable, Sendable, Equatable {
     public var usageFired: Set<String>
     public var usageSeen: [String: Double]
     public var limitFired: [String: Date]
+    /// Running processes of sessions at the last look, each as `id|pid`. Optional, so a state file from before it still loads.
+    public var liveSessions: Set<String>?
 
-    public init(notified: Set<String> = [], activeRuns: [String: Int] = [:], usageFired: Set<String> = [], usageSeen: [String: Double] = [:], limitFired: [String: Date] = [:]) {
+    public init(notified: Set<String> = [], activeRuns: [String: Int] = [:], usageFired: Set<String> = [], usageSeen: [String: Double] = [:], limitFired: [String: Date] = [:], liveSessions: Set<String>? = nil) {
         self.notified = notified
         self.activeRuns = activeRuns
         self.usageFired = usageFired
         self.usageSeen = usageSeen
         self.limitFired = limitFired
+        self.liveSessions = liveSessions
     }
 }
 
@@ -51,10 +54,12 @@ public struct EventDetector: Sendable {
         self.config = config
     }
 
-    public mutating func detect(runs: [RunState], sessions: [SessionInfo], usage: UsageSnapshot?, now: Date, failures: [HookState.Failure] = []) -> [BorisEvent] {
+    public mutating func detect(runs: [RunState], sessions: [SessionInfo], usage: UsageSnapshot?, now: Date, failures: [HookState.Failure] = [], endedSessions: [SessionInfo] = []) -> [BorisEvent] {
         var events: [BorisEvent] = []
-        events += runEvents(runs, now: now)
-        events += limitEvents(runs, hookLimit: failures.contains { $0.error == "rate_limit" }, now: now)
+        let fromRuns = runEvents(runs, now: now)
+        events += fromRuns
+        events += interruptedSessions(sessions, ended: endedSessions, runs: runs, now: now)
+        events += limitEvents(runs, justFailed: Set(fromRuns.filter(\.failedFromLimit).compactMap(\.runId)), hookLimit: failures.contains { $0.error == "rate_limit" }, now: now)
         events += sessionErrors(failures.filter { $0.error != "rate_limit" }, sessions: sessions, now: now)
         events += usageEvents(usage, now: now)
         events += sessionEvents(sessions, now: now)
@@ -104,26 +109,60 @@ public struct EventDetector: Sendable {
             agentsTotal: run.total,
             agentsFailed: run.failed,
             topFailure: run.topFailure,
-            durationMs: run.durationMs
+            durationMs: run.durationMs,
+            environment: run.environment,
+            whileAway: !bootstrapped
         )
     }
 
+    private static func processKey(_ session: SessionInfo) -> String {
+        "\(session.sessionId)|\(session.pid)"
+    }
+
+    /// A process that vanished in the middle of work never said goodbye. A session idling at that moment lost nothing,
+    /// and a workflow under it reports for itself, so the same loss is not told twice.
+    private mutating func interruptedSessions(_ sessions: [SessionInfo], ended: [SessionInfo], runs: [RunState], now: Date) -> [BorisEvent] {
+        let known = memory.liveSessions ?? []
+        let listed = sessions.filter { !$0.isUnlisted }
+        let live = Set(listed.map(\.sessionId))
+        memory.liveSessions = Set(listed.map(Self.processKey))
+        return ended.compactMap { session in
+            // A killed session can be resumed under a new process, and the old file stays behind for long after.
+            // Only the process that was alive at the last look is news, which also tells each loss once.
+            guard known.contains(Self.processKey(session)), !live.contains(session.sessionId), session.status != "idle" else { return nil }
+            guard !runs.contains(where: { $0.sessionId == session.sessionId && ($0.status.isActive || $0.status == .interrupted) }) else { return nil }
+            return BorisEvent(
+                id: "ended|\(Self.processKey(session))",
+                kind: .interrupted,
+                at: now,
+                sessionId: session.sessionId,
+                name: session.name,
+                project: session.projectName,
+                environment: session.environment,
+                whileAway: !bootstrapped
+            )
+        }
+    }
+
     /// All runs hitting one limit make one event, sent as soon as the first agent fails.
-    private mutating func limitEvents(_ runs: [RunState], hookLimit: Bool, now: Date) -> [BorisEvent] {
-        var hit: [String: (kind: LimitKind, resets: String?, runs: Set<String>)] = [:]
+    /// A run can also fall between two looks or while Boris is closed, never seen at work with a failed agent.
+    private mutating func limitEvents(_ runs: [RunState], justFailed: Set<String>, hookLimit: Bool, now: Date) -> [BorisEvent] {
+        var hit: [String: (kind: LimitKind, resets: String?, runs: Set<String>, agents: Int, projects: Set<String>)] = [:]
         // A limit reported by a hook has no details of its own. It only counts when no run reports one.
-        for run in runs where run.status.isActive {
+        for run in runs where run.status.isActive || justFailed.contains(run.runId) {
             for agent in run.agents where agent.state == .failed {
                 guard let failure = agent.failure, failure.failureClass == .limit else { continue }
                 let kind = failure.limitKind ?? .other
                 let key = "\(kind.rawValue)|\(failure.resets ?? "")"
-                var entry = hit[key] ?? (kind, failure.resets, [])
+                var entry = hit[key] ?? (kind, failure.resets, [], 0, [])
                 entry.runs.insert(run.runId)
+                entry.agents += 1
+                if let project = run.projectName { entry.projects.insert(project) }
                 hit[key] = entry
             }
         }
         if hookLimit, hit.isEmpty, !memory.limitFired.contains(where: { now.timeIntervalSince($0.value) < limitMemory(.session) }) {
-            hit["\(LimitKind.other.rawValue)|"] = (.other, nil, [])
+            hit["\(LimitKind.other.rawValue)|"] = (.other, nil, [], 0, [])
         }
         var events: [BorisEvent] = []
         for key in hit.keys.sorted() {
@@ -134,6 +173,8 @@ public struct EventDetector: Sendable {
                 id: "limit|\(key)|\(Int(now.timeIntervalSince1970))",
                 kind: .limitReached,
                 at: now,
+                project: entry.projects.count == 1 ? entry.projects.first : nil,
+                agentsFailed: entry.agents,
                 limitKind: entry.kind,
                 resets: entry.resets,
                 affectedRuns: entry.runs.count
@@ -152,7 +193,8 @@ public struct EventDetector: Sendable {
                 sessionId: failure.session,
                 name: session?.name,
                 project: session?.projectName,
-                errorType: failure.error
+                errorType: failure.error,
+                environment: session?.environment
             )
         }
     }
@@ -199,7 +241,9 @@ public struct EventDetector: Sendable {
                         sessionId: session.sessionId,
                         name: session.name,
                         project: session.projectName,
-                        toolName: tool
+                        toolName: tool,
+                        environment: session.environment,
+                        asksForAnswer: tool == nil && reason != .permission(tool: nil)
                     ))
                 }
             } else {
@@ -219,7 +263,8 @@ public struct EventDetector: Sendable {
                         sessionId: session.sessionId,
                         name: session.name,
                         project: session.projectName,
-                        durationMs: Int(now.timeIntervalSince(since) * 1000)
+                        durationMs: Int(now.timeIntervalSince(since) * 1000),
+                        environment: session.environment
                     ))
                 }
                 track.busySince = nil

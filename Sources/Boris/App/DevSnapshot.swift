@@ -86,6 +86,7 @@ enum DevSnapshot {
         case walrusThemes, walrusPacks, walrusError, walrusLine, walrusSurfaces
         case notchClosed, notchOpen, panelClosed, panelOpen, surfacesLast, surfacesHotKey, surfacesGone
         case lossesReading, lossesFiltered, lossesNothingMatches
+        case notificationsQuiet, notificationsBot, notificationsOffline, notificationsConnect, notificationsPreview, quietRequests
 
         var page: AppPage? {
             AppPage(rawValue: rawValue)
@@ -94,6 +95,7 @@ enum DevSnapshot {
         var section: SettingsSection? {
             if self == .license { return .about }
             if self == .surfacesLast || self == .surfacesHotKey || self == .surfacesGone { return .surfaces }
+            if rawValue.hasPrefix("notifications"), self != .notificationsPreview { return .notifications }
             return SettingsSection(rawValue: rawValue)
         }
     }
@@ -107,6 +109,7 @@ enum DevSnapshot {
         let connect = ConnectFlow()
         data.fill(model)
         WalrusDev.dress(model)
+        NotificationSnapshots.prepare(screen.rawValue, model: model)
         if let page = screen.page { model.page = page }
         if let section = screen.section { model.settingsSection = section }
 
@@ -126,7 +129,10 @@ enum DevSnapshot {
             data.fillForSurface(model)
             canvas = size ?? CGSize(width: 1100, height: screen == .notchClosed || screen == .panelClosed ? 90 : 640)
             view = AnyView(SurfacePreview(model: model, hasNotch: screen == .notchClosed || screen == .notchOpen, isOpen: screen == .notchOpen || screen == .panelOpen, canvas: canvas))
-        case .general, .sources, .surfaces, .notifications, .connections, .about, .license, .surfacesLast, .surfacesHotKey, .surfacesGone:
+        case .notificationsPreview:
+            view = AnyView(NotificationPreview(long: data == .long))
+            canvas = size ?? CGSize(width: 800, height: 1040)
+        case .general, .sources, .surfaces, .notifications, .connections, .about, .license, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
             if screen == .surfacesLast { settings.surfaces = SurfaceSwitches(icon: false, notch: true, mini: false) }
             if screen == .surfacesHotKey {
                 settings.surfaces = SurfaceSwitches(icon: true, notch: false, mini: true)

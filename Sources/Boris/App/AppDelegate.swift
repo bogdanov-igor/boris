@@ -72,6 +72,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.power.update(shouldHold: model.settings.keepAwake && model.work.isWorking)
         }
 
+        model.notifications.onOpen = { [weak model, weak main] route in
+            model?.open(route)
+            main?.show()
+        }
+        model.notifications.refreshPermission()
+
         let center = NSWorkspace.shared.notificationCenter
         observers.append(center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak model] _ in
             MainActor.assumeIsolated { model?.noteWake() }

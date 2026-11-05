@@ -25,6 +25,8 @@ public struct RunTracker: Sendable, Equatable {
     /// The last moment the Mac woke up: silence is counted from here at the earliest.
     public var lastWake: Date?
     public var config: StatusConfig
+    /// Runs looked at since this launch. A death found on the first look may be old, even when the saved memory knows the run.
+    private var looked: Set<String> = []
 
     public init(memory: [String: RunMemory] = [:], lastWake: Date? = nil, config: StatusConfig = StatusConfig()) {
         self.memory = memory
@@ -40,7 +42,7 @@ public struct RunTracker: Sendable, Equatable {
 
     private mutating func resolve(_ run: RunSnapshot, session: SessionInfo?, now: Date, processStart: (Int32) -> Date?) -> RunState {
         var mem = memory[run.runId] ?? RunMemory()
-        let firstLook = memory[run.runId] == nil
+        let firstLook = looked.insert(run.runId).inserted
         let alive = ownerAlive(run, session: session, memory: &mem, processStart: processStart)
         let final = StatusRules.validFinal(run)
 
