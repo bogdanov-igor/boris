@@ -15,8 +15,21 @@ struct TokenIndexTests {
         await index.records().reduce(0) { $0 + $1.usage.total }
     }
 
-    private func isFinished(_ index: TokenIndex, expected: Int) async -> Bool {
-        await total(index) >= expected
+    private final class Flag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = false
+
+        func set() {
+            lock.lock()
+            value = true
+            lock.unlock()
+        }
+
+        var isSet: Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            return value
+        }
     }
 
     @Test("Один ответ, записанный несколько раз, считается один раз")
@@ -165,23 +178,25 @@ struct TokenIndexTests {
         }
         let index = TokenIndex(cacheFile: nil, timeZone: utc)
         let roots = [ClaudePaths(root: folder.url)]
-        let work = Task.detached(priority: .utility) { await index.update(roots: roots) }
+        let finished = Flag()
+        Task.detached(priority: .utility) {
+            await index.update(roots: roots)
+            finished.set()
+        }
 
-        // The main thread ticks while the logs are read. The bound keeps a broken index from hanging the tests.
+        // The main thread only ticks here and never waits for the index, as in the app. The bound keeps a broken index from hanging the tests.
         let watchdog = Date().addingTimeInterval(60)
-        let done = Task.detached { _ = await work.value }
         var longest: TimeInterval = 0
         var last = Date()
         var ticks = 0
-        while Date() < watchdog {
+        while !finished.isSet, Date() < watchdog {
             try await Task.sleep(for: .milliseconds(5))
             let now = Date()
             longest = max(longest, now.timeIntervalSince(last))
             last = now
             ticks += 1
-            if await isFinished(index, expected: 40 * 2000 * 11) { break }
         }
-        done.cancel()
+        #expect(finished.isSet)
         #expect(await total(index) == 40 * 2000 * 11)
         #expect(ticks > 1)
         #expect(longest < 0.5, "главный поток простаивал \(longest) с")
