@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBar: StatusBarController?
     private var mainWindow: MainWindowController?
     private var settingsWindow: SettingsWindowController?
+    private var surface: SurfaceController?
     private let actions = SettingsActions()
     private let connect = ConnectFlow()
     private let power = PowerGuard()
@@ -49,6 +50,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mainWindow = main
         let settings = SettingsWindowController(model: model, connect: connect, actions: actions)
         settingsWindow = settings
+        let surface = SurfaceController(model: model)
+        self.surface = surface
+        surface.onOpenMain = { [weak main] in main?.show() }
+        surface.onOpenSettings = { [weak settings] section in settings?.show(section) }
+        surface.onIconSwitch = { [weak statusBar] in statusBar?.update() }
 
         statusBar.onOpenMain = { [weak main] in main?.show() }
         statusBar.onOpenSettings = { [weak settings] section in settings?.show(section) }
@@ -73,6 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launch.listen { [weak statusBar] in statusBar?.toggleMiniWindow() }
         registerHotKey()
         model.start()
+        if !DevSnapshot.isSmoke { surface.start() }
         startTicking()
         if model.isFirstLaunch, !DevSnapshot.isSmoke { main.show() }
         DevSnapshot.smokeIfRequested(statusBar: statusBar, model: model)
@@ -101,7 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Moods with an end time need redrawing even when no file changes, and another program may have edited the settings.
         model.hooks.refresh()
         model.refreshPresence()
-        hiddenFor = statusBar.isIconVisible ? 0 : hiddenFor + seconds
+        hiddenFor = statusBar.isIconVisible || !model.settings.surfaces.icon ? 0 : hiddenFor + seconds
         if hiddenFor >= 60 { model.noteIconHidden() }
         if model.showIconNotice { mainWindow?.show() }
     }
@@ -110,6 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let model else { return }
         hotKey.unregister()
         model.hotKeyTaken = false
+        defer { model.settings.surfaces = model.settings.surfaces.withWayIn(hotKeyWorks: model.hotKeyWorks) }
         guard model.settings.hotKeyEnabled else { return }
         do {
             try hotKey.register(model.settings.hotKey) { [weak self] in self?.statusBar?.toggleMiniWindow() }

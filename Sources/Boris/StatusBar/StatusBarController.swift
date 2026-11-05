@@ -10,6 +10,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let item: NSStatusItem
     private let popover = NSPopover()
     private let alarmDot = NSView()
+    private let miniAnchor = MiniAnchor()
     private var icon: WalrusIcon?
     var onOpenMain: (() -> Void)?
     var onOpenSettings: ((SettingsSection) -> Void)?
@@ -48,6 +49,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     /// Redraws the icon, the counter and the mark from the model.
     func update() {
+        if item.isVisible != iconWanted { item.isVisible = iconWanted }
         guard let button = item.button else { return }
         icon?.show(model.mood, outfit: model.outfit)
         let count = model.requestCount
@@ -56,6 +58,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         icon?.layout()
         placeAlarmDot(on: button)
         button.setAccessibilityLabel(Self.description(mood: model.mood, waiting: count))
+    }
+
+    private var iconWanted: Bool {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["BORIS_NO_STATUS_ITEM"] == "1" { return false }
+        #endif
+        return model.settings.surfaces.icon
     }
 
     /// The dot has its own layer, because a template image loses its colour. It sits where the drawing leaves room for it.
@@ -97,9 +106,10 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         }
     }
 
-    /// Behind the notch there is nothing to hang the mini window on, so the main window opens instead.
+    /// Behind the notch there is nothing to hang the mini window on, so the main window opens instead. The same goes when the person turned it off.
     func toggleMiniWindow() {
-        guard isIconVisible || popover.isShown else {
+        let surfaces = model.settings.surfaces
+        guard surfaces.mini, isIconVisible || !surfaces.icon || popover.isShown else {
             onOpenMain?()
             return
         }
@@ -107,11 +117,17 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     func openMiniWindow() {
-        guard let button = item.button, !popover.isShown else { return }
+        guard let anchor = miniWindowAnchor, !popover.isShown else { return }
         NSApp.activate(ignoringOtherApps: true)
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
         model.miniWindowDidOpen()
+    }
+
+    private var miniWindowAnchor: NSView? {
+        if model.settings.surfaces.icon { return item.button }
+        let screen = SurfaceGeometry.screen(for: model.settings.surfaceScreen, among: SurfaceScreens.current(), cursor: NSEvent.mouseLocation)
+        return screen.flatMap { miniAnchor.view(at: SurfaceGeometry.miniAnchor(on: $0)) }
     }
 
     func closeMiniWindow() {
@@ -119,6 +135,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     func popoverDidClose(_ notification: Notification) {
+        miniAnchor.hide()
         model.setLookingClosely(false)
     }
 
