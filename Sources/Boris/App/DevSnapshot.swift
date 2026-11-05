@@ -140,9 +140,9 @@ enum DevSnapshot {
             case .folderMissing:
                 data.fill(model, folderFound: false)
             case .walrusThemes, .walrusPacks, .walrusError, .walrusLine:
-                WalrusDev.prepare(screen.rawValue, model: model, long: data == .long)
+                WalrusDev.prepare(screen.rawValue, model: model, long: data == .long, empty: data == .empty)
             case .walrus:
-                WalrusDev.prepare("walrus", model: model, long: data == .long)
+                WalrusDev.prepare("walrus", model: model, long: data == .long, empty: data == .empty)
             default:
                 break
             }

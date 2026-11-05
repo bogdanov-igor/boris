@@ -28,7 +28,7 @@
  "A failure. We shall stand.": "Сбой. Мы выстоим.",
  "Something collapsed. I kept hold of the monocle.": "Что-то рухнуло. Монокль я удержал.",
  "Failure is not fatal. But it is worth a look.": "Неудача не смертельна. Но взглянуть стоит.",
- "The limit is at hand. I have nothing to offer but tokens, toil, tears and sweat.": "Лимит на пределе. Мне нечего предложить, кроме токенов, пота и слёз.",
+ "The limit is at hand. I have nothing to offer but tokens, toil, tears and sweat.": "Лимит близко. Мне нечего предложить, кроме токенов, пота и слёз.",
  "Tokens are running low. So are the cigars.": "Токены на исходе. Сигары тоже.",
  "We have fought for every token. The limit does not sleep.": "Мы бились за каждый токен. Лимит не дремлет.",
  "The limit is upon us. We shall economise, not surrender.": "Лимит подступил. Будем экономить, но не сдаваться.",
@@ -39,12 +39,9 @@
  "It is night. I should be asleep by now.": "Ночь. Я бы уже спал.",
  "Something has fallen. I am at my post.": "Что-то упало. Я на посту.",
  "I cannot read Claude's data. I am looking into it.": "Не могу прочесть данные Claude. Разбираюсь.",
- "Awaiting your word: %lld": "Ждут вашего слова: %lld",
  "The limit is at hand. I am saving my strength.": "Лимит на пределе. Берегу силы.",
  "No news for a long while. I am on my guard.": "Давно нет новостей. Я настороже.",
  "The job is done.": "Дело сделано.",
  "Not everything got done. Hm.": "Сделано не всё. Хм.",
- "Agents on duty: %lld": "Агентов в строю: %lld",
- "Work is under way. I am keeping an eye on it.": "Работа идёт. Я присматриваю.",
- "All quiet. I keep watch with my eyes shut.": "Всё тихо. Дежурю с закрытыми глазами."
+ "Work is under way. I am keeping an eye on it.": "Работа идёт. Я присматриваю."
 }

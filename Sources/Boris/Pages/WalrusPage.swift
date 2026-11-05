@@ -127,7 +127,7 @@ private struct WalrusPreview: View {
     }
 }
 
-private struct WalrusChip: View {
+struct WalrusChip: View {
     var title: String
     var selected: Bool
     var action: () -> Void
@@ -152,7 +152,7 @@ private struct WalrusChip: View {
 }
 
 /// Chips in rows, as many in a row as fit.
-private struct WalrusChipFlow: Layout {
+struct WalrusChipFlow: Layout {
     var spacing: CGFloat = 5
 
     private func rows(_ subviews: Subviews, width: CGFloat) -> (origins: [CGPoint], size: CGSize) {

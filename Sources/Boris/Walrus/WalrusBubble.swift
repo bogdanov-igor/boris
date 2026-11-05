@@ -35,7 +35,8 @@ struct WalrusBubble: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(L("Boris's line"))
         .accessibilityValue(text)
-        .onAppear { AccessibilityNotification.Announcement(text).post() }
+        // A new line can replace the one on screen without the bubble ever disappearing.
+        .onChange(of: text, initial: true) { _, line in AccessibilityNotification.Announcement(line).post() }
     }
 
     private func balloon(_ content: some View) -> some View {

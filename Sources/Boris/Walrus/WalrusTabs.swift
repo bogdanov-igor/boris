@@ -85,9 +85,9 @@ enum WalrusPageText {
         case .noTrayIcon: return L("The one-colour menu bar icon: icon/base.png")
         case .noLines(let language): return L("Lines in the base language: lines/%@.json", language)
         case .badLines(let language): return L("lines/%@.json cannot be read", language)
-        case .noLinesForCue(let cue): return L("Lines for the event «%@»", name(cue))
-        case .noPlainLine(let cue): return L("A line without {project} for the event «%@»", name(cue))
-        case .lineTooLong(let cue): return L("A line for the event «%@» is too long", name(cue))
+        case .noLinesForCue(let cue): return L("Lines for the event “%@”", name(cue))
+        case .noPlainLine(let cue): return L("A line without {project} for the event “%@”", name(cue))
+        case .lineTooLong(let cue): return L("A line for the event “%@” is too long", name(cue))
         case .badImage(let path): return L("Cannot be read as PNG: %@", path)
         case .tooLarge(let path): return L("Too large: %@", path)
         case .tooManyFrames(let path): return L("Too many pictures in %@", path)
@@ -158,7 +158,7 @@ struct WalrusOutfitsTab: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            WalrusSectionTitle(title: L("Outfits"), note: usesPack.map { L("Only the built-in walrus has them. The pack «%@» is in use now.", $0.name) })
+            WalrusSectionTitle(title: L("Outfits"), note: usesPack.map { L("Only the built-in walrus has them. The pack “%@” is in use now.", $0.name) })
             LazyVGrid(columns: tiles, spacing: 10) {
                 tile(name: L("By the calendar"), detail: isByDate ? L("worn") : L("built-in"), chosen: isByDate, outfit: isByDate ? model.outfit : calendarOutfit) {
                     model.setWardrobe(.byDate)
@@ -293,9 +293,15 @@ struct WalrusThemesTab: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            WalrusSectionTitle(title: L("Themes"), note: WalrusArt.shared.pack.map { L("Only the built-in walrus has them. The pack «%@» is in use now.", $0.name) })
-            ChoiceBar(options: [(Theme.calendar, L("By the calendar")), (.chosen, L("Chosen outfit")), (.plain, L("Bowler and monocle"))], selection: theme, label: L("Themes"))
-                .fixedSize()
+            WalrusSectionTitle(title: L("Themes"), note: WalrusArt.shared.pack.map { L("Only the built-in walrus has them. The pack “%@” is in use now.", $0.name) })
+            // Chips and not one bar: on the narrowest window three names do not fit in a line, and a bar that does not fit pushes the whole window aside.
+            WalrusChipFlow {
+                ForEach([(Theme.calendar, L("By the calendar")), (.chosen, L("Chosen outfit")), (.plain, L("Bowler and monocle"))], id: \.0) { choice, title in
+                    WalrusChip(title: title, selected: theme.wrappedValue == choice) { theme.wrappedValue = choice }
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(L("Themes"))
             Text(L("By the calendar he changes by himself, on the dates below. On all the other days he wears the bowler."))
                 .font(.system(size: 12))
                 .foregroundStyle(Palette.text2)
@@ -304,8 +310,7 @@ struct WalrusThemesTab: View {
                 ForEach(outfits, id: \.self) { outfit in
                     HStack(spacing: 10) {
                         WalrusTile(source: .shelf(outfit), size: 36)
-                        Text(WalrusPageText.name(outfit)).font(.system(size: 12.5)).frame(width: 150, alignment: .leading)
-                        Text(WalrusPageText.when(outfit)).font(.system(size: 12)).foregroundStyle(Palette.text2)
+                        themeWords(outfit)
                         Spacer(minLength: 0)
                     }
                     .padding(.vertical, 4)
@@ -326,6 +331,21 @@ struct WalrusThemesTab: View {
                 Spacer(minLength: 0)
             }
             Text(L("It stays on this Mac.")).font(.system(size: 11)).foregroundStyle(Palette.text3)
+        }
+    }
+
+    /// One under the other, so the row fits a narrow window. An outfit named after its date has nothing more to say.
+    private func themeWords(_ outfit: Outfit) -> some View {
+        let name = WalrusPageText.name(outfit)
+        let when = WalrusPageText.when(outfit)
+        return VStack(alignment: .leading, spacing: 1) {
+            Text(name).font(.system(size: 12.5))
+            if when != name {
+                Text(when)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Palette.text2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }
@@ -383,29 +403,33 @@ struct WalrusPacksTab: View {
     }
 
     private func row(picture: WalrusArt.Source, name: String, details: [String], inUse: Bool, icon: URL? = nil, use: @escaping () -> Void, remove: (() -> Void)?) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            WalrusTile(source: picture, size: 56)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(name).font(.system(size: 13, weight: .semibold)).lineLimit(2)
-                ForEach(details, id: \.self) { detail in
-                    Text(detail).font(.system(size: 11.5)).foregroundStyle(Palette.text2).fixedSize(horizontal: false, vertical: true)
-                }
-                if let icon, let image = NSImage(contentsOf: icon) {
-                    HStack(spacing: 6) {
-                        Text(L("Menu bar icon:")).font(.system(size: 11.5)).foregroundStyle(Palette.text2)
-                        Image(nsImage: image).resizable().renderingMode(.template).frame(width: 21, height: 18).foregroundStyle(Palette.text1)
+        // The buttons go under the words: beside them, on a narrow window, the words would break in the middle.
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                WalrusTile(source: picture, size: 56)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(name).font(.system(size: 13, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
+                    ForEach(details, id: \.self) { detail in
+                        Text(detail).font(.system(size: 11.5)).foregroundStyle(Palette.text2).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let icon, let image = NSImage(contentsOf: icon) {
+                        HStack(spacing: 6) {
+                            Text(L("Menu bar icon:")).font(.system(size: 11.5)).foregroundStyle(Palette.text2).fixedSize()
+                            Image(nsImage: image).resizable().renderingMode(.template).frame(width: 21, height: 18).foregroundStyle(Palette.text1)
+                        }
                     }
                 }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 6) {
+            HStack(spacing: 8) {
+                Spacer(minLength: 0)
                 if inUse {
-                    Text(L("In use")).font(.system(size: 12)).foregroundStyle(Palette.focus).frame(height: 24)
+                    Text(L("In use")).font(.system(size: 12)).foregroundStyle(Palette.focus).frame(height: 24).fixedSize()
                 } else {
-                    Button(L("Use"), action: use).buttonStyle(PlainActionStyle())
+                    Button(L("Use"), action: use).buttonStyle(PlainActionStyle()).fixedSize()
                 }
                 if let remove {
-                    Button(L("Remove"), action: remove).buttonStyle(PlainActionStyle())
+                    Button(L("Remove"), action: remove).buttonStyle(PlainActionStyle()).fixedSize()
                 }
             }
         }
@@ -429,8 +453,8 @@ struct WalrusPackErrorSheet: View {
 
     private var explanation: String {
         rejection.problems.allSatisfy(WalrusPageText.isMissing)
-            ? L("The pack «%@» is missing files. Add them and import again.", rejection.name)
-            : L("Something is wrong with the pack «%@». Fix it and import again.", rejection.name)
+            ? L("The pack “%@” is missing files. Add them and import again.", rejection.name)
+            : L("Something is wrong with the pack “%@”. Fix it and import again.", rejection.name)
     }
 
     var body: some View {

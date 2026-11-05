@@ -57,7 +57,7 @@
  "built-in": "встроенный",
  "Reactions": "Реакции",
  "short animations over the pose": "короткие анимации поверх позы",
- "Only the built-in walrus has them. The pack «%@» is in use now.": "Они есть только у встроенного моржа. Сейчас выбран набор «%@».",
+ "Only the built-in walrus has them. The pack “%@” is in use now.": "Они есть только у встроенного моржа. Сейчас выбран набор «%@».",
  "Chosen outfit": "Выбранный наряд",
  "By the calendar he changes by himself, on the dates below. On all the other days he wears the bowler.": "По календарю он меняет наряд сам, в даты из списка. В остальные дни он в котелке.",
  "A party hat on your birthday": "Праздничный колпак в ваш день рождения",
@@ -75,8 +75,8 @@
  "Use": "Выбрать",
  "Remove": "Удалить",
  "Pack not imported": "Набор не импортирован",
- "The pack «%@» is missing files. Add them and import again.": "В наборе «%@» не хватает файлов. Добавьте их и импортируйте снова.",
- "Something is wrong with the pack «%@». Fix it and import again.": "С набором «%@» что-то не так. Исправьте это и импортируйте снова.",
+ "The pack “%@” is missing files. Add them and import again.": "В наборе «%@» не хватает файлов. Добавьте их и импортируйте снова.",
+ "Something is wrong with the pack “%@”. Fix it and import again.": "С набором «%@» что-то не так. Исправьте это и импортируйте снова.",
  "Copy the list": "Скопировать список",
  "Got it": "Понятно",
  "The description file pack.json": "Файл описания pack.json",
@@ -87,13 +87,27 @@
  "The one-colour menu bar icon: icon/base.png": "Одноцветный значок для трея: icon/base.png",
  "Lines in the base language: lines/%@.json": "Реплики на базовом языке: lines/%@.json",
  "lines/%@.json cannot be read": "Файл lines/%@.json не читается",
- "Lines for the event «%@»": "Реплики на событие «%@»",
- "A line without {project} for the event «%@»": "Реплика без {project} на событие «%@»",
- "A line for the event «%@» is too long": "Слишком длинная реплика на событие «%@»",
+ "Lines for the event “%@”": "Реплики на событие «%@»",
+ "A line without {project} for the event “%@”": "Реплика без {project} на событие «%@»",
+ "A line for the event “%@” is too long": "Слишком длинная реплика на событие «%@»",
  "Cannot be read as PNG: %@": "Не читается как PNG: %@",
  "Too large: %@": "Слишком большой файл: %@",
  "Too many pictures in %@": "Слишком много картинок в %@",
  "A link instead of a file: %@": "Ссылка вместо файла: %@",
  "Boris could not copy the files": "Boris не смог скопировать файлы",
- "Boris's line": "Реплика Бориса"
+ "Boris's line": "Реплика Бориса",
+ "%lld needs you": "%lld ждёт вас",
+ "%lld need you": {
+  "one": "%lld ждёт вас",
+  "few": "%lld ждут вас",
+  "many": "%lld ждут вас",
+  "other": "%lld ждут вас"
+ },
+ "%lld agent at work": "%lld агент работает",
+ "%lld agents at work": {
+  "one": "%lld агент работает",
+  "few": "%lld агента работают",
+  "many": "%lld агентов работают",
+  "other": "%lld агента работают"
+ }
 }

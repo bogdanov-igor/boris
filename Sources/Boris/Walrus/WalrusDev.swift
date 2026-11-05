@@ -10,6 +10,8 @@ enum WalrusDev {
     private static var environment: [String: String] { ProcessInfo.processInfo.environment }
 
     static func dress(_ model: AppModel) {
+        // Every picture starts from an empty shelf, so what is on the page does not depend on earlier runs.
+        try? FileManager.default.removeItem(at: model.packShelf.folder)
         let outfit = environment["BORIS_OUTFIT"].flatMap(Outfit.init(rawValue:))
         model.showWalrusForSnapshot(mood: environment["BORIS_MOOD"].flatMap(mood), outfit: outfit)
         if environment["BORIS_PACK"] == "1" { WalrusArt.shared.pack = makePack(in: model.packShelf) }
@@ -34,15 +36,18 @@ enum WalrusDev {
     }
 
     /// The states of the Walrus page that cannot be reached by data alone.
-    static func prepare(_ screen: String, model: AppModel, long: Bool) {
+    static func prepare(_ screen: String, model: AppModel, long: Bool, empty: Bool) {
         let page = model.walrusPage
         model.page = .walrus
         switch screen {
         case "walrusThemes":
             page.tab = .themes
+            if long { model.settings.wardrobe.userBirthday = MonthDay(month: 3, day: 14) }
         case "walrusPacks":
-            let pack = makePack(in: model.packShelf, name: long ? "Борис в отпуске, в длинной-предлинной шляпе и с очень подробным названием" : "Борис в отпуске")
-            model.usePack(pack)
+            if !empty {
+                let pack = makePack(in: model.packShelf, name: long ? "Борис в отпуске, в длинной-предлинной шляпе и с очень подробным названием" : "Борис в отпуске")
+                model.usePack(pack)
+            }
             page.tab = .packs
         case "walrusError":
             if long {
@@ -118,7 +123,7 @@ enum WalrusDev {
         return nil
     }
 
-    private static func writePackFolder(name: String) -> URL {
+    static func writePackFolder(name: String) -> URL {
         let source = FileManager.default.temporaryDirectory.appendingPathComponent("boris-dev-pack-\(UUID().uuidString)", isDirectory: true)
         let manager = FileManager.default
         try? manager.createDirectory(at: source, withIntermediateDirectories: true)

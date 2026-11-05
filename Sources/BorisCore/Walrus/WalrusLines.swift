@@ -97,19 +97,20 @@ public enum WalrusLines {
         L("It is night. I should be asleep by now.")
     }
 
-    /// The words under the walrus: how things stand, in his voice. The numbers stay exact.
+    /// The words under the walrus. Waiting, working and quiet are worded on the boards, as plain counts. In the other states he speaks for himself.
     public static func standing(mood: Mood, waiting: Int) -> String {
         switch mood {
         case .alarm: return L("Something has fallen. I am at my post.")
         case .broken: return L("I cannot read Claude's data. I am looking into it.")
-        case .waiting: return L("Awaiting your word: %lld", waiting)
+        case .waiting: return waiting == 1 ? L("%lld needs you", waiting) : L("%lld need you", waiting)
         case .tired: return L("The limit is at hand. I am saving my strength.")
         case .alert: return L("No news for a long while. I am on my guard.")
         case .happy: return L("The job is done.")
         case .hmm: return L("Not everything got done. Hm.")
         case .working(let agents):
-            return agents > 1 ? L("Agents on duty: %lld", agents) : L("Work is under way. I am keeping an eye on it.")
-        case .sleeping: return L("All quiet. I keep watch with my eyes shut.")
+            if agents == 0 { return L("Work is under way. I am keeping an eye on it.") }
+            return agents == 1 ? L("%lld agent at work", agents) : L("%lld agents at work", agents)
+        case .sleeping: return L("Quiet. Time to get something done.")
         }
     }
 }

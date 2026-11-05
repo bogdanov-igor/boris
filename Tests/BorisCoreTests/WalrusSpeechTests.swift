@@ -80,7 +80,7 @@ struct WalrusSpeechTests {
             speech.hear(cue, project: nil, now: at(seconds), lines: { _ in ["\(cue.rawValue)"] }, pick: first)
             if let line = speech.line(now: at(seconds)), said.last != line.text { said.append(line.text) }
         }
-        #expect(said.count <= 3)
+        #expect(said.count <= 2)
     }
 
     @Test("После паузы то же событие говорит снова") func afterSeries() {
@@ -166,6 +166,14 @@ struct WalrusBookTests {
     @Test("Строка под моржом говорит точные числа") func standingNumbers() {
         #expect(WalrusLines.standing(mood: .waiting, waiting: 2).contains("2"))
         #expect(WalrusLines.standing(mood: .working(agents: 7), waiting: 0).contains("7"))
+    }
+
+    @Test("Под моржом слова с макетов: кто ждёт, кто работает и «тихо»") func standingBoardWords() {
+        #expect(WalrusLines.standing(mood: .waiting, waiting: 1) == "1 needs you")
+        #expect(WalrusLines.standing(mood: .waiting, waiting: 3) == "3 need you")
+        #expect(WalrusLines.standing(mood: .working(agents: 1), waiting: 0) == "1 agent at work")
+        #expect(WalrusLines.standing(mood: .working(agents: 3), waiting: 0) == "3 agents at work")
+        #expect(WalrusLines.standing(mood: .sleeping, waiting: 0) == "Quiet. Time to get something done.")
     }
 
     @Test("Выбранный язык: реплики набора, а без набора свои") func packOrBuiltIn() {
