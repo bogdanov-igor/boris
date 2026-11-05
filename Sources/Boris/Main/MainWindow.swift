@@ -155,7 +155,8 @@ private struct PageContent: View {
     var openSettings: (SettingsSection) -> Void
 
     private var subtitle: String {
-        model.page == .now ? WorkFormat.today(model.now) : ""
+        if model.page == .activity { return L("Actions of all sessions in one feed") }
+        return model.page == .now ? WorkFormat.today(model.now) : ""
     }
 
     var body: some View {

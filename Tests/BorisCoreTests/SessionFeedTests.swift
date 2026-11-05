@@ -86,6 +86,20 @@ struct SessionFeedTests {
         #expect(SessionFeed.thinking(session: tree, logs: logs) == ["helper", "worker"])
     }
 
+    @Test("Открытый вызов ждёт человека, только когда ждёт сам главный агент") func waitingCall() throws {
+        let open = try #require(entries(use("a")).first)
+        let closed = try #require(entries(use("a"), done("a")).first)
+        let ofAgent = FeedEntry(sessionId: "s", agentId: "x", item: open.item)
+        #expect(SessionFeed.isWaiting(open, session: session(main: .waiting)))
+        #expect(!SessionFeed.isWaiting(closed, session: session(main: .waiting)))
+        #expect(!SessionFeed.isWaiting(ofAgent, session: session(main: .waiting)))
+        #expect(!SessionFeed.isWaiting(open, session: session(main: .running)))
+        #expect(!SessionFeed.isWaiting(open, session: nil))
+        // The session is marked as waiting because of something under it, and the main agent's own call really runs.
+        let below = WorkSession(id: "s", state: .waiting, root: WorkNode(id: "s", kind: .main, state: .running))
+        #expect(!SessionFeed.isWaiting(open, session: below))
+    }
+
     // MARK: - Scrolling
 
     @Test("Счётчик новых записей после прокрутки вверх") func newRecords() {
@@ -389,6 +403,38 @@ struct SessionFeedTests {
         let all = ["Read", "Grep", "Glob", "Edit", "Write", "MultiEdit", "NotebookEdit", "Bash", "Monitor", "WebSearch", "WebFetch", "Skill", "mcp__postgres__query", "Agent", "Task", "Workflow", "ToolSearch"]
         #expect(all.filter { filter.matches(WorkAction(tool: $0)) } == tools)
         #expect(all.allSatisfy { ActivityFilter.all.matches(WorkAction(tool: $0)) })
+    }
+
+    @Test("Фильтры страницы складываются, а записи без шага в неё не попадают") func query() throws {
+        func session(_ id: String, _ environment: WorkEnvironment?, cwd: String?) -> WorkSession {
+            WorkSession(id: id, environment: environment, cwd: cwd, state: .running, root: WorkNode(id: id, kind: .main, state: .running))
+        }
+        let inTerminal = session("a", .terminal, cwd: "/x/one")
+        let inEditor = session("b", .vsCode, cwd: "/x/two")
+        let noFolder = session("c", .cowork, cwd: nil)
+        var log = ActivityLog()
+        log.apply(.prompt("words", at: nil))
+        log.apply(.text("note", at: nil))
+        log.apply(.toolUse(id: "read", tool: "Read", input: ToolInput(target: "/x/f"), at: nil))
+        log.apply(.toolUse(id: "shell", tool: "Bash", input: ToolInput(command: "ls"), at: nil))
+        let items = SessionFeed.merged(sessionId: "a", logs: [AgentLog(agentId: nil, log: log)])
+
+        func shown(_ query: ActivityQuery, _ owner: WorkSession?) -> [String] {
+            items.filter { query.matches($0, session: owner) }.map(\.item.id)
+        }
+        #expect(shown(ActivityQuery(), inTerminal) == ["read", "shell"])
+        #expect(shown(ActivityQuery(type: .command), inTerminal) == ["shell"])
+        #expect(shown(ActivityQuery(project: "/x/one"), inTerminal) == ["read", "shell"])
+        #expect(shown(ActivityQuery(project: "/x/one"), inEditor).isEmpty)
+        #expect(shown(ActivityQuery(project: ""), noFolder) == ["read", "shell"])
+        #expect(shown(ActivityQuery(project: ""), inTerminal).isEmpty)
+        #expect(shown(ActivityQuery(place: "VS Code"), inEditor) == ["read", "shell"])
+        #expect(shown(ActivityQuery(place: "VS Code"), inTerminal).isEmpty)
+        #expect(shown(ActivityQuery(type: .read, project: "/x/two", place: "VS Code"), inEditor) == ["read"])
+        #expect(shown(ActivityQuery(type: .read, project: "/x/one", place: "VS Code"), inEditor).isEmpty)
+        // A session that has left the list has no folder and no known place.
+        #expect(shown(ActivityQuery(project: ""), nil) == ["read", "shell"])
+        #expect(shown(ActivityQuery(project: "/x/one"), nil).isEmpty)
     }
 
     @Test("Подпись типа на странице") func actionNames() {

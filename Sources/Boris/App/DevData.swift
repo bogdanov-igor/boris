@@ -20,6 +20,7 @@ enum DevData: String {
         )
         let tokens = self == .empty ? TokenUsage() : TokenUsage(input: 520_000, output: 60_000, cacheRead: 1_170_000, cacheWrite: 90_000)
         let mood: Mood = self == .empty ? .sleeping : .waiting
+        model.feedForSnapshot = feed(now: now)
         model.showForSnapshot(work: work(now: now), world: world, today: tokens, mood: mood, offer: offer)
     }
 

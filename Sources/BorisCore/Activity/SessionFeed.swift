@@ -91,6 +91,11 @@ public enum SessionFeed {
         return result
     }
 
+    /// A session waits on its main agent's open call, so that call is not running but waiting for the person.
+    public static func isWaiting(_ entry: FeedEntry, session: WorkSession?) -> Bool {
+        session?.root.state == .waiting && entry.agentId == nil && entry.step?.state == .running
+    }
+
     /// What the tree calls each agent of a session.
     public static func agentNames(_ session: WorkSession) -> [String: String] {
         var names: [String: String] = [:]

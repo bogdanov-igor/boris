@@ -91,6 +91,28 @@ extension WorkPhrases {
     }
 }
 
+/// What the Activity page is asked to show. Everything that is not a step stays out of it.
+public struct ActivityQuery: Sendable, Equatable {
+    public var type: ActivityFilter
+    /// A folder, an empty text for sessions without one, nil for all.
+    public var project: String?
+    /// An environment by the name the interface gives it, nil for all.
+    public var place: String?
+
+    public init(type: ActivityFilter = .all, project: String? = nil, place: String? = nil) {
+        self.type = type
+        self.project = project
+        self.place = place
+    }
+
+    public func matches(_ entry: FeedEntry, session: WorkSession?) -> Bool {
+        guard let step = entry.step, type.matches(WorkAction(tool: step.tool)) else { return false }
+        if let project, (session?.cwd ?? "") != project { return false }
+        if let place, WorkPhrases.environment(session?.environment) != place { return false }
+        return true
+    }
+}
+
 /// The types the Activity page filters by.
 public enum ActivityFilter: String, Sendable, CaseIterable, Identifiable {
     case all, read, write, command, web, skill, mcp, startAgent
