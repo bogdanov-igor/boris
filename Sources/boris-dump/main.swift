@@ -3,7 +3,8 @@ import BorisData
 import Foundation
 
 // Prints what Boris sees right now, without any interface. The text of prompts, commands and results is never printed.
-// `boris-dump` looks at the work, `boris-dump tokens` adds up the logs, using the cache in `BORIS_STATE_DIR` if it is set.
+// `boris-dump` looks at the work, `boris-dump tokens` adds up the logs, using the cache in `BORIS_STATE_DIR` if it is set,
+// `boris-dump load` shows the load on this Mac by group, and with a number takes that many readings 3 seconds apart.
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let paths = ClaudePaths.resolve()
@@ -66,8 +67,34 @@ func work() async {
     print("hooks: \(hooks), problems: \(connection.problems)")
 }
 
+func load() async {
+    let engine = WorkEngine(paths: paths, others: others) { _ in }
+    let sessions = await engine.scanOnce().world.sessions.filter { $0.pid > 0 }
+    let pids = Dictionary(sessions.map { ($0.sessionId, $0.pid) }) { first, _ in first }
+    let sampler = MacLoadSampler(logRoots: { ([paths] + others()).map(\.projects) })
+    func show(_ title: String, _ split: LoadSplit?) {
+        guard let split else { return print("\(title): no data") }
+        print("\(title): \(split.points)% = " + split.parts.map { "\($0.group.rawValue) \($0.points)" }.joined(separator: " + "))
+    }
+    _ = await sampler.read(LoadRequest(sessions: pids, restart: true))
+    for _ in 0..<(arguments.dropFirst().first.flatMap(Int.init) ?? 1) {
+        try? await Task.sleep(for: .seconds(3))
+        let load = await sampler.read(LoadRequest(sessions: pids))
+        show("cpu", load.cpu)
+        show("memory", load.memory)
+        print("disk: \(load.diskPercent.map { "\(Int($0))%" } ?? "no data"), Claude logs: \(load.claudeLogs.map { WorkFormat.byteCount($0) } ?? "no data")")
+        for session in sessions {
+            let place = session.environment.map { "\($0)" } ?? "?"
+            let taken = load.sessions[session.sessionId].map { "cpu \(String(format: "%.1f", $0.cpu))%, memory \(WorkFormat.byteCount($0.memory))" } ?? "no process"
+            print("  session \(session.sessionId.prefix(8)) · \(place) · \(taken)")
+        }
+    }
+}
+
 if arguments.first == "tokens" {
     await tokens()
+} else if arguments.first == "load" {
+    await load()
 } else {
     await work()
 }
