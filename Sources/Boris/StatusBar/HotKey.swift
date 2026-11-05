@@ -53,29 +53,47 @@ struct HotKeyCombo: Codable, Equatable, Sendable {
     }
 }
 
+private let hotKeySignature: OSType = 0x424F_5253
+
 /// A global key through Carbon, which needs no Accessibility permission.
 @MainActor
 final class HotKeyController {
     enum Failure: Error { case taken }
 
-    private var reference: EventHotKeyRef?
-    private var handler: EventHandlerRef?
+    // Reached from deinit too, when nothing else can be using them.
+    private nonisolated(unsafe) var reference: EventHotKeyRef?
+    private nonisolated(unsafe) var handler: EventHandlerRef?
     private var action: (@MainActor () -> Void)?
+    private let id: UInt32
+
+    /// - Parameter id: tells this key from the others the app holds. Each controller needs its own.
+    init(id: UInt32 = 1) {
+        self.id = id
+    }
+
+    /// A handler left behind would point at freed memory, and a key left behind would stay taken.
+    deinit {
+        if let reference { UnregisterEventHotKey(reference) }
+        if let handler { RemoveEventHandler(handler) }
+    }
 
     func register(_ combo: HotKeyCombo, action: @escaping @MainActor () -> Void) throws {
         unregister()
         self.action = action
         var reference: EventHotKeyRef?
-        let id = EventHotKeyID(signature: 0x424F_5253, id: 1)
-        let status = RegisterEventHotKey(combo.keyCode, combo.carbonModifiers, id, GetApplicationEventTarget(), 0, &reference)
+        let status = RegisterEventHotKey(combo.keyCode, combo.carbonModifiers, EventHotKeyID(signature: hotKeySignature, id: id), GetApplicationEventTarget(), 0, &reference)
         guard status == noErr, let reference else { throw Failure.taken }
         self.reference = reference
 
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         let me = Unmanaged.passUnretained(self).toOpaque()
-        InstallEventHandler(GetApplicationEventTarget(), { _, _, info in
-            guard let info else { return noErr }
+        InstallEventHandler(GetApplicationEventTarget(), { _, event, info in
+            guard let info, let event else { return OSStatus(eventNotHandledErr) }
+            var pressed = EventHotKeyID()
+            let status = GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil, MemoryLayout<EventHotKeyID>.size, nil, &pressed)
             let controller = Unmanaged<HotKeyController>.fromOpaque(info).takeUnretainedValue()
+            // Every handler in the app hears every key. Passing on what is not ours keeps ⌥⌘O from answering a request.
+            guard status == noErr, pressed.signature == hotKeySignature, pressed.id == controller.id else { return OSStatus(eventNotHandledErr) }
             MainActor.assumeIsolated { controller.action?() }
             return noErr
         }, 1, &spec, me, &handler)

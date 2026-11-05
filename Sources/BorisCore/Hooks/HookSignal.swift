@@ -2,9 +2,11 @@ import Foundation
 
 /// Decides what leaves `boris-hook`. Prompts and assistant messages never pass this point.
 public enum HookPayload {
-    static let allowedFields = ["hook_event_name", "session_id", "cwd", "agent_id", "agent_type", "tool_name", "notification_type", "source", "reason", "error_type"]
-    /// Longest command text shown in a permission request.
+    static let allowedFields = ["hook_event_name", "session_id", "cwd", "agent_id", "agent_type", "tool_name", "notification_type", "source", "reason", "error_type", "permission_mode"]
+    /// Longest flat text of a request.
     static let commandLimit = 64 * 1024
+    /// A larger request is not sent whole. It cannot be read in full in Boris, so it cannot be allowed there either.
+    static let inputLimit = 256 * 1024
 
     public static func reduce(_ input: [String: Any]) -> [String: Any] {
         var out: [String: Any] = [:]
@@ -19,21 +21,37 @@ public enum HookPayload {
         }
         if event == "PermissionRequest", let toolInput = input["tool_input"] as? [String: Any] {
             out["command_text"] = commandText(toolInput)
+            if let whole = canonical(toolInput), whole.count <= inputLimit { out["tool_input"] = toolInput }
+        }
+        if ["PermissionRequest", "PostToolUse", "PostToolUseFailure"].contains(event), let toolInput = input["tool_input"] as? [String: Any], let digest = digest(toolInput) {
+            out["input_digest"] = digest
         }
         return out
     }
 
-    /// The whole request as a person needs to read it, because a permission is given on this text.
-    static func commandText(_ toolInput: [String: Any]) -> String {
-        let text: String
-        if let command = toolInput["command"] as? String {
-            text = command
-        } else if JSONSerialization.isValidJSONObject(toolInput),
-                  let data = try? JSONSerialization.data(withJSONObject: toolInput, options: [.prettyPrinted, .sortedKeys]) {
-            text = String(decoding: data, as: UTF8.self)
-        } else {
-            text = ""
+    private static func canonical(_ toolInput: [String: Any]) -> Data? {
+        guard JSONSerialization.isValidJSONObject(toolInput) else { return nil }
+        return try? JSONSerialization.data(withJSONObject: toolInput, options: .sortedKeys)
+    }
+
+    /// Tells one call of a tool from another without carrying its text: hooks give a permission request no id of its call.
+    static func digest(_ toolInput: [String: Any]) -> String? {
+        canonical(toolInput).map { bytes in
+            String(bytes.reduce(UInt64(0xcbf2_9ce4_8422_2325)) { ($0 ^ UInt64($1)) &* 0x0000_0100_0000_01b3 }, radix: 16)
         }
+    }
+
+    /// Every field a tool would get, with nothing left out or cut.
+    static func wholeText(_ toolInput: [String: Any]) -> String? {
+        guard JSONSerialization.isValidJSONObject(toolInput),
+              let data = try? JSONSerialization.data(withJSONObject: toolInput, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+        else { return nil }
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    /// The request as a short flat text. It may be cut, so a permission is never given on this text alone.
+    static func commandText(_ toolInput: [String: Any]) -> String {
+        let text = toolInput["command"] as? String ?? wholeText(toolInput) ?? ""
         return text.utf8.count <= commandLimit ? text : String(decoding: text.utf8.prefix(commandLimit), as: UTF8.self) + "\n…"
     }
 }
@@ -50,6 +68,8 @@ public enum HookSignal: Sendable, Equatable {
     case sessionEnded(session: String, reason: String, cwd: String?)
     case needsUser(session: String)
     case permissionAsked(session: String, tool: String)
+    /// Boris sent the answer, so the session is no longer waiting for this one.
+    case permissionAnswered(session: String)
 
     /// Unknown events return nil: a new hook type must not disturb anything.
     public init?(payload p: [String: Any]) {
@@ -159,6 +179,8 @@ public struct HookState: Sendable, Equatable {
         case .permissionAsked(let session, let tool):
             if waiting[session] == nil { waiting[session] = now }
             waitingTool[session] = tool
+        case .permissionAnswered(let session):
+            clearWaiting(session)
         }
     }
 

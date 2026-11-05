@@ -3,7 +3,11 @@ import BorisCore
 
 // Called by Claude Code when hook mode is on. It must never get in the way: any problem means a silent exit.
 // Usage: boris-hook                  sends the event and exits
-//        boris-hook --permission N   sends a permission request and waits up to N seconds for the answer
+//        boris-hook --permission N   sends a request and waits for the answer. N is only the upper limit:
+//                                    the app decides how long to wait and closes the connection when the time is up.
+
+// The app can vanish while this writes, and that must end in a quiet exit too.
+signal(SIGPIPE, SIG_IGN)
 
 let socketPath = ProcessInfo.processInfo.environment["BORIS_HOOK_SOCKET"]
     ?? NSHomeDirectory() + "/Library/Application Support/Boris/hook.sock"
@@ -40,23 +44,22 @@ guard connected == 0 else { exit(0) }
 let sent = message.withUnsafeBytes { write(fd, $0.baseAddress, $0.count) }
 guard sent == message.count, let waitSeconds else { exit(0) }
 
-var poller = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
-guard poll(&poller, 1, waitSeconds * 1000) > 0 else { exit(0) }
-var buffer = [UInt8](repeating: 0, count: 256)
-let count = read(fd, &buffer, buffer.count)
-guard count > 0 else { exit(0) }
-let answer = String(decoding: buffer[0..<count], as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-
-var decision: [String: Any]?
-switch answer {
-case "allow":
-    decision = ["behavior": "allow"]
-case "deny":
-    decision = ["behavior": "deny", "message": "Denied in Boris"]
-default:
-    decision = nil
+// The answer is one line. Until the whole of it is here there is no answer, so a cut-off line decides nothing.
+let giveUpAt = Date().addingTimeInterval(TimeInterval(waitSeconds))
+var line = Data()
+var buffer = [UInt8](repeating: 0, count: 16 * 1024)
+while !line.contains(0x0A) {
+    let left = Int32(giveUpAt.timeIntervalSinceNow * 1000)
+    var poller = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+    guard left > 0, poll(&poller, 1, left) > 0 else { exit(0) }
+    let count = read(fd, &buffer, buffer.count)
+    guard count > 0 else { exit(0) }
+    line.append(contentsOf: buffer[0..<count])
 }
-if let decision, let output = try? JSONSerialization.data(withJSONObject: ["hookSpecificOutput": ["hookEventName": "PermissionRequest", "decision": decision]]) {
-    FileHandle.standardOutput.write(output)
+
+let original = object["tool_input"] as? [String: Any]
+if let answer = HookAnswer(line: line), let output = answer.output(tool: object["tool_name"] as? String, input: original) {
+    // This form reports a closed pipe as an error, where the older one raises an exception and crashes.
+    try? FileHandle.standardOutput.write(contentsOf: output)
 }
 exit(0)
