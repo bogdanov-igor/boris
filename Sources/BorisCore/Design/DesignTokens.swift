@@ -78,6 +78,10 @@ public enum DesignTokens {
     public static let monoBackground = TokenPair(blackAlpha: 0.05, whiteAlpha: 0.07)
     public static let meter = TokenPair(0x55555A, 0xB0B0B6)
     public static let meterTrack = TokenPair(blackAlpha: 0.09, whiteAlpha: 0.12)
+    /// As black as the cutout it continues, in either theme. What is on it is always set in the dark theme's colours.
+    public static let notch = TokenPair(0x000000, 0x000000)
+    /// The panel that stands in for the notch on a screen without one.
+    public static let panel = TokenPair(0xF6F6F7, 0x1C1C1E)
 
     public static let statusRunning = TokenPair(0x1A6F75, 0x5CC0C6)
     public static let statusSmoke = TokenPair(0x8A8A92, 0x82828A)
@@ -113,7 +117,7 @@ public enum DesignTokens {
 
     /// Every background that text sits on.
     public static let surfaces: [(name: String, pair: TokenPair)] = [
-        ("window", window), ("side", side), ("pop", pop),
+        ("window", window), ("side", side), ("pop", pop), ("panel", panel),
     ]
 }
 
