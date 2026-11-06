@@ -116,7 +116,7 @@ struct ActivityPage: View {
             pickMenu(
                 title: query.project.map { L("Project: %@", projectTitle($0)) } ?? L("Project: all"),
                 label: L("Project"),
-                values: Set(model.work.sessions.map { $0.cwd ?? "" }).sorted(),
+                values: Set(model.work.sessions.map { $0.workingFolder ?? "" }).sorted(),
                 name: projectTitle,
                 selection: $query.project
             )
@@ -179,8 +179,8 @@ struct ActivityPage: View {
                 ActivityRow(
                     step: step,
                     waiting: waiting,
-                    project: session?.cwd.map { URL(fileURLWithPath: $0).lastPathComponent } ?? session?.displayName ?? L("Without a project"),
-                    projectIsFolder: session?.cwd != nil,
+                    project: session?.workingFolder.map { URL(fileURLWithPath: $0).lastPathComponent } ?? session?.displayName ?? L("Without a project"),
+                    projectIsFolder: session?.workingFolder != nil,
                     place: WorkPhrases.environment(session?.environment),
                     agent: store.agentName(entry.agentId, session: session, short: false),
                     cwd: session?.cwd,

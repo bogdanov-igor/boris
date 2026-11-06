@@ -91,12 +91,17 @@ extension WorkSession {
     /// The name Claude or the person gave it, otherwise its project.
     public var displayName: String {
         if let title, !title.isEmpty { return title }
-        if let cwd, !cwd.isEmpty { return URL(fileURLWithPath: cwd).lastPathComponent }
-        return String(id.prefix(8))
+        if let workingFolder, !workingFolder.isEmpty { return URL(fileURLWithPath: workingFolder).lastPathComponent }
+        return environment == .cowork ? L("Cowork task") : String(id.prefix(8))
     }
 
     /// A folder is set in a monospaced font, a person's words are not.
     public var nameIsFolder: Bool {
-        title?.isEmpty != false && cwd?.isEmpty == false
+        title?.isEmpty != false && workingFolder?.isEmpty == false
+    }
+
+    /// The folder it works in, if that means anything to a person. Cowork's is a made-up name inside a virtual machine.
+    public var workingFolder: String? {
+        environment == .cowork ? nil : cwd
     }
 }

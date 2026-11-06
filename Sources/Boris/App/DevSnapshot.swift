@@ -113,9 +113,10 @@ enum DevSnapshot {
         case project, projectDates, datesPicker, session, sessionTrouble, sessionPast, sessionGone, bigRun
         case feed, feedWaiting, feedChanges, feedDiff, activityCommands
         case requestCards, requestsNoHooks, nowRequests, miniRequests
+        case sessionCowork, coworkWaiting, sessionCoworkWaiting
 
         var page: AppPage? {
-            if self == .requestsNoHooks { return .requests }
+            if self == .requestsNoHooks || self == .coworkWaiting { return .requests }
             return DevUsageData.Scenario(rawValue: rawValue) != nil ? .spend : AppPage(rawValue: rawValue)
         }
 
@@ -242,6 +243,13 @@ enum DevSnapshot {
                 model.openSession(DevProjects.pastBroken)
             case .sessionGone:
                 model.openSession("no-such-session")
+            case .sessionCowork:
+                model.openSession(DevCowork.session)
+            case .coworkWaiting:
+                DevCowork.showWaiting(model, long: data == .long)
+            case .sessionCoworkWaiting:
+                DevCowork.showWaiting(model, long: data == .long)
+                model.openSession(DevCowork.session)
             case .bigRun:
                 DevData.big.fill(model)
                 model.openSession(DevProjects.big)

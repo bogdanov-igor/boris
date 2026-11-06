@@ -64,10 +64,11 @@ public actor SessionHistory {
         let origin = TranscriptReader.origin(in: file)
         let tail = TranscriptReader.tail(file)
         // Its process is gone, so the number only has to be positive: zero would mean a session that never had a process.
-        var info = SessionInfo(sessionId: id, pid: 1, cwd: origin.cwd, entrypoint: origin.entrypoint, status: "idle", startedAt: FileInfo.created(file), statusUpdatedAt: modified)
-        info.title = TranscriptReader.title(in: file)
+        var info = SessionInfo(sessionId: id, pid: 1, cwd: origin.cwd, entrypoint: ClaudeFolders.entrypoint(origin.entrypoint, transcript: file), status: "idle", startedAt: FileInfo.created(file), statusUpdatedAt: modified)
+        let cowork = CoworkSessionFile.url(forTranscript: file).flatMap(CoworkSessionFile.read)
+        info.title = cowork?.name ?? TranscriptReader.title(in: file)
         info.contextTokens = tail.usage?.context
-        info.model = tail.model
+        info.model = tail.model ?? cowork?.model
         let ended = outcome(tail)
         return Known(modified: modified, info: info, outcome: ended, failure: ended == .failed ? FailureClassifier.classify(tail.lastMessage) : nil, place: GitPlaceReader.place(folder: origin.cwd, branch: tail.gitBranch ?? origin.gitBranch))
     }
@@ -76,7 +77,7 @@ public actor SessionHistory {
     private static func outcome(_ tail: TranscriptReader.Tail) -> WorkState {
         guard let last = tail.lastMessage else { return .finished }
         if last.isApiError { return .failed }
-        if tail.turnEnded { return .finished }
+        if tail.turnEnded || tail.spokeToPerson { return .finished }
         return last.text?.hasPrefix("[Request interrupted") == true ? .stopped : .interrupted
     }
 

@@ -61,8 +61,9 @@ public struct SessionInfo: Sendable, Equatable, Identifiable {
         self.statusUpdatedAt = statusUpdatedAt
     }
 
+    /// Cowork's folder is a made-up name inside a virtual machine, and no project of the person's.
     public var projectName: String? {
-        guard let cwd, !cwd.isEmpty else { return nil }
+        guard let cwd, !cwd.isEmpty, environment != .cowork else { return nil }
         return URL(fileURLWithPath: cwd).lastPathComponent
     }
 

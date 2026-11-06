@@ -54,9 +54,21 @@ public enum ClaudeFolders {
         return found
     }
 
-    /// `local-agent-mode-sessions/<organisation>/<account>/agent/<id>/.claude`. The depth is not promised, so nearby levels count too.
+    private static let coworkFolder = "local-agent-mode-sessions"
+
+    /// A file of a Cowork session, wherever Claude Desktop keeps it.
+    static func isCowork(_ file: URL) -> Bool {
+        file.path.contains("/\(coworkFolder)/")
+    }
+
+    /// `entrypoint` as the transcript has it. Cowork's folder says what it is even when the first records do not.
+    static func entrypoint(_ written: String?, transcript: URL) -> String? {
+        written ?? (isCowork(transcript) ? "local-agent" : nil)
+    }
+
+    /// `local-agent-mode-sessions/<organisation>/<account>/agent/<id>/.claude`, and one level up for the other kinds of task. The depth is not promised, so nearby levels count too.
     private static func coworkFolders(home: URL) -> [URL] {
-        let base = home.appendingPathComponent("Library/Application Support/Claude/local-agent-mode-sessions")
+        let base = home.appendingPathComponent("Library/Application Support/Claude/\(coworkFolder)")
         var level = [base]
         var found: [URL] = []
         for _ in 0..<4 {

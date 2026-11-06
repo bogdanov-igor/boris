@@ -84,6 +84,8 @@ public actor RunScanner {
     private var changedProjects: Set<String> = []
     private var titles: [String: (checked: Date, title: String?)] = [:]
     private var sessionTails: [String: (modified: Date?, tail: TranscriptReader.Tail)] = [:]
+    private var coworkFiles: [String: (modified: Date?, file: CoworkSessionFile?)] = [:]
+    private var coworkStamps: [URL: Date] = [:]
 
     /// - Parameter others: finds the other places Claude keeps files. Only `paths` is the source of usage limits.
     public init(paths: ClaudePaths, config: Config = Config(), others: @escaping @Sendable () -> [ClaudePaths] = { [] }) {
@@ -149,6 +151,7 @@ public actor RunScanner {
 
     public func scan(now: Date) -> WorldSnapshot {
         let folderFound = paths.isValid
+        if coworkFoldersChanged() { discoverNow = true }
         if discoverNow || now.timeIntervalSince(lastDiscovery) >= config.rediscoveryInterval {
             discover()
             discoverNow = false
@@ -174,7 +177,7 @@ public actor RunScanner {
             if followSessions {
                 if !idle { sessions[index].currentStep = tail.running }
                 sessions[index].contextTokens = tail.usage?.context
-                sessions[index].model = tail.model
+                sessions[index].model = tail.model ?? coworkFile(id, transcript: file)?.model
                 places[id] = GitPlaceReader.place(folder: sessions[index].cwd, branch: tail.gitBranch)
             }
             // A request from a workflow agent is not in this file, so its tool stays unnamed.
@@ -256,6 +259,29 @@ public actor RunScanner {
         return now.timeIntervalSince(last) <= config.window
     }
 
+    /// A new Cowork task only adds a folder beside the others, and nothing watches that place: an active task rewrites a file there all the time.
+    /// So the folders are looked for again when that place changes, and the full search over the logs runs only if there is a new one.
+    private func coworkFoldersChanged() -> Bool {
+        // `.../agent/<session>/.claude` and `.../<session>/.claude`: the kinds of task live one level apart.
+        let holders = others.filter { !$0.processesAreHere }.map { $0.root.deletingLastPathComponent().deletingLastPathComponent() }
+        var stamps: [URL: Date] = [:]
+        for folder in Set(holders + holders.map { $0.deletingLastPathComponent() }) { stamps[folder] = FileInfo.modified(folder) }
+        guard stamps != coworkStamps else { return false }
+        let isFirstLook = coworkStamps.isEmpty
+        coworkStamps = stamps
+        return !isFirstLook && Set(findOthers().map(\.root)) != Set(others.map(\.root))
+    }
+
+    /// What Claude Desktop keeps about a Cowork task. Nil for any other session.
+    private func coworkFile(_ id: String, transcript: URL) -> CoworkSessionFile? {
+        guard let url = CoworkSessionFile.url(forTranscript: transcript) else { return nil }
+        let modified = FileInfo.modified(url)
+        if let known = coworkFiles[id], known.modified == modified { return known.file }
+        let file = CoworkSessionFile.read(url)
+        coworkFiles[id] = (modified, file)
+        return file
+    }
+
     private func discover() {
         others = findOthers()
         for root in roots {
@@ -301,11 +327,12 @@ public actor RunScanner {
     /// A title takes a read of the file's end, and a busy session writes all the time, so it is looked for once a minute at most.
     private func applyTitles(_ sessions: inout [SessionInfo], now: Date) {
         titles = titles.filter { id, _ in sessions.contains { $0.sessionId == id } }
+        coworkFiles = coworkFiles.filter { id, _ in sessions.contains { $0.sessionId == id } }
         for index in sessions.indices {
             let id = sessions[index].sessionId
             let known = titles[id]
             if known == nil || now.timeIntervalSince(known?.checked ?? .distantPast) >= config.titleRefreshInterval, let file = sessionTranscript(id) {
-                titles[id] = (now, TranscriptReader.title(in: file) ?? known?.title)
+                titles[id] = (now, coworkFile(id, transcript: file)?.name ?? TranscriptReader.title(in: file) ?? known?.title)
             }
             sessions[index].title = titles[id]?.title
         }

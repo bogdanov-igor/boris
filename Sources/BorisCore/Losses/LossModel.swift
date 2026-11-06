@@ -123,7 +123,7 @@ public struct LossEntry: Codable, Sendable, Equatable, Identifiable {
     }
 
     public var project: String? {
-        guard let cwd, !cwd.isEmpty else { return nil }
+        guard let cwd, !cwd.isEmpty, environment != .cowork else { return nil }
         return URL(fileURLWithPath: cwd).lastPathComponent
     }
 
