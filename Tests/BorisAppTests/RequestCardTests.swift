@@ -13,7 +13,7 @@ private final class OffScreen {
 
     init<Content: View>(_ view: Content, size: CGSize = CGSize(width: 420, height: 600)) {
         _ = NSApplication.shared
-        window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled], backing: .buffered, defer: false)
+        window = SilentWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: view.frame(width: size.width, height: size.height))
         window.setFrameOrigin(NSPoint(x: -5000, y: -5000))
@@ -48,6 +48,13 @@ private final class OffScreen {
     func close() {
         window.orderOut(nil)
     }
+}
+
+/// A key nobody handles ends in the system alert sound, and these tests press many of them:
+/// on a real Mac that beeps at the person every time the suite runs.
+private final class SilentWindow: NSWindow {
+    override func keyDown(with event: NSEvent) {}
+    override func noResponder(for eventSelector: Selector) {}
 }
 
 private func model() -> AppModel {
