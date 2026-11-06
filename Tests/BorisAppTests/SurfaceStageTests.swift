@@ -5,6 +5,11 @@ import Foundation
 import Testing
 @testable import Boris
 
+@MainActor
+private final class ReadCount {
+    var count = 0
+}
+
 /// No window here: the stage only decides, and nothing reaches the person's screen.
 @MainActor
 @Suite("Сцена панели")
@@ -182,6 +187,56 @@ struct SurfaceStageTests {
         #expect(!both.watchMenuBars(surfaceOn: false))
     }
 
+    /// The real controller runs here. With a hidden menu bar and no request its window never goes on screen,
+    /// and the made-up screen lies far from every real one in case that ever breaks.
+    @Test("Выключили поверхность: строки меню больше не читаются, включили: читаются снова")
+    func menuBarWatchFollowsTheSwitch() async throws {
+        _ = NSApplication.shared
+        let settings = AppSettings(defaults: nil)
+        let model = AppModel(settings: settings, store: nil, live: false)
+        let reads = ReadCount()
+        var far = hidden(wide)
+        far.frame.origin.x = 100_000
+        far.visibleFrame.origin.x = 100_000
+        let controller = SurfaceController(model: model, screens: { [far] _ in [far] }, readWindows: {
+            reads.count += 1
+            return []
+        })
+        controller.start()
+        #expect(reads.count == 1)
+        #expect(controller.isWatchingMenuBars)
+
+        settings.surfaces.notch = false
+        try await waitUntil { !controller.isWatchingMenuBars }
+        #expect(!controller.isWatchingMenuBars)
+        let whileOff = reads.count
+
+        settings.surfaces.notch = true
+        try await waitUntil { controller.isWatchingMenuBars }
+        #expect(controller.isWatchingMenuBars)
+        #expect(reads.count > whileOff)
+
+        settings.surfaces.notch = false
+        try await waitUntil { !controller.isWatchingMenuBars }
+        #expect(!controller.isWatchingMenuBars)
+    }
+
+    private func waitUntil(_ done: () -> Bool) async throws {
+        for _ in 0..<200 where !done() {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+    }
+
+    @Test("Настройки говорят, как открыть панель, если больше открыть нечем")
+    func settingsTellTheWayIn() {
+        let last = SurfaceSwitches(icon: false, notch: true, mini: false)
+        #expect(SurfacesSettings.notchDetail(last, hotKeyWorks: true).contains("very top of the screen"))
+        // The mini window opens only with a hotkey, and that one is not working.
+        #expect(SurfacesSettings.notchDetail(SurfaceSwitches(icon: false, notch: true, mini: true), hotKeyWorks: false).contains("very top of the screen"))
+        #expect(!SurfacesSettings.notchDetail(SurfaceSwitches(), hotKeyWorks: true).contains("very top of the screen"))
+        #expect(!SurfacesSettings.notchDetail(SurfaceSwitches(icon: false, notch: true, mini: true), hotKeyWorks: true).contains("very top of the screen"))
+    }
+
     @Test("Длинная реплика не помещается и уступает числам")
     func longLine() {
         var screen = wide
@@ -217,6 +272,8 @@ struct SurfaceStageTests {
         // `visibleFrame` of a monitor other than the main one is right only inside an application.
         _ = NSApplication.shared
         let windows = MenuBarWindows.read()
+        // A wrong key would drop every window, and an empty list would pass everything below.
+        if !NSScreen.screens.isEmpty { #expect(!windows.isEmpty) }
         for window in windows {
             #expect([MenuBarReading.normalLayer, MenuBarReading.barLayer, MenuBarReading.iconLayer].contains(window.layer))
         }
