@@ -37,6 +37,9 @@ public struct SessionFeedReader: Sendable {
         ([main] + agents.values.map(\.reader)).contains { $0.startedPartWay || $0.log.dropped }
     }
 
+    /// The session's permission mode as of its newest record that names it.
+    public var permissionMode: String? { main.permissionMode }
+
     /// Returns true when something new arrived. Costs a look at each file's size when nothing did.
     /// - Parameter withAgents: false reads only the session's own transcript, for a quick first look.
     @discardableResult

@@ -20,6 +20,8 @@ final class FeedStore {
     private(set) var loaded = false
     private(set) var startedPartWay = false
     private(set) var fileNames: [String: String] = [:]
+    /// Only the log says it, so it is known once the session's feed has been read.
+    private(set) var permissionMode: String?
     /// Someone is reading older records, so the oldest stay until they come back to the end.
     @ObservationIgnored var keepsOldest = false {
         didSet {
@@ -140,6 +142,7 @@ final class FeedStore {
         }
         if result.thinking != thinking { thinking = result.thinking }
         if result.names != fileNames { fileNames = result.names }
+        if sessionId != nil, result.permissionMode != permissionMode { permissionMode = result.permissionMode }
         // A feed at its limit has dropped what came before, also on a tick that brought nothing new.
         let partWay = result.partWay || entries.count >= SessionFeed.limit
         if partWay != startedPartWay { startedPartWay = partWay }
@@ -155,6 +158,7 @@ final class FeedStore {
         entries = []
         thinking = []
         fileNames = [:]
+        permissionMode = nil
         shownDiff = nil
         startedPartWay = false
         lookedOnce = false
@@ -184,6 +188,7 @@ final class FeedStore {
         var thinking: [Thinker]
         var names: [String: String]
         var partWay: Bool
+        var permissionMode: String?
     }
 
     private nonisolated static func read(_ current: [String: SessionFeedReader], files: [(session: WorkSession, file: URL)], live: Set<String>, force: Bool, window: UInt64, withAgents: Bool) -> ReadResult {
@@ -210,7 +215,7 @@ final class FeedStore {
             partWay = partWay || reader.startedPartWay
         }
         let merged = changed ? SessionFeed.merged(feeds) : nil
-        return ReadResult(readers: readers, entries: merged, thinking: thinking, names: names, partWay: partWay)
+        return ReadResult(readers: readers, entries: merged, thinking: thinking, names: names, partWay: partWay, permissionMode: files.first.flatMap { readers[$0.session.id]?.permissionMode })
     }
 
     /// The whole of a call, which the feed keeps only the start of. Read from the transcript, only when asked.
@@ -242,6 +247,7 @@ final class FeedStore {
         entries = feed.entries.filter { sessionId == nil || $0.sessionId == sessionId }
         thinking = feed.thinking.filter { sessionId == nil || $0.sessionId == sessionId }
         fileNames = feed.names
+        permissionMode = feed.permissionMode
         loaded = true
     }
     #endif

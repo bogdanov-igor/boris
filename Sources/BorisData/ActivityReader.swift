@@ -10,6 +10,8 @@ public struct ActivityReader: Sendable {
     public private(set) var log = ActivityLog()
     /// True when the file was too big to read from its start, so the feed begins part way.
     public private(set) var startedPartWay = false
+    /// The permission mode as of the newest record that names it. Nil until one has been read.
+    public private(set) var permissionMode: String?
     private var offset: UInt64?
     private let window: UInt64
 
@@ -51,10 +53,13 @@ public struct ActivityReader: Sendable {
             var lines = data[data.startIndex..<lastNewline].split(separator: 0x0A)
             if skipFirstLine, !lines.isEmpty { lines.removeFirst() }
             let marker = Data("\"message\"".utf8)
+            let modeMarker = Data("\"permissionMode\"".utf8)
             var changed = false
             for line in lines {
                 autoreleasepool {
-                    guard line.range(of: marker) != nil, let record = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] else { return }
+                    let namesMode = line.range(of: modeMarker) != nil
+                    guard namesMode || line.range(of: marker) != nil, let record = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] else { return }
+                    if namesMode, let mode = record["permissionMode"] as? String { permissionMode = mode }
                     for event in Self.events(from: record) {
                         log.apply(event)
                         changed = true
@@ -179,7 +184,50 @@ public struct ActivityReader: Sendable {
             result.target = mcpName(tool)
             result.command = parameters(input)
         }
+        result.parameters = shownParameters(tool, input)
         return result
+    }
+
+    /// What the details show word for word already, or a text far too long for a list of parameters.
+    private static func longParameters(_ tool: String) -> Set<String>? {
+        switch tool {
+        case "Bash", "Monitor": return ["command"]
+        case "Edit": return ["old_string", "new_string"]
+        case "MultiEdit": return ["edits"]
+        case "Write": return ["content"]
+        case "NotebookEdit": return ["new_source"]
+        case "WebSearch": return ["query"]
+        case "Agent", "Task": return ["prompt"]
+        case "Workflow": return ["script"]
+        case "Read", "Grep", "Glob", "LS", "WebFetch", "Skill": return []
+        // A tool Boris knows nothing about has all of them in its command already.
+        default: return nil
+        }
+    }
+
+    private static let parameterLimit = 12
+    private static let parameterValueLimit = 240
+
+    private static func shownParameters(_ tool: String, _ input: [String: Any]) -> [ToolParameter] {
+        guard let long = longParameters(tool) else { return [] }
+        return input.keys.sorted().lazy.filter { !long.contains($0) }.prefix(parameterLimit).compactMap { name -> ToolParameter? in
+            guard let value = input[name].flatMap(parameterText), !value.isEmpty else { return nil }
+            return ToolParameter(name: name, value: value.count > parameterValueLimit ? "\(value.prefix(parameterValueLimit))…" : value)
+        }
+    }
+
+    private static func parameterText(_ value: Any) -> String? {
+        switch value {
+        case let text as String:
+            return text
+        case let number as NSNumber:
+            return CFGetTypeID(number) == CFBooleanGetTypeID() ? (number.boolValue ? "true" : "false") : number.stringValue
+        case is NSNull:
+            return nil
+        default:
+            guard JSONSerialization.isValidJSONObject(value), let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]) else { return nil }
+            return String(decoding: data, as: UTF8.self)
+        }
     }
 
     /// A script written on the spot has no file name, but it says its own name in `meta`.
