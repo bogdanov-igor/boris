@@ -34,26 +34,6 @@ enum DevSnapshot {
         #endif
     }
 
-    static var isSmoke: Bool {
-        #if DEBUG
-        ProcessInfo.processInfo.environment["BORIS_SMOKE"] != nil
-        #else
-        false
-        #endif
-    }
-
-    /// `BORIS_SMOKE=1` reports whether the app came up, and quits.
-    static func smokeIfRequested(statusBar: StatusBarController, model: AppModel) {
-        #if DEBUG
-        guard ProcessInfo.processInfo.environment["BORIS_SMOKE"] != nil else { return }
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(3))
-            print("icon visible: \(statusBar.isIconVisible), loaded: \(model.loaded), sessions: \(model.work.sessions.count), mood: \(model.mood), hooks: \(model.hooks.connection), bundle: \(Bundle.main.bundleIdentifier ?? "none")")
-            exit(model.loaded ? 0 : 1)
-        }
-        #endif
-    }
-
     /// `BORIS_SNAPSHOT=/folder` renders the screens and quits. Each of `BORIS_SCREEN`, `BORIS_THEME`, `BORIS_MODE`, `BORIS_LANGUAGE`
     /// and `BORIS_DATA` takes a comma-separated list. Without one, every screen goes in both themes, modes and languages on the busy data.
     /// `BORIS_SIZE=WIDTHxHEIGHT` sets the size of the windows that have one.

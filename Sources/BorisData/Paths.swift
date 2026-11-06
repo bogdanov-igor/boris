@@ -41,7 +41,9 @@ public enum ClaudeFolders {
         environment: [String: String] = ProcessInfo.processInfo.environment,
         home: URL = FileManager.default.homeDirectoryForCurrentUser
     ) -> [ClaudePaths] {
+        #if DEBUG
         guard environment["BORIS_ONLY_THIS_FOLDER"] == nil else { return [] }
+        #endif
         let settings = FileInfo.names(in: home)
             .filter { $0.hasPrefix(".") && $0.lowercased().contains("claude") }
             .map { home.appendingPathComponent($0) } + [home.appendingPathComponent(".config/claude")]
@@ -77,11 +79,18 @@ public enum ClaudeFolders {
 }
 
 public enum BorisPaths {
-    /// Boris's own files. `BORIS_STATE_DIR` moves them for tests and tools.
+    /// A variable meant for a check. Only launchd's own mark may reach a release build, which has no check modes.
+    public static func checkVariable(in environment: [String: String]) -> String? {
+        environment.keys.filter { $0.hasPrefix("BORIS_") && $0 != "BORIS_LAUNCHD" }.sorted().first
+    }
+
+    /// Boris's own files. In a debug build `BORIS_STATE_DIR` moves them for tests and tools.
     public static var support: URL {
+        #if DEBUG
         if let custom = ProcessInfo.processInfo.environment["BORIS_STATE_DIR"], !custom.isEmpty {
             return URL(fileURLWithPath: custom, isDirectory: true)
         }
+        #endif
         return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Boris", isDirectory: true)
     }
 

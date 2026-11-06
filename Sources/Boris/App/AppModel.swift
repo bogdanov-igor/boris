@@ -435,9 +435,12 @@ final class AppModel {
     }
 
     /// Asked once per life of the settings: the notice should not come back every day.
-    func noteIconHidden() {
-        guard !state.iconNoticeSeen else { return }
+    /// - Returns: true only when the notice has just appeared, which is when the window comes forward to show it.
+    @discardableResult
+    func noteIconHidden() -> Bool {
+        guard !state.iconNoticeSeen, !showIconNotice else { return false }
         showIconNotice = true
+        return true
     }
 
     var isFirstLaunch: Bool {

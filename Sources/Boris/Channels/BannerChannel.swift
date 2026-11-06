@@ -38,7 +38,7 @@ final class BannerChannel: NSObject, BannerPosting, UNUserNotificationCenterDele
 
     /// The notification center crashes outside an app bundle, which is how debug tools run.
     static var canRun: Bool {
-        Bundle.main.bundleURL.pathExtension == "app" && !DevSnapshot.isSmoke
+        Bundle.main.bundleURL.pathExtension == "app"
     }
 
     func refreshPermission() {

@@ -77,7 +77,7 @@ final class HookController {
     func refresh() {
         guard live else { return }
         status = HookInstaller.status(at: settingsFile, plan: plan)
-        let shouldListen = status == .installed || status == .outdated || ProcessInfo.processInfo.environment["BORIS_HOOK_SOCKET"] != nil
+        let shouldListen = status == .installed || status == .outdated || HookServer.movedPath != nil
         if shouldListen { startServer() } else { stopServer() }
     }
 

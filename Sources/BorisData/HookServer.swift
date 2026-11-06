@@ -63,7 +63,16 @@ public final class HookServer: @unchecked Sendable {
     }
 
     public static var defaultPath: String {
-        ProcessInfo.processInfo.environment["BORIS_HOOK_SOCKET"] ?? BorisPaths.support.appendingPathComponent("hook.sock").path
+        movedPath ?? BorisPaths.support.appendingPathComponent("hook.sock").path
+    }
+
+    /// Where a check has put the socket. The real one is always in its place.
+    public static var movedPath: String? {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["BORIS_HOOK_SOCKET"]
+        #else
+        nil
+        #endif
     }
 
     /// How long the next requests wait for an answer. Those already open keep their time.

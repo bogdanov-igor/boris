@@ -54,6 +54,18 @@ private func event(_ kind: EventKind, session: String = "s1", run: String? = nil
 @MainActor
 @Suite("Модель приложения: переходы")
 struct AppModelNavigationTests {
+    @Test("Заметка о значке выводит окно вперёд один раз, а не каждые 30 секунд")
+    func iconNoticeOnce() {
+        let model = makeModel()
+        #expect(model.noteIconHidden())
+        #expect(model.showIconNotice)
+        #expect(!model.noteIconHidden())
+        #expect(!model.noteIconHidden())
+        model.dismissIconNotice()
+        #expect(!model.noteIconHidden())
+        #expect(!model.showIconNotice)
+    }
+
     @Test("Сессия открывается с любой поверхности и приводит в главное окно")
     func openSession() {
         let model = makeModel()

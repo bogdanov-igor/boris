@@ -8,6 +8,14 @@ import Foundation
 // and `boris-dump limits` reads the limits. Money is never printed, only percent.
 // `boris-dump activity [transcript]` says how each action in the logs is typed and what reading them costs. `boris-dump edits <session>` lists the changes of a session with their counts.
 
+// A release build has no `BORIS_STATE_DIR`, so its caches would land in Boris's real folder without a word.
+#if !DEBUG
+if let stray = BorisPaths.checkVariable(in: ProcessInfo.processInfo.environment) {
+    print("A release build knows no check modes and \(stray) is set, so it does not start.")
+    exit(2)
+}
+#endif
+
 let arguments = Array(CommandLine.arguments.dropFirst())
 let paths = ClaudePaths.resolve()
 let others: @Sendable () -> [ClaudePaths] = { ClaudeFolders.others(besides: paths) }

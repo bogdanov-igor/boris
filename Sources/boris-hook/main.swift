@@ -9,8 +9,13 @@ import BorisCore
 // The app can vanish while this writes, and that must end in a quiet exit too.
 signal(SIGPIPE, SIG_IGN)
 
-let socketPath = ProcessInfo.processInfo.environment["BORIS_HOOK_SOCKET"]
-    ?? NSHomeDirectory() + "/Library/Application Support/Boris/hook.sock"
+// Claude Code runs this with the person's shell around it, and a variable left there must not decide who answers.
+let socketPath: String = {
+    #if DEBUG
+    if let moved = ProcessInfo.processInfo.environment["BORIS_HOOK_SOCKET"] { return moved }
+    #endif
+    return NSHomeDirectory() + "/Library/Application Support/Boris/hook.sock"
+}()
 
 guard access(socketPath, F_OK) == 0 else { exit(0) }
 

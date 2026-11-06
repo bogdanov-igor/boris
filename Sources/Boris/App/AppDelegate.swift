@@ -37,7 +37,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         if DevSnapshot.runIfRequested() { return }
         guard DevSnapshot.mayStartForReal else {
+            #if DEBUG
             FileHandle.standardError.write(Data("A debug build starts as the real app only with BORIS_ALLOW_UI=1.\n".utf8))
+            #endif
             exit(2)
         }
         registerAutostartOnce()
@@ -98,10 +100,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launch.listen { [weak statusBar] in statusBar?.toggleMiniWindow() }
         registerHotKey()
         model.start()
-        if !DevSnapshot.isSmoke { surface.start() }
+        surface.start()
         startTicking()
-        if model.isFirstLaunch, !DevSnapshot.isSmoke { main.show() }
-        DevSnapshot.smokeIfRequested(statusBar: statusBar, model: model)
+        if model.isFirstLaunch { main.show() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -128,8 +129,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.hooks.refresh()
         model.refreshPresence()
         hiddenFor = statusBar.isIconVisible || !model.settings.surfaces.icon ? 0 : hiddenFor + seconds
-        if hiddenFor >= 60 { model.noteIconHidden() }
-        if model.showIconNotice { mainWindow?.show() }
+        // Once, when the notice appears. Doing this on every tick would take the keyboard from the person twice a minute.
+        if hiddenFor >= 60, model.noteIconHidden() { mainWindow?.show() }
     }
 
     private func registerHotKey() {
