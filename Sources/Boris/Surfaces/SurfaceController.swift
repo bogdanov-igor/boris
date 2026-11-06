@@ -98,6 +98,7 @@ final class SurfaceController {
     private var mouseMonitor: Any?
     private var pointerWatch: Timer?
     private var observers: [NSObjectProtocol] = []
+    private var panelLog = PanelLogTrack()
 
     var onOpenMain: (() -> Void)?
     var onOpenSettings: ((SettingsSection) -> Void)?
@@ -184,6 +185,7 @@ final class SurfaceController {
         }
         let moved = screen.id != self.screen?.id
         self.screen = screen
+        panelLog.note(isOpen: behavior.isOpen, hovering: pointerInside)
         let frame = stage.arrange(inputs, on: screen, isOpen: behavior.isOpen, contentHeight: contentHeight)
         host?.appearance = stage.hasNotch ? NSAppearance(named: .darkAqua) : nil
         panel.hasShadow = !stage.hasNotch

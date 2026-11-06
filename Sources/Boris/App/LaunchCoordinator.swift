@@ -1,4 +1,5 @@
 import AppKit
+import BorisCore
 import ServiceManagement
 
 /// Keeps one running instance and hands work to the launchd agent, which is the copy that restarts after a crash.
@@ -55,6 +56,7 @@ final class LaunchCoordinator {
             kick.waitUntilExit()
             return kick.terminationStatus == 0
         } catch {
+            AppLog.note(.autostartFailed, .failure(error))
             return false
         }
     }

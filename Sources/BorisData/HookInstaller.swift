@@ -1,3 +1,4 @@
+import BorisCore
 import Foundation
 
 /// Adds and removes Boris's entries in `settings.json`, leaving everything else as it was.
@@ -206,7 +207,10 @@ public enum HookInstaller {
         let exists = manager.fileExists(atPath: backup.path)
         if exists, hasOurEntries(loaded.settings) { return }
         if exists { try manager.removeItem(at: backup) }
-        if loaded.raw != nil { try manager.copyItem(at: loaded.file, to: backup) }
+        if loaded.raw != nil {
+            try manager.copyItem(at: loaded.file, to: backup)
+            AppLog.note(.claudeSettingsBackup)
+        }
     }
 
     /// Replacing a file would otherwise drop the permissions its owner set.
@@ -214,13 +218,28 @@ public enum HookInstaller {
         let manager = FileManager.default
         let permissions = try? manager.attributesOfItem(atPath: file.path)[.posixPermissions]
         try data.write(to: file, options: .atomic)
-        if let permissions { try? manager.setAttributes([.posixPermissions: permissions], ofItemAtPath: file.path) }
+        guard let permissions else { return }
+        do {
+            try manager.setAttributes([.posixPermissions: permissions], ofItemAtPath: file.path)
+        } catch {
+            AppLog.note(.claudeSettingsModeLost, .failure(error))
+        }
     }
 
     public static func install(at url: URL, plan: Plan) throws {
-        let loaded = try load(url)
+        let loaded = try loadForWriting(url)
         try keepBackup(loaded)
         try write(encode(merged(loaded.settings, plan: plan)), to: loaded.file)
+        AppLog.note(.claudeSettingsWritten, .word(.hooksAdded))
+    }
+
+    private static func loadForWriting(_ url: URL) throws -> Loaded {
+        do {
+            return try load(url)
+        } catch {
+            AppLog.note(.claudeSettingsUnreadable)
+            throw error
+        }
     }
 
     private enum Removal {
@@ -244,17 +263,20 @@ public enum HookInstaller {
     }
 
     public static func uninstall(at url: URL) throws {
-        let loaded = try load(url)
+        let loaded = try loadForWriting(url)
         switch try removal(loaded) {
         case .nothing:
             break
         case .restore(let original):
             try write(original, to: loaded.file)
             try FileManager.default.removeItem(at: backupURL(loaded.file))
+            AppLog.note(.claudeSettingsWritten, .word(.originalRestored))
         case .write(let data):
             try write(data, to: loaded.file)
+            AppLog.note(.claudeSettingsWritten, .word(.hooksRemoved))
         case .delete:
             try FileManager.default.removeItem(at: loaded.file)
+            AppLog.note(.claudeSettingsWritten, .word(.fileRemoved))
         }
     }
 }

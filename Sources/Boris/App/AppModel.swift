@@ -39,7 +39,7 @@ enum LookingSurface {
 }
 
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case general, sources, surfaces, notifications, connections, about
+    case general, sources, surfaces, notifications, connections, log, about
 
     var id: String { rawValue }
 
@@ -50,6 +50,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .surfaces: return L("Surfaces")
         case .notifications: return L("Notifications")
         case .connections: return L("Connections")
+        case .log: return L("Log")
         case .about: return L("About Boris")
         }
     }
@@ -63,6 +64,7 @@ final class AppModel {
     let hooks: HookController
     let load = MacLoadWatch()
     let losses = LossStore()
+    let logFeed = LogFeed()
     let notifications: NotificationHub
     private let store: StateStore?
     /// False reaches nothing of the person's: no other Claude folders, no files of Boris's own.
@@ -77,6 +79,7 @@ final class AppModel {
     private var pastReading = false
     /// Grows when the engine changes, so that a read from the old folder is not taken for a read from the new one.
     private var pastGeneration = 0
+    @ObservationIgnored private var logWatch = AppLogWatch()
 
     let usage = UsageModel()
     let usageRefresher: UsageRefresher
@@ -161,6 +164,7 @@ final class AppModel {
             Task { @MainActor in owner.model?.apply(output) }
         }
         self.engine = engine
+        logWatch.started()
         let sampler = MacLoadSampler(logRoots: { ([paths] + others()).map(\.projects) })
         load.reader = { await sampler.read($0) }
         Task { await engine.start() }
@@ -230,6 +234,7 @@ final class AppModel {
     }
 
     func apply(_ output: WorkEngine.Output) {
+        logWatch.saw(output)
         work = usage.book?.applied(to: output.model) ?? output.model
         hooks.note(work: output.model, now: output.at)
         world = output.world
@@ -269,6 +274,7 @@ final class AppModel {
         }
         notifications.scanned(news, quiet: quietDuringScan, now: output.at)
         if let missed = quiet.finish(now: output.at) {
+            AppLog.note(.quietEnded)
             notifications.quietEnded(missed: missed, requestsWaiting: requestCount)
             changed = true
         }
@@ -311,12 +317,18 @@ final class AppModel {
 
     func startQuiet(for duration: TimeInterval) {
         quiet.start(for: duration, now: Date())
+        if duration >= QuietMode.indefinitely / 2 {
+            AppLog.note(.quietUntilOff)
+        } else {
+            AppLog.note(.quietStarted, .seconds(duration))
+        }
         state.quiet = quiet
         store?.save(state)
     }
 
     func stopQuiet() {
         let missed = quiet.cancel()
+        AppLog.note(.quietEnded)
         state.quiet = quiet
         store?.save(state)
         if let missed { notifications.quietEnded(missed: missed, requestsWaiting: requestCount) }
@@ -454,7 +466,8 @@ final class AppModel {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? BorisCore.version
         let connection = connectionStatus
         Task {
-            let report = await engine?.diagnostics(appVersion: version, connection: connection) ?? ""
+            let log = await Task.detached(priority: .userInitiated) { AppLogStore.current?.newest(Diagnostics.logLines) ?? [] }.value
+            let report = Diagnostics.adding(log: log, to: await engine?.diagnostics(appVersion: version, connection: connection) ?? "")
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(report, forType: .string)
         }

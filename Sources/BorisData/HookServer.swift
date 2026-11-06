@@ -142,6 +142,7 @@ public final class HookServer: @unchecked Sendable {
         var gid: gid_t = 0
         guard getpeereid(fd, &uid, &gid) == 0, uid == getuid() else {
             close(fd)
+            AppLog.note(.hookForeignCaller)
             return
         }
         var timeout = timeval(tv_sec: 2, tv_usec: 0)
@@ -151,6 +152,7 @@ public final class HookServer: @unchecked Sendable {
         setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &noSignal, socklen_t(MemoryLayout<Int32>.size))
         guard let payload = readMessage(fd) else {
             close(fd)
+            AppLog.note(.hookMessageUnreadable)
             return
         }
         guard payload["wait"] as? Bool == true else {
@@ -184,6 +186,7 @@ public final class HookServer: @unchecked Sendable {
         let tool = payload["tool_name"] as? String ?? "?"
         guard waiting.count < Self.maxPending else {
             close(fd)
+            AppLog.note(.requestOverflow, .tool(tool), .session(session))
             onSignal?(.permissionAsked(session: session, tool: tool))
             return
         }

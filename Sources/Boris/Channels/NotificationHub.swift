@@ -26,6 +26,7 @@ final class NotificationHub {
     @ObservationIgnored private let voice = Voice()
     @ObservationIgnored private var telegram: TelegramChannel?
     @ObservationIgnored private var router = NotificationRouter()
+    @ObservationIgnored private var permissionKnown = false
 
     /// - Parameter live: false reaches nothing outside, as in a snapshot.
     init(settings: AppSettings, live: Bool) {
@@ -35,7 +36,11 @@ final class NotificationHub {
         banners = live ? BannerChannel() : NoBanners()
         voice.volume = { [settings] in settings.notifications.volume }
         banners.onClick = { [weak self] route in self?.onOpen?(route) }
-        banners.onPermissionChange = { [weak self] denied in self?.macDenied = denied }
+        banners.onPermissionChange = { [weak self] denied in
+            if self?.permissionKnown != true || self?.macDenied != denied { AppLog.note(denied ? .bannersDenied : .bannersAllowed) }
+            self?.permissionKnown = true
+            self?.macDenied = denied
+        }
         guard live else { return }
         let owner = WeakHub(self)
         telegram = TelegramChannel(
@@ -62,13 +67,17 @@ final class NotificationHub {
     }
 
     func quietEnded(missed: [EventKind: Int], requestsWaiting: Int) {
-        banners.post(NotificationWords.quietSummary(missed: missed, requestsWaiting: requestsWaiting))
+        let summary = NotificationWords.quietSummary(missed: missed, requestsWaiting: requestsWaiting)
+        banners.post(summary)
+        AppLog.note(.bannerSent, summary.about)
     }
 
     private func perform(_ deliveries: [NotificationDelivery]) {
         for delivery in deliveries {
             switch delivery {
-            case .banner(let banner): banners.post(banner)
+            case .banner(let banner):
+                banners.post(banner)
+                AppLog.note(.bannerSent, banner.about)
             case .removeBanners(let ids): banners.remove(ids: ids)
             case .sound(let sound): if live { voice.play(sound) }
             case .telegram(let line): sendToTelegram(line)

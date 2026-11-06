@@ -109,7 +109,9 @@ public actor TelegramChannel {
     private func drain() async {
         while !queue.isEmpty {
             let next = queue.removeFirst()
-            onResult(await deliver(next.line, token: savedToken(), chat: next.chat))
+            let problem = await deliver(next.line, token: savedToken(), chat: next.chat)
+            note(problem, about: next.line)
+            onResult(problem)
         }
         sending = false
     }
@@ -133,21 +135,45 @@ public actor TelegramChannel {
 
     /// A new bot is kept only after Telegram has taken a test message from it.
     public func connect(token rawToken: String, chat: String, test: TelegramLine) async -> TelegramProblem? {
-        guard let clean = TelegramAPI.cleanToken(rawToken) else { return .badToken }
-        guard let cleanChat = TelegramAPI.cleanChat(chat) else { return .badRecipient }
-        if let problem = await deliver(test, token: clean, chat: cleanChat) { return problem }
-        guard secret.write(clean) else { return .other }
+        guard let clean = TelegramAPI.cleanToken(rawToken) else {
+            AppLog.note(.telegramConnectFailed, .word(.badToken))
+            return .badToken
+        }
+        guard let cleanChat = TelegramAPI.cleanChat(chat) else {
+            AppLog.note(.telegramConnectFailed, .word(.badRecipient))
+            return .badRecipient
+        }
+        if let problem = await deliver(test, token: clean, chat: cleanChat) {
+            AppLog.note(.telegramConnectFailed, .word(problem.logWord))
+            return problem
+        }
+        guard secret.write(clean) else {
+            AppLog.note(.keychainFailed)
+            return .other
+        }
         token = clean
+        AppLog.note(.telegramConnected)
         return nil
     }
 
     public func test(_ line: TelegramLine, chat: String) async -> TelegramProblem? {
-        await deliver(line, token: savedToken(), chat: chat)
+        let problem = await deliver(line, token: savedToken(), chat: chat)
+        note(problem, about: line)
+        return problem
+    }
+
+    private func note(_ problem: TelegramProblem?, about line: TelegramLine) {
+        if let problem {
+            AppLog.note(.telegramFailed, line.about, .word(problem.logWord))
+        } else {
+            AppLog.note(.telegramSent, line.about)
+        }
     }
 
     public func disconnect() {
         queue = []
         token = nil
         secret.delete()
+        AppLog.note(.telegramDisconnected)
     }
 }

@@ -13,6 +13,7 @@ final class AppSettings {
         didSet {
             defaults?.set(theme.rawValue, forKey: "theme")
             NSApp?.appearance = theme.appearance
+            SettingsLog.changed("theme", from: oldValue, to: theme)
         }
     }
 
@@ -20,33 +21,34 @@ final class AppSettings {
         didSet {
             defaults?.set(language.rawValue, forKey: "language")
             Localizer.use(language)
+            SettingsLog.changed("language", from: oldValue, to: language)
         }
     }
 
-    var displayMode: DisplayMode { didSet { defaults?.set(displayMode.rawValue, forKey: "displayMode") } }
-    var keepAwake: Bool { didSet { defaults?.set(keepAwake, forKey: "keepAwake") } }
-    var hotKeyEnabled: Bool { didSet { defaults?.set(hotKeyEnabled, forKey: "hotKeyEnabled") } }
-    var hotKey: HotKeyCombo { didSet { save(hotKey, "hotKey") } }
-    var allowKey: HotKeyCombo { didSet { save(allowKey, "allowKey") } }
-    var denyKey: HotKeyCombo { didSet { save(denyKey, "denyKey") } }
+    var displayMode: DisplayMode { didSet { defaults?.set(displayMode.rawValue, forKey: "displayMode"); SettingsLog.changed("displayMode", from: oldValue, to: displayMode) } }
+    var keepAwake: Bool { didSet { defaults?.set(keepAwake, forKey: "keepAwake"); SettingsLog.changed("keepAwake", from: oldValue, to: keepAwake) } }
+    var hotKeyEnabled: Bool { didSet { defaults?.set(hotKeyEnabled, forKey: "hotKeyEnabled"); SettingsLog.changed("hotKeyEnabled", from: oldValue, to: hotKeyEnabled) } }
+    var hotKey: HotKeyCombo { didSet { save(hotKey, "hotKey"); SettingsLog.changedKeys("hotKey", from: oldValue.label, to: hotKey.label) } }
+    var allowKey: HotKeyCombo { didSet { save(allowKey, "allowKey"); SettingsLog.changedKeys("allowKey", from: oldValue.label, to: allowKey.label) } }
+    var denyKey: HotKeyCombo { didSet { save(denyKey, "denyKey"); SettingsLog.changedKeys("denyKey", from: oldValue.label, to: denyKey.label) } }
     /// The person connected the hooks and has not disconnected them.
-    var hooksWanted: Bool { didSet { defaults?.set(hooksWanted, forKey: "hooksWanted") } }
+    var hooksWanted: Bool { didSet { defaults?.set(hooksWanted, forKey: "hooksWanted"); SettingsLog.changed("hooksWanted", from: oldValue, to: hooksWanted) } }
     /// How long Claude waits for an answer given in Boris.
-    var permissionWaitSeconds: Int { didSet { defaults?.set(permissionWaitSeconds, forKey: "permissionWaitSeconds") } }
+    var permissionWaitSeconds: Int { didSet { defaults?.set(permissionWaitSeconds, forKey: "permissionWaitSeconds"); SettingsLog.changed("permissionWaitSeconds", from: oldValue, to: permissionWaitSeconds) } }
     /// Empty means the usual place.
-    var claudeFolder: String { didSet { defaults?.set(claudeFolder, forKey: "claudeFolder") } }
-    var wardrobe: WardrobeSettings { didSet { save(wardrobe, "wardrobe") } }
-    var matrix: ReactionMatrix { didSet { save(matrix, "matrix") } }
-    var silenceMinutes: Int { didSet { defaults?.set(silenceMinutes, forKey: "silenceMinutes") } }
-    var longTurnMinutes: Int { didSet { defaults?.set(longTurnMinutes, forKey: "longTurnMinutes") } }
-    var usageLow: Int { didSet { defaults?.set(usageLow, forKey: "usageLow") } }
-    var usageHigh: Int { didSet { defaults?.set(usageHigh, forKey: "usageHigh") } }
-    var surfaces: SurfaceSwitches { didSet { save(surfaces, "surfaces") } }
-    var surfaceScreen: SurfaceScreenChoice { didSet { save(surfaceScreen, "surfaceScreen") } }
-    var notifications: NotificationPreferences { didSet { save(notifications, "notifications") } }
+    var claudeFolder: String { didSet { defaults?.set(claudeFolder, forKey: "claudeFolder"); SettingsLog.changed("claudeFolder", from: oldValue, to: claudeFolder) } }
+    var wardrobe: WardrobeSettings { didSet { save(wardrobe, "wardrobe"); SettingsLog.changed("wardrobe", from: oldValue, to: wardrobe) } }
+    var matrix: ReactionMatrix { didSet { save(matrix, "matrix"); SettingsLog.changed("matrix", from: oldValue, to: matrix) } }
+    var silenceMinutes: Int { didSet { defaults?.set(silenceMinutes, forKey: "silenceMinutes"); SettingsLog.changed("silenceMinutes", from: oldValue, to: silenceMinutes) } }
+    var longTurnMinutes: Int { didSet { defaults?.set(longTurnMinutes, forKey: "longTurnMinutes"); SettingsLog.changed("longTurnMinutes", from: oldValue, to: longTurnMinutes) } }
+    var usageLow: Int { didSet { defaults?.set(usageLow, forKey: "usageLow"); SettingsLog.changed("usageLow", from: oldValue, to: usageLow) } }
+    var usageHigh: Int { didSet { defaults?.set(usageHigh, forKey: "usageHigh"); SettingsLog.changed("usageHigh", from: oldValue, to: usageHigh) } }
+    var surfaces: SurfaceSwitches { didSet { save(surfaces, "surfaces"); SettingsLog.changed("surfaces", from: oldValue, to: surfaces) } }
+    var surfaceScreen: SurfaceScreenChoice { didSet { save(surfaceScreen, "surfaceScreen"); SettingsLog.changed("surfaceScreen", from: oldValue, to: surfaceScreen) } }
+    var notifications: NotificationPreferences { didSet { save(notifications, "notifications"); SettingsLog.changed("notifications", from: oldValue, to: notifications) } }
     /// Fresh limits come from starting Claude Code for a moment, so this can be turned off.
-    var usageRefreshEnabled: Bool { didSet { defaults?.set(usageRefreshEnabled, forKey: "usageRefreshEnabled") } }
-    var usageRefreshMinutes: Int { didSet { defaults?.set(usageRefreshMinutes, forKey: "usageRefreshMinutes") } }
+    var usageRefreshEnabled: Bool { didSet { defaults?.set(usageRefreshEnabled, forKey: "usageRefreshEnabled"); SettingsLog.changed("usageRefreshEnabled", from: oldValue, to: usageRefreshEnabled) } }
+    var usageRefreshMinutes: Int { didSet { defaults?.set(usageRefreshMinutes, forKey: "usageRefreshMinutes"); SettingsLog.changed("usageRefreshMinutes", from: oldValue, to: usageRefreshMinutes) } }
 
     init(defaults: UserDefaults? = .standard) {
         self.defaults = defaults

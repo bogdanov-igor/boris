@@ -352,6 +352,7 @@ public struct WalrusPackShelf: Sendable {
             try manager.moveItem(at: temporary, to: target)
             for old in older { try? manager.removeItem(at: old.folder) }
         } catch {
+            AppLog.note(.fileWriteFailed, .word(.packFolder), .failure(error))
             try? manager.removeItem(at: temporary)
             return .failure(rejected)
         }
@@ -364,7 +365,11 @@ public struct WalrusPackShelf: Sendable {
 
     public func remove(id: String) {
         guard Self.isFolderName(id) else { return }
-        try? FileManager.default.removeItem(at: folder.appendingPathComponent(id, isDirectory: true))
+        do {
+            try FileManager.default.removeItem(at: folder.appendingPathComponent(id, isDirectory: true))
+        } catch {
+            AppLog.note(.fileWriteFailed, .word(.packFolder), .failure(error))
+        }
     }
 
     private static func files(of pack: WalrusPack) -> [URL] {

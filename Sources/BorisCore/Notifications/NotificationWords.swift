@@ -35,12 +35,19 @@ public struct MacBanner: Sendable, Equatable {
     public var title: String
     public var body: String
     public var route: NotificationRoute
+    /// What it is about, for the log, which never sees the text. Not a part of what the banner is.
+    public var about: LogValue
 
-    public init(id: String, title: String, body: String, route: NotificationRoute) {
+    public init(id: String, title: String, body: String, route: NotificationRoute, about: LogValue = .word(.other)) {
         self.id = id
         self.title = title
         self.body = body
         self.route = route
+        self.about = about
+    }
+
+    public static func == (a: MacBanner, b: MacBanner) -> Bool {
+        a.id == b.id && a.title == b.title && a.body == b.body && a.route == b.route
     }
 }
 
@@ -48,10 +55,17 @@ public struct MacBanner: Sendable, Equatable {
 public struct TelegramLine: Sendable, Equatable {
     public var subject: String
     public var text: String
+    /// What it is about, for the log, which never sees the text. Not a part of what the line is.
+    public var about: LogValue
 
-    public init(subject: String, text: String) {
+    public init(subject: String, text: String, about: LogValue = .word(.other)) {
         self.subject = subject
         self.text = text
+        self.about = about
+    }
+
+    public static func == (a: TelegramLine, b: TelegramLine) -> Bool {
+        a.subject == b.subject && a.text == b.text
     }
 
     public var full: String { "\(subject) · \(text)" }
@@ -203,7 +217,7 @@ public enum NotificationWords {
         default:
             title = "\(short(subject(event))) · \(phrase(event))"
         }
-        return MacBanner(id: event.id, title: title, body: body(event), route: route(event))
+        return MacBanner(id: event.id, title: title, body: body(event), route: route(event), about: .choice(event.kind))
     }
 
     public static func telegram(_ event: BorisEvent) -> TelegramLine {
@@ -221,7 +235,7 @@ public enum NotificationWords {
         default:
             break
         }
-        return TelegramLine(subject: subject(event), text: text)
+        return TelegramLine(subject: subject(event), text: text, about: .choice(event.kind))
     }
 
     /// A few names and how many more there are.
@@ -249,12 +263,12 @@ public enum NotificationWords {
 
     static func waveBanner(_ topic: NotificationTopic, count: Int, projects: [String]) -> MacBanner {
         let isRequest = topic == .permission || topic == .question || topic == .plan
-        return MacBanner(id: "boris.wave.\(topic.rawValue)", title: waveTitle(topic, count: count), body: names(projects.map(short)), route: isRequest ? .requests(session: nil) : .now)
+        return MacBanner(id: "boris.wave.\(topic.rawValue)", title: waveTitle(topic, count: count), body: names(projects.map(short)), route: isRequest ? .requests(session: nil) : .now, about: .choice(topic))
     }
 
     static func waveTelegram(_ topic: NotificationTopic, count: Int, projects: [String]) -> TelegramLine {
         let title = waveTitle(topic, count: count)
-        return TelegramLine(subject: "Boris", text: projects.isEmpty ? title : "\(title). \(names(projects))")
+        return TelegramLine(subject: "Boris", text: projects.isEmpty ? title : "\(title). \(names(projects))", about: .choice(topic))
     }
 
     /// `прервались 2 сессии: boris и deploy-tools`
@@ -268,11 +282,11 @@ public enum NotificationWords {
         var route = NotificationRoute.now
         if sessions.count == 1, let session = sessions[0] { route = .session(session) }
         let detail = capitalized(awayDetail(sessions: sessions.count, projects: projects.map(short)))
-        return MacBanner(id: "boris.away", title: L("While Boris was closed"), body: "\(detail). \(L("Open to see where the work stopped."))", route: route)
+        return MacBanner(id: "boris.away", title: L("While Boris was closed"), body: "\(detail). \(L("Open to see where the work stopped."))", route: route, about: .word(.awayWork))
     }
 
     static func awayTelegram(sessions: Int, projects: [String]) -> TelegramLine {
-        TelegramLine(subject: "Boris", text: L("while Boris was closed, %@", awayDetail(sessions: sessions, projects: projects)))
+        TelegramLine(subject: "Boris", text: L("while Boris was closed, %@", awayDetail(sessions: sessions, projects: projects)), about: .word(.awayWork))
     }
 
     /// `3 запроса, 1 сбой, 2 завершения. 1 запрос всё ещё ждёт.`
@@ -298,11 +312,11 @@ public enum NotificationWords {
             let waiting = requestsWaiting == 1 ? L("%lld request is still waiting.", requestsWaiting) : L("%lld requests are still waiting.", requestsWaiting)
             body += body.isEmpty ? waiting : " \(waiting)"
         }
-        return MacBanner(id: "boris.quiet", title: L("While Do not disturb was on"), body: body, route: requestsWaiting > 0 ? .requests(session: nil) : .now)
+        return MacBanner(id: "boris.quiet", title: L("While Do not disturb was on"), body: body, route: requestsWaiting > 0 ? .requests(session: nil) : .now, about: .word(.quietSummary))
     }
 
     /// The first message to a new bot.
     public static var telegramTest: TelegramLine {
-        TelegramLine(subject: "Boris", text: L("the bot is connected, this is a test"))
+        TelegramLine(subject: "Boris", text: L("the bot is connected, this is a test"), about: .word(.testMessage))
     }
 }

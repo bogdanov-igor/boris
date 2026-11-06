@@ -1,3 +1,4 @@
+import BorisCore
 import Foundation
 import IOKit.pwr_mgt
 
@@ -11,9 +12,11 @@ final class PowerGuard {
         if shouldHold, !isHolding {
             let reason = "Boris: a Claude Code workflow is running" as CFString
             isHolding = IOPMAssertionCreateWithName(kIOPMAssertionTypePreventUserIdleSystemSleep as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn), reason, &assertion) == kIOReturnSuccess
+            AppLog.note(isHolding ? .keepAwakeOn : .keepAwakeFailed)
         } else if !shouldHold, isHolding {
             IOPMAssertionRelease(assertion)
             isHolding = false
+            AppLog.note(.keepAwakeOff)
         }
     }
 }

@@ -27,7 +27,7 @@ final class ConnectFlow {
 
     func confirm(_ model: AppModel) {
         do {
-            try model.hooks.connect()
+            try model.hooks.connect(asker: .connectSheet)
             model.offerConnecting = false
             stage = .waiting(since: Date())
         } catch {
@@ -36,9 +36,9 @@ final class ConnectFlow {
     }
 
     /// One button, with no questions: the person already agreed to these entries.
-    func repair(_ model: AppModel) {
+    func repair(_ model: AppModel, asker: LogWord = .unknownCaller) {
         do {
-            try model.hooks.connect()
+            try model.hooks.connect(asker: asker)
         } catch {
             stage = .failed(L("Could not write Claude's settings. Nothing has changed."))
         }

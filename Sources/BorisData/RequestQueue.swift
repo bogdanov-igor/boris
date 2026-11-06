@@ -342,8 +342,12 @@ public enum RequestLog {
     public static func save(_ decisions: [RequestDecision], to url: URL = RequestLog.url) {
         queue.async {
             guard let data = try? JSONEncoder().encode(decisions) else { return }
-            try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try? data.write(to: url, options: .atomic)
+            do {
+                try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try data.write(to: url, options: .atomic)
+            } catch {
+                AppLog.note(.fileWriteFailed, .word(.decisionsFile), .failure(error))
+            }
         }
     }
 

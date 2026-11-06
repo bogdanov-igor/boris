@@ -23,6 +23,16 @@ public enum Diagnostics {
         return lines.joined(separator: "\n")
     }
 
+    /// How much of the app's log goes along.
+    public static let logLines = 30
+
+    /// A log line has no text of anyone's in it by the way it is made, so it stays clean here too.
+    public static func adding(log: [LogRecord], to report: String) -> String {
+        guard !log.isEmpty else { return report }
+        var renderer = LogRenderer()
+        return report + "\n\nLog:\n" + log.map { renderer.row($0).plain }.joined(separator: "\n")
+    }
+
     private static func describe(_ issue: FormatIssue) -> String {
         switch issue {
         case .unknownJournalEvent(let name): return "unknown journal event \(name)"

@@ -60,7 +60,10 @@ final class BannerChannel: NSObject, BannerPosting, UNUserNotificationCenterDele
         content.body = banner.body
         content.threadIdentifier = "boris"
         content.userInfo = banner.route.userInfo
-        center.add(UNNotificationRequest(identifier: banner.id, content: content, trigger: nil))
+        let about = banner.about
+        center.add(UNNotificationRequest(identifier: banner.id, content: content, trigger: nil)) { error in
+            if let error { AppLog.note(.bannerFailed, about, .failure(error)) }
+        }
     }
 
     func remove(ids: [String]) {

@@ -102,7 +102,7 @@ enum DevSnapshot {
     #if DEBUG
     private enum Screen: String, CaseIterable {
         case now, projects, spend, requests, activity, losses, walrus, mini, load
-        case general, sources, surfaces, notifications, connections, about
+        case general, sources, surfaces, notifications, connections, log, logProblems, logHuge, about
         case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
         case walrusThemes, walrusPacks, walrusError, walrusLine, walrusSurfaces
         case notchClosed, notchOpen, panelClosed, panelOpen, surfacesLast, surfacesHotKey, surfacesGone
@@ -121,6 +121,7 @@ enum DevSnapshot {
 
         var section: SettingsSection? {
             if self == .license { return .about }
+            if self == .logProblems || self == .logHuge { return .log }
             if self == .surfacesLast || self == .surfacesHotKey || self == .surfacesGone { return .surfaces }
             if rawValue.hasPrefix("notifications"), self != .notificationsPreview { return .notifications }
             return SettingsSection(rawValue: rawValue)
@@ -168,13 +169,14 @@ enum DevSnapshot {
             model.projectFilter.period = .dates(from: Date().addingTimeInterval(-10 * 86400), to: Date())
             view = AnyView(ProjectDatesPicker(model: model).background(Palette.pop))
             canvas = CGSize(width: 240, height: 0)
-        case .general, .sources, .surfaces, .notifications, .connections, .about, .license, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
+        case .general, .sources, .surfaces, .notifications, .connections, .log, .logProblems, .logHuge, .about, .license, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
             if screen == .surfacesLast { settings.surfaces = SurfaceSwitches(icon: false, notch: true, mini: false) }
             if screen == .surfacesHotKey {
                 settings.surfaces = SurfaceSwitches(icon: true, notch: false, mini: true)
                 model.hotKeyTaken = true
             }
             if screen == .surfacesGone { settings.surfaceScreen = .screen(id: "gone", name: "Studio Monitor") }
+            if screen == .log || screen == .logProblems || screen == .logHuge { DevLogData.fill(model, data: data, problems: screen == .logProblems, huge: screen == .logHuge) }
             view = AnyView(SettingsView(model: model, connect: connect, actions: SettingsActions()))
             canvas = size ?? CGSize(width: 760, height: 720)
         case .feed:

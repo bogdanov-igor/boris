@@ -122,6 +122,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
+        AppLog.note(.windowOpened, .word(.miniWindow))
         model.miniWindowDidOpen()
     }
 
@@ -136,6 +137,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     func popoverDidClose(_ notification: Notification) {
+        AppLog.note(.windowClosed, .word(.miniWindow))
         miniAnchor.hide()
         model.setLookingClosely(false, from: .miniWindow)
     }

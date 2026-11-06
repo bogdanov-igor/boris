@@ -10,6 +10,7 @@ final class SettingsWindowController {
     private let connect: ConnectFlow
     private let actions: SettingsActions
     private var window: NSWindow?
+    private var closing: NSObjectProtocol?
 
     init(model: AppModel, connect: ConnectFlow, actions: SettingsActions) {
         self.model = model
@@ -33,8 +34,12 @@ final class SettingsWindowController {
             if let visible = (created.screen ?? NSScreen.main)?.visibleFrame {
                 created.setFrame(WindowFit.fitted(created.frame, in: visible), display: false)
             }
+            closing = NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: created, queue: .main) { _ in
+                AppLog.note(.windowClosed, .word(.settingsWindow))
+            }
             window = created
         }
+        if window?.isVisible != true { AppLog.note(.windowOpened, .word(.settingsWindow)) }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
@@ -92,6 +97,7 @@ struct SettingsView: View {
         switch model.settingsSection {
         case .general: page { GeneralSettings(model: model, actions: actions) }
         case .connections: page { ConnectionSettings(model: model, connect: connect) }
+        case .log: LogSection(model: model)
         case .about: AboutSection(model: model)
         case .sources: page { SourcesSettings(model: model) }
         case .surfaces: page { SurfacesSettings(model: model) }
@@ -302,7 +308,7 @@ private struct ConnectionSettings: View {
             checkRow(L("Limits data"), ok: true, text: limitsWord, neutral: status.limits == .noData)
             SettingsRow(title: "") {
                 if status.hooks == .damaged {
-                    Button(L("Repair")) { connect.repair(model) }.buttonStyle(PlainActionStyle(height: 22))
+                    Button(L("Repair")) { connect.repair(model, asker: .repairInDiagnostics) }.buttonStyle(PlainActionStyle(height: 22))
                 }
                 Button(L("Copy diagnostics")) { model.copyDiagnostics() }.buttonStyle(PlainActionStyle(height: 22))
             }
@@ -355,7 +361,7 @@ private struct ConnectionSettings: View {
             SettingsRow(title: L("Hooks"), warning: L("Data keeps updating, but you cannot answer from Boris right now.")) {
                 Text(L("damaged")).font(.system(size: 12)).foregroundStyle(Palette.redText)
                 StatusGlyph(kind: .failed, size: 14)
-                Button(L("Repair")) { connect.repair(model) }.buttonStyle(PlainActionStyle(primary: true, height: 22))
+                Button(L("Repair")) { connect.repair(model, asker: .repairInConnections) }.buttonStyle(PlainActionStyle(primary: true, height: 22))
             }
         case .settingsUnreadable:
             SettingsRow(title: L("Hooks"), warning: L("Boris will not write to a file it cannot read reliably. Everything else keeps working.")) {
@@ -374,7 +380,7 @@ private struct ConnectionSettings: View {
 
     private func disconnect() {
         do {
-            try model.hooks.disconnect()
+            try model.hooks.disconnect(asker: .disconnectInConnections)
             problem = nil
         } catch {
             problem = L("Could not write Claude's settings. Nothing has changed.")

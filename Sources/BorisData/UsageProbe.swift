@@ -33,15 +33,18 @@ public struct UsageProbe: Sendable {
 
     /// Blocks for up to `timeout` and `exitGrace`, so it goes on a background queue.
     public func run() -> Outcome {
-        if Date().timeIntervalSince1970 - fetchedAt() < Self.youngCache { return .refreshed }
+        if Date().timeIntervalSince1970 - fetchedAt() < Self.youngCache {
+            AppLog.note(.limitsAlreadyFresh)
+            return .refreshed
+        }
         let master = posix_openpt(O_RDWR | O_NOCTTY)
-        guard master >= 0 else { return .failed }
+        guard master >= 0 else { return Self.failed(.noTerminal) }
         defer { close(master) }
         var name = [CChar](repeating: 0, count: 128)
         // `ptsname` shares one buffer across threads. Without O_NOCTTY this app could become the terminal's owner and get its hang-up signal.
-        guard grantpt(master) == 0, unlockpt(master) == 0, ptsname_r(master, &name, name.count) == 0 else { return .failed }
+        guard grantpt(master) == 0, unlockpt(master) == 0, ptsname_r(master, &name, name.count) == 0 else { return Self.failed(.noTerminal) }
         let slave = open(name, O_RDWR | O_NOCTTY)
-        guard slave >= 0 else { return .failed }
+        guard slave >= 0 else { return Self.failed(.noTerminal) }
         let terminal = FileHandle(fileDescriptor: slave, closeOnDealloc: true)
         var size = winsize(ws_row: 50, ws_col: 150, ws_xpixel: 0, ws_ypixel: 0)
         _ = ioctl(master, TIOCSWINSZ, &size)
@@ -65,7 +68,7 @@ public struct UsageProbe: Sendable {
         do {
             try process.run()
         } catch {
-            return .failed
+            return Self.failed(.couldNotStart)
         }
         var buffer = [UInt8](repeating: 0, count: 8192)
         defer {
@@ -124,7 +127,12 @@ public struct UsageProbe: Sendable {
             usleep(200_000)
         }
         // It may have written the cache and quit between two looks.
-        return fetchedAt() != before ? .refreshed : .failed
+        return fetchedAt() != before ? .refreshed : Self.failed(.noFreshData)
+    }
+
+    private static func failed(_ why: LogWord) -> Outcome {
+        AppLog.note(.limitsRefreshProblem, .word(why))
+        return .failed
     }
 
     /// Whether the program has drawn anything yet. Terminal settings and a window title come before that and are not a screen.
