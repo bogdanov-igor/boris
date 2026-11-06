@@ -71,7 +71,8 @@ struct AppLogStoreTests {
     }
 
     private func size(_ store: AppLogStore) -> Int {
-        (try? store.file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+        // Not through the URL: it remembers what it was told earlier, and a test in a loop would keep seeing the first size.
+        ((try? FileManager.default.attributesOfItem(atPath: store.file.path))?[.size] as? Int) ?? 0
     }
 
     @Test("Границы по заданию: сутки и 5 МБ")
@@ -230,17 +231,20 @@ struct AppLogStoreTests {
     @Test("Счётчики повторов тоже не выводят файл за предел")
     func capWithCounts() {
         let folder = TempFolder()
+        // All these lines are of one length, so the limit can be set to fall inside the fourth count, one byte before its end.
+        let pair = LogFile.line(line(1000, at: start)).utf8.count + LogFile.repeatLine(at: start, extra: 1).utf8.count
         var limits = AppLogStore.Limits()
-        limits.maxBytes = 2_000
-        limits.trimmedBytes = 1_500
+        limits.maxBytes = pair * 4 - 1
+        limits.trimmedBytes = pair * 2
         let store = makeStore(folder, limits: limits)
-        for number in 0..<2000 {
-            let at = start.addingTimeInterval(Double(number))
+        for number in 1000..<1004 {
+            let at = start.addingTimeInterval(Double(number - 1000))
             store.write(line(number, at: at))
             store.write(line(number, at: at))
             store.flush()
             #expect(size(store) <= limits.maxBytes)
         }
+        #expect(store.records().last?.values.last == .number(1003))
         #expect(store.records().last?.count == 2)
         #expect(!store.isBroken)
     }
