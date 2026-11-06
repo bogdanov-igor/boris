@@ -227,6 +227,45 @@ struct AppLogStoreTests {
         #expect(numbers == Array(numbers[0]...2999))
     }
 
+    @Test("Счётчики повторов тоже не выводят файл за предел")
+    func capWithCounts() {
+        let folder = TempFolder()
+        var limits = AppLogStore.Limits()
+        limits.maxBytes = 2_000
+        limits.trimmedBytes = 1_500
+        let store = makeStore(folder, limits: limits)
+        for number in 0..<2000 {
+            let at = start.addingTimeInterval(Double(number))
+            store.write(line(number, at: at))
+            store.write(line(number, at: at))
+            store.flush()
+            #expect(size(store) <= limits.maxBytes)
+        }
+        #expect(store.records().last?.count == 2)
+        #expect(!store.isBroken)
+    }
+
+    @Test("Зритель слышит, когда сохранение остановилось и когда вернулось")
+    func viewerHearsSaving() async throws {
+        let folder = TempFolder()
+        let file = folder.url.appendingPathComponent("app.log")
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: true)
+        let clock = TestClock(start)
+        let store = AppLogStore(file: file) { clock.now }
+        let heard = Heard()
+        _ = store.attach { heard.add($0) }
+        store.write(line(1, at: clock.now))
+        #expect(await waitUntil { heard.all == [.saving(false)] })
+        try FileManager.default.removeItem(at: file)
+        clock.advance(60)
+        store.write(line(2, at: clock.now))
+        #expect(await waitUntil { heard.all.count == 3 })
+        #expect(heard.all.first == .saving(false))
+        #expect(heard.all.contains(.saving(true)))
+        #expect(!store.isBroken)
+        store.detach()
+    }
+
     @Test("Настоящие 5 МБ: файл не растёт дальше, чтение целого файла не занимает много времени")
     func fiveMegabytes() {
         let folder = TempFolder()

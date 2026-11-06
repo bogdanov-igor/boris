@@ -7,6 +7,8 @@ public enum LogChange: Sendable, Equatable {
     case added(LogRecord)
     /// The last record happened again: it now counts this many, the last of them at this time.
     case repeated(count: Int, lastAt: Date)
+    /// New lines stopped being saved, or are being saved again.
+    case saving(Bool)
 }
 
 /// Keeps the log in one file under Boris's folder.
@@ -45,7 +47,9 @@ public final class AppLogStore: LogSink, @unchecked Sendable {
     private var unwritten = 0
     private var flushPlanned = false
     private var viewer: (@Sendable (LogChange) -> Void)?
-    private var broken = false
+    private var broken = false {
+        didSet { if broken != oldValue { viewer?(.saving(!broken)) } }
+    }
 
     public init(file: URL = AppLogStore.defaultFile, limits: Limits = Limits(), clock: @escaping @Sendable () -> Date = { Date() }) {
         self.file = file
@@ -139,13 +143,20 @@ public final class AppLogStore: LogSink, @unchecked Sendable {
         let extra = unwritten
         unwritten = 0
         if let data = LogFile.repeatLine(at: last.lastAt, extra: extra).data(using: .utf8) {
-            _ = append(data, now: clock())
+            let now = clock()
+            if size + data.count > limits.maxBytes { tidy(now: now, incoming: data.count) }
+            _ = append(data, now: now)
         }
         viewer?(.repeated(count: last.count, lastAt: last.lastAt))
     }
 
     private func append(_ data: Data, now: Date) -> Bool {
         guard openIfNeeded(now: now) else { return false }
+        // Trimming did not work out, and the limit holds all the same.
+        guard size + data.count <= limits.maxBytes else {
+            markBroken()
+            return false
+        }
         let written = data.withUnsafeBytes { Darwin.write(descriptor, $0.baseAddress, $0.count) }
         guard written == data.count else {
             markBroken()

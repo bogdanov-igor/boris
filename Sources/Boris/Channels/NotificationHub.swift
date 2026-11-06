@@ -67,17 +67,13 @@ final class NotificationHub {
     }
 
     func quietEnded(missed: [EventKind: Int], requestsWaiting: Int) {
-        let summary = NotificationWords.quietSummary(missed: missed, requestsWaiting: requestsWaiting)
-        banners.post(summary)
-        AppLog.note(.bannerSent, summary.about)
+        banners.post(NotificationWords.quietSummary(missed: missed, requestsWaiting: requestsWaiting))
     }
 
     private func perform(_ deliveries: [NotificationDelivery]) {
         for delivery in deliveries {
             switch delivery {
-            case .banner(let banner):
-                banners.post(banner)
-                AppLog.note(.bannerSent, banner.about)
+            case .banner(let banner): banners.post(banner)
             case .removeBanners(let ids): banners.remove(ids: ids)
             case .sound(let sound): if live { voice.play(sound) }
             case .telegram(let line): sendToTelegram(line)

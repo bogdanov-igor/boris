@@ -156,6 +156,21 @@ struct LogFileTests {
         #expect(LogFile.parse(data) == [good])
     }
 
+    @Test("Счётчик испорченной строки не достаётся её соседке")
+    func countOfDamagedLine() {
+        let good = LogRecord(at: moment, message: .appQuit)
+        var data = Data(LogFile.line(good).utf8)
+        data.append(Data("\(LogFile.stamp(moment))\tinfo\tapp\tnoSuchMessage\n".utf8))
+        data.append(Data("\(LogFile.stamp(moment))\t+\t3\n".utf8))
+        #expect(LogFile.parse(data) == [good])
+
+        // Two counts in a row are one series, as after a flush in the middle of it.
+        var series = Data(LogFile.line(good).utf8)
+        series.append(Data(LogFile.repeatLine(at: moment, extra: 2).utf8))
+        series.append(Data(LogFile.repeatLine(at: moment, extra: 3).utf8))
+        #expect(LogFile.parse(series).first?.count == 6)
+    }
+
     @Test("Пустой файл даёт пустой журнал")
     func empty() {
         #expect(LogFile.parse(Data()).isEmpty)

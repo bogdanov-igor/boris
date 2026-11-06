@@ -480,6 +480,14 @@ struct LogViewerTests {
             return visible.location + visible.length - 1
         }
 
+        /// Draws what is in view into a picture, which is real work even in a window nobody sees.
+        @discardableResult
+        func draw() -> NSBitmapImageRep? {
+            guard let view = window.contentView, let picture = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
+            view.cacheDisplay(in: view.bounds, to: picture)
+            return picture
+        }
+
         func close() {
             window.orderOut(nil)
         }
@@ -690,6 +698,146 @@ struct LogViewerTests {
         #expect(await waitUntil { feed.loaded })
         #expect(feed.cannotWrite)
         #expect(feed.rows.isEmpty)
+        feed.close(owner: viewer)
+    }
+
+    @Test("Файл заработал снова: предупреждение уходит само, пока раздел открыт")
+    func savingComesBack() async throws {
+        let root = TempDir()
+        let file = root.url.appendingPathComponent("app.log")
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: true)
+        var limits = AppLogStore.Limits()
+        limits.reopenAfter = 0
+        let store = AppLogStore(file: file, limits: limits)
+        store.write(LogRecord(message: .appQuit))
+        let feed = LogFeed()
+        let viewer = UUID()
+        feed.open(from: store, owner: viewer)
+        #expect(await waitUntil { feed.loaded && feed.cannotWrite })
+        try FileManager.default.removeItem(at: file)
+        store.write(LogRecord(message: .macWoke))
+        #expect(await waitUntil { !feed.cannotWrite && feed.rows.count == 1 })
+        feed.close(owner: viewer)
+    }
+
+    /// What a full file holds: about sixty thousand lines, some of them long enough to wrap in a narrow window.
+    private func fullFile() -> [LogRow] {
+        let now = Date()
+        return rows(60_000) { index in
+            let at = now.addingTimeInterval(Double(index - 60_000))
+            switch index % 5 {
+            case 0: return LogRecord(at: at, message: .requestEnded, values: [.tool("AskUserQuestion"), .word(.expiredThenAnswered), .word(.requestsPage), .seconds(599), .session("3f9a11c2")])
+            case 1: return LogRecord(at: at, message: .soundPlayed, values: [.choice(WalrusSound.done)])
+            case 2: return LogRecord(at: at, message: .telegramFailed, values: [.choice(EventKind.failed), .word(.noConnection)])
+            case 3: return LogRecord(at: at, message: .hooksChangeRefused, values: [.word(.repairInConnections)])
+            default: return LogRecord(at: at, message: .fileWriteFailed, values: [.word(.tokenCache), .failure(CocoaError(.fileWriteOutOfSpace))])
+            }
+        }
+    }
+
+    private func percentile(_ times: [Duration], _ part: Double) -> Duration {
+        times.sorted()[min(times.count - 1, Int(Double(times.count) * part))]
+    }
+
+    @Test("Шестьдесят тысяч строк: открытие, прокрутка, новая строка и смена ширины не заметны")
+    func fullFileStaysSmooth() {
+        let screen = OffScreen()
+        defer { screen.close() }
+        var shown = fullFile()
+        let clock = ContinuousClock()
+        let controller = screen.controller
+
+        let opening = clock.measure {
+            controller.update(rows: shown, generation: 1, jumps: 0)
+            screen.settle()
+            screen.draw()
+        }
+        #expect(screen.visibleLastRow == shown.count - 1)
+
+        // From the bottom to the top of the whole list, the table laid out and drawn at each step, as a long flick would ask.
+        let clip = controller.scroll.contentView
+        let height = controller.table.bounds.height
+        var frames: [Duration] = []
+        for step in 1...600 {
+            let target = max(0, height - clip.bounds.height) * (1 - Double(step) / 600)
+            frames.append(clock.measure {
+                clip.scroll(to: NSPoint(x: 0, y: target))
+                controller.scroll.reflectScrolledClipView(clip)
+                screen.settle()
+                screen.draw()
+            })
+        }
+        #expect(clip.bounds.origin.y == 0)
+        #expect(controller.table.rows(in: clip.bounds).location == 0)
+        let topCell = controller.table.view(atColumn: 0, row: 0, makeIfNecessary: false) as? LogCell
+        #expect(topCell?.field.stringValue.contains("AskUserQuestion") == true)
+        #expect(controller.table.frame.height >= 60_000 * LogRowLayout.lineHeight)
+
+        // Back at the bottom a new line comes in.
+        controller.update(rows: shown, generation: 1, jumps: 1)
+        screen.settle()
+        shown += rows(1) { _ in LogRecord(message: .macWoke) }
+        let adding = clock.measure {
+            controller.update(rows: shown, generation: 1, jumps: 1)
+            screen.settle()
+            screen.draw()
+        }
+        #expect(screen.visibleLastRow == shown.count - 1)
+
+        // A wider window changes how every line wraps.
+        let widening = clock.measure {
+            screen.window.setContentSize(NSSize(width: 760, height: 300))
+            screen.settle()
+            screen.draw()
+        }
+        #expect(screen.visibleLastRow == shown.count - 1)
+
+        // A debug build on a busy machine. In an optimized build these came to 8 ms, 2 ms a frame, 2 ms and 37 ms.
+        let median = percentile(frames, 0.5)
+        #expect(median < .milliseconds(16), "кадр: \(median), худший \(percentile(frames, 1))")
+        #expect(opening < .milliseconds(500), "открытие: \(opening)")
+        #expect(adding < .milliseconds(100), "новая строка: \(adding)")
+        #expect(widening < .seconds(2), "смена ширины: \(widening)")
+    }
+
+    @Test("Файл на 5 МБ читается, не держа главный поток")
+    func fullFileDoesNotHoldTheMainThread() async throws {
+        let root = TempDir()
+        let file = root.url.appendingPathComponent("app.log")
+        let now = Date()
+        var text = ""
+        // Long lines, so fewer of them fit than in the usual mix.
+        for index in 0..<50_000 {
+            let at = now.addingTimeInterval(Double(index - 50_000))
+            text += LogFile.line(LogRecord(at: at, message: .requestEnded, values: [.tool("Bash"), .word(.allowed), .word(.miniWindow), .seconds(4), .session("3f9a11c2")]))
+        }
+        #expect(text.utf8.count > 4 * 1024 * 1024)
+        #expect(text.utf8.count <= 5 * 1024 * 1024)
+        try Data(text.utf8).write(to: file)
+
+        let store = AppLogStore(file: file)
+        let feed = LogFeed()
+        feed.period = .everything
+        let viewer = UUID()
+        let clock = ContinuousClock()
+        let began = clock.now
+        var last = began
+        var longestGap = Duration.zero
+        feed.open(from: store, owner: viewer)
+        while !feed.loaded, clock.now - began < .seconds(120) {
+            try? await Task.sleep(for: .milliseconds(5))
+            longestGap = max(longestGap, clock.now - last)
+            last = clock.now
+        }
+        let total = clock.now - began
+        #expect(feed.rows.filter { !$0.isDay }.count == 50_000)
+        // However long the read takes on a busy machine, the main thread keeps turning through it.
+        #expect(longestGap < max(.milliseconds(250), total / 3), "пауза \(longestGap) из \(total)")
+
+        let reading = clock.now
+        feed.onlyProblems = true
+        #expect(await waitUntil { feed.rows.isEmpty })
+        #expect(clock.now - reading < .seconds(20))
         feed.close(owner: viewer)
     }
 

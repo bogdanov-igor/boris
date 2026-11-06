@@ -160,6 +160,8 @@ final class LogFeed {
                 let row = renderer.row(record)
                 all[all.count - 1] = row
                 if let last = rows.last, !last.isDay, last.at == row.at { rows[rows.count - 1] = row }
+            case .saving(let saving):
+                cannotWrite = !saving
             }
         }
         waiting = []

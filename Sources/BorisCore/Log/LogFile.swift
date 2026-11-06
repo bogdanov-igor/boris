@@ -38,9 +38,10 @@ public enum LogFile {
         data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             let bytes = raw.bindMemory(to: UInt8.self)
             var start = 0
+            var lastKept = false
             // Without its line end the last line may have been cut off in a crash.
             while let end = find(0x0A, in: bytes, from: start) {
-                add(UnsafeBufferPointer(rebasing: bytes[start..<end]), to: &records, messages: messages)
+                lastKept = add(UnsafeBufferPointer(rebasing: bytes[start..<end]), to: &records, messages: messages, lastKept: lastKept)
                 start = end + 1
             }
         }
@@ -52,8 +53,9 @@ public enum LogFile {
         return UnsafeRawPointer(found) - UnsafeRawPointer(base)
     }
 
-    private static func add(_ line: UnsafeBufferPointer<UInt8>, to records: inout [LogRecord], messages: [String: LogMessage]) {
-        guard line.count > stampLength, line[stampLength] == 0x09, let time = parseStamp(UnsafeBufferPointer(rebasing: line[0..<stampLength])) else { return }
+    /// Says whether the line was kept. A count belongs only to the line right above it, so when that one is damaged its count goes with it.
+    private static func add(_ line: UnsafeBufferPointer<UInt8>, to records: inout [LogRecord], messages: [String: LogMessage], lastKept: Bool) -> Bool {
+        guard line.count > stampLength, line[stampLength] == 0x09, let time = parseStamp(UnsafeBufferPointer(rebasing: line[0..<stampLength])) else { return false }
         var fields: [String] = []
         var start = stampLength + 1
         while start <= line.count {
@@ -62,19 +64,20 @@ public enum LogFile {
             start = end + 1
         }
         if fields.first == "+" {
-            guard fields.count == 2, let extra = Int(fields[1]), extra > 0, !records.isEmpty else { return }
+            guard lastKept, fields.count == 2, let extra = Int(fields[1]), extra > 0, !records.isEmpty else { return false }
             records[records.count - 1].count += extra
             records[records.count - 1].lastAt = time
-            return
+            return true
         }
-        guard fields.count >= 3, let message = messages[fields[2]] else { return }
+        guard fields.count >= 3, let message = messages[fields[2]] else { return false }
         var values: [LogValue] = []
         values.reserveCapacity(fields.count - 3)
         for field in fields[3...] {
-            guard let value = LogValue(stored: field) else { return }
+            guard let value = LogValue(stored: field) else { return false }
             values.append(value)
         }
         records.append(LogRecord(at: time, message: message, values: values))
+        return true
     }
 
     // MARK: - Time
