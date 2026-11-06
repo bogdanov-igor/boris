@@ -3,6 +3,7 @@ import BorisCore
 import SwiftUI
 
 /// The window of the notch and of the panel. Showing it or clicking its buttons leaves the active app as it is.
+/// What is clear in it lets clicks through to the menu bar underneath, because it is not opaque.
 /// Only a text field of a card takes the keyboard, and the keyboard goes back when the field or the surface goes.
 final class SurfacePanel: NSPanel {
     var onKeyChange: ((Bool) -> Void)?
@@ -85,9 +86,12 @@ final class SurfaceHostingView<Content: View>: NSHostingView<Content> {
 /// The real screens, in the form placement understands. The main screen comes first.
 @MainActor
 enum SurfaceScreens {
-    static func current() -> [SurfaceScreen] {
-        NSScreen.screens.map { screen in
-            SurfaceScreen(
+    /// - Parameter windows: what `MenuBarWindows` read. Without it the menu bars are judged by `visibleFrame` alone.
+    static func current(windows: [ScreenWindow] = []) -> [SurfaceScreen] {
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+        return NSScreen.screens.map { screen in
+            let bar = MenuBarReading(frame: screen.frame, visibleFrame: screen.visibleFrame, primaryHeight: primaryHeight, windows: windows)
+            return SurfaceScreen(
                 id: id(of: screen),
                 name: screen.localizedName,
                 frame: screen.frame,
@@ -97,7 +101,9 @@ enum SurfaceScreens {
                     topInset: screen.safeAreaInsets.top,
                     leftWidth: screen.auxiliaryTopLeftArea?.width,
                     rightWidth: screen.auxiliaryTopRightArea?.width
-                )
+                ),
+                menuBar: bar.height,
+                statusIconsMinX: bar.iconsMinX
             )
         }
     }

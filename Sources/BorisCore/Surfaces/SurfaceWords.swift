@@ -109,6 +109,24 @@ public enum SurfaceWords {
         }
     }
 
+    /// What a strip in the menu bar can say, from the fullest to the narrowest, each without a repeat. The last is the walrus alone.
+    /// A line of his that does not fit gives way to the numbers rather than lose its end.
+    public static func stripLines(_ numbers: SurfaceNumbers, mode: DisplayMode, spoken: String?) -> [SurfaceLine] {
+        var lines = spoken.map { [SurfaceLine(main: $0)] } ?? []
+        lines.append(closedLine(numbers, mode: mode, onNotch: false))
+        let agents = numbers.agents > 0 ? WorkPhrases.agents(numbers.agents) : ""
+        if numbers.waiting > 0 {
+            if !agents.isEmpty { lines.append(SurfaceLine(main: agents, waiting: waiting(numbers.waiting))) }
+            lines.append(SurfaceLine(waiting: waiting(numbers.waiting)))
+        } else if !agents.isEmpty {
+            lines.append(SurfaceLine(main: agents))
+        }
+        lines.append(SurfaceLine())
+        var seen: [SurfaceLine] = []
+        for line in lines where !seen.contains(line) { seen.append(line) }
+        return seen
+    }
+
     /// How wide the closed notch is in the design. It grows from here when its text needs it.
     public static func closedNotchWidth(_ numbers: SurfaceNumbers, mode: DisplayMode) -> CGFloat {
         if numbers.waiting == 0, numbers.agents == 0 { return 300 }
