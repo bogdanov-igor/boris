@@ -113,7 +113,7 @@ struct RequestsPage: View {
             .accessibilityAddTraits(isChosen ? .isSelected : [])
             // Going to the session must not take the card of an open request off the screen.
             if !row.isOpen, SessionNavigator.canOpen(session, pid: pid), let session {
-                Button(L("Open %@", WorkPhrases.environment(session.environment))) { SessionNavigator.open(session, model: model) }
+                Button(session.environment == .cowork ? SessionJump.title(.cowork) : L("Open %@", WorkPhrases.environment(session.environment))) { SessionNavigator.open(session, model: model) }
                     .buttonStyle(PlainActionStyle())
                     .padding(EdgeInsets(top: 0, leading: 34, bottom: 8, trailing: 10))
             }

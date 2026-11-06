@@ -37,6 +37,7 @@ struct SourcesSettings: View {
                 EmptyView()
             }
         }
+        ChatSourceBlock(model: model)
     }
 
     private func line<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {

@@ -107,7 +107,7 @@ public struct ActivityQuery: Sendable, Equatable {
 
     public func matches(_ entry: FeedEntry, session: WorkSession?) -> Bool {
         guard let step = entry.step, type.matches(WorkAction(tool: step.tool)) else { return false }
-        if let project, (session?.cwd ?? "") != project { return false }
+        if let project, (session?.workingFolder ?? "") != project { return false }
         if let place, WorkPhrases.environment(session?.environment) != place { return false }
         return true
     }

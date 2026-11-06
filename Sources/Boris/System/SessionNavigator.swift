@@ -10,9 +10,9 @@ enum SessionNavigator {
     /// - Parameter pid: of its process. Nil when it has none on this Mac.
     static func canOpen(_ session: WorkSession?, pid: Int32?) -> Bool {
         switch session?.environment {
-        case .vsCode, .cursor, .claudeDesktop, .cowork: return true
+        case .vsCode, .cursor, .claudeDesktop, .cowork, .chat: return true
         case .terminal: return pid != nil
-        case .program, .chat, .insideClaude, .remote, nil: return false
+        case .program, .insideClaude, .remote, nil: return false
         }
     }
 

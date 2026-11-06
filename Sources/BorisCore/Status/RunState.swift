@@ -51,7 +51,7 @@ public struct RunState: Sendable, Equatable, Identifiable {
     }
 
     public var projectName: String? {
-        guard let cwd, !cwd.isEmpty else { return nil }
+        guard let cwd, !cwd.isEmpty, environment != .cowork else { return nil }
         return URL(fileURLWithPath: cwd).lastPathComponent
     }
 

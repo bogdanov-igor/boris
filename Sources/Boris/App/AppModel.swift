@@ -63,6 +63,7 @@ final class AppModel {
     let settings: AppSettings
     let hooks: HookController
     let load = MacLoadWatch()
+    let chat: ChatWatch
     let losses = LossStore()
     let logFeed = LogFeed()
     let notifications: NotificationHub
@@ -136,6 +137,7 @@ final class AppModel {
         self.live = live
         hooks = HookController(settings: settings, live: live)
         editors = live ? EditorBook(file: BorisPaths.support.appendingPathComponent(EditorBook.fileName), onlyCursorInstalled: EditorBook.isOnlyCursorInstalled()) : EditorBook()
+        chat = ChatWatch(probe: live ? AccessibilityChatProbe() : NoChatProbe())
         // Without a store nothing may touch Boris's real folder.
         packShelf = WalrusPackShelf(folder: (store?.folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("boris-memory")).appendingPathComponent("Packs", isDirectory: true))
         // The walrus is one for the whole process, and a model made for a check must not change him under whoever is looking.
@@ -161,6 +163,7 @@ final class AppModel {
         }
         hooks.onChange = { [weak self] in self?.refreshPresence() }
         capture.hides = { [weak self] in self?.hidesFromCapture($0) ?? false }
+        chat.onChange = { [weak self] in self?.chatChanged() }
     }
 
     func start() {
@@ -193,6 +196,7 @@ final class AppModel {
         Task { await engine.start() }
         if !surfacesOpen.isEmpty { sendFocus() }
         hooks.refresh()
+        updateChatWatch()
     }
 
     /// Reads from another folder after the setting changes.
@@ -213,6 +217,7 @@ final class AppModel {
 
     /// Nothing reads the logs after this. For whoever started a model and is done with it.
     func stop() async {
+        chat.update(consent: false)
         await engine?.stop()
         engine = nil
     }
@@ -264,7 +269,7 @@ final class AppModel {
 
     func apply(_ output: WorkEngine.Output) {
         logWatch.saw(output)
-        work = usage.book?.applied(to: output.model) ?? output.model
+        work = (usage.book?.applied(to: output.model) ?? output.model).withChat(chat.tracker.session)
         hooks.note(work: output.model, now: output.at)
         hooks.noteHidden(Set(output.world.hiddenSessions.keys))
         let loadOff = settings.sources.loadOff(hiddenSessions: Set(output.world.hiddenSessions.values))
@@ -293,7 +298,7 @@ final class AppModel {
         let quietDuringScan = quiet.isOn(now: output.at)
         var news: [(event: BorisEvent, reaction: Reaction)] = []
         var muted = Set<String>()
-        for event in output.events {
+        for event in output.events + chat.takeEvents() {
             let wanted = settings.notifications.reaction(for: event, mood: settings.matrix.reaction(for: event.kind).mood)
             // A muted source was never going to call anyone, so do not disturb has nothing to save up for later.
             let reaction = notifies(about: event) ? quiet.filter(wanted, kind: event.kind, now: output.at) : Reaction(banner: false, sound: false, mood: wanted.mood)
@@ -325,6 +330,12 @@ final class AppModel {
     private func tokensAddedUp() {
         today = usage.spentToday(now)
         if let book = usage.book { work = book.applied(to: work) }
+    }
+
+    /// A look at Claude Desktop comes on its own time, between the scans.
+    private func chatChanged() {
+        work = work.withChat(chat.tracker.session)
+        refreshPresence()
     }
 
     func refreshPresence() {

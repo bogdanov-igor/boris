@@ -8,6 +8,7 @@ import Foundation
 // and `boris-dump limits` reads the limits. Money is never printed, only percent.
 // `boris-dump cost [seconds]` runs the real engine with no window open and says what that costs once the first pass over the logs is over: CPU, disk and memory.
 // `boris-dump activity [transcript]` says how each action in the logs is typed and what reading them costs. `boris-dump edits <session>` lists the changes of a session with their counts.
+// `boris-dump past [environment]` lists the sessions in the logs, by their environment if one is named, with their actions and tokens as counts.
 
 // A release build has no `BORIS_STATE_DIR`, so its caches would land in Boris's real folder without a word.
 #if !DEBUG
@@ -297,10 +298,39 @@ func cost(seconds: Int) async {
     await engine.stop()
 }
 
+/// Which environments the logs hold, and with a name such as `cowork`, each session of that one. Names, folders and titles stay out.
+func past(only: String?) async {
+    let history = SessionHistory(paths: paths, others: others)
+    let sessions = await history.sessions()
+    let index = TokenIndex(cacheFile: BorisPaths.tokenIndex)
+    await index.update(roots: [paths] + others())
+    let book = TokenBook(records: await index.records(), now: Date())
+    let byPlace = Dictionary(grouping: sessions) { $0.environment.map { "\($0)" } ?? "unknown" }
+    for (place, group) in byPlace.sorted(by: { $0.key < $1.key }) {
+        print("\(place): \(group.count) sessions")
+        guard place == only else { continue }
+        let engine = WorkEngine(paths: paths, others: others) { _ in }
+        // The engine learns about the other folders on its first look.
+        _ = await engine.scanOnce()
+        for session in group {
+            let applied = book.applied(to: WorkModel(projects: [WorkProject(path: nil, sessions: [session])])).sessions.first
+            var actions = 0
+            if let transcript = await engine.sessionTranscript(session.id) {
+                var reader = ActivityReader(window: UInt64.max / 2)
+                reader.read(transcript)
+                actions = reader.log.items.filter { if case .step = $0 { true } else { false } }.count
+            }
+            print("  \(session.id.prefix(8)) · \(session.state.rawValue) · has name \(session.title != nil) · project \(session.projectPath != nil) · model \(session.root.model ?? "no data") · actions \(actions) · tokens \(applied?.root.tokens.map { String($0.total) } ?? "no data")")
+        }
+    }
+}
+
 if arguments.first == "sources" {
     await sources()
 } else if arguments.first == "tokens" {
     await tokens()
+} else if arguments.first == "past" {
+    await past(only: arguments.dropFirst().first)
 } else if arguments.first == "load" {
     await load()
 } else if arguments.first == "losses" {

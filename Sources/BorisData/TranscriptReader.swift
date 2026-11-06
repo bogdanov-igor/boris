@@ -13,6 +13,8 @@ public enum TranscriptReader {
         public var running: StepBrief?
         /// The newest message closes a turn of Claude's, so nothing more is coming unless someone asks.
         public var turnEnded = false
+        /// The newest message is the result of `SendUserMessage`. A Cowork agent talks to the person through that tool, and a turn usually ends on it with nothing after.
+        public var spokeToPerson = false
         public var gitBranch: String?
 
         public init(last: LastRecord? = nil, usage: TokenUsage? = nil, model: String? = nil, running: StepBrief? = nil) {
@@ -42,6 +44,7 @@ public enum TranscriptReader {
             var finishedTools: Set<String> = []
             var toolKnown = false
             var messageSeen = false
+            var newestIsResult = false
             let length = min(UInt64(step), size)
             guard (try? handle.seek(toOffset: size - length)) != nil, let data = try? handle.read(upToCount: Int(length)) else { break }
             var lines = data.split(separator: 0x0A)
@@ -54,12 +57,17 @@ public enum TranscriptReader {
                     messageSeen = true
                     result.lastMessage = lastRecord(record)
                     result.turnEnded = type == "assistant" && closesTurn(record)
+                    newestIsResult = type == "user" && hasToolResult(record)
                 }
                 if result.usage == nil, let (usage, model) = realUsage(record) {
                     result.usage = usage
                     result.model = model
                 }
-                if !toolKnown { toolKnown = readTool(record, finished: &finishedTools, running: &result.running) }
+                if !toolKnown {
+                    var finishedTool: String?
+                    toolKnown = readTool(record, finished: &finishedTools, running: &result.running, finishedTool: &finishedTool)
+                    result.spokeToPerson = newestIsResult && finishedTool == "SendUserMessage"
+                }
                 // A newest call is always within the records read for these two, so the window never widens for it.
                 if result.last != nil, result.usage != nil { return result }
             }
@@ -74,7 +82,7 @@ public enum TranscriptReader {
     }
 
     /// Walking backwards: the newest call with no result is running. A newest call with one means nothing is.
-    private static func readTool(_ record: [String: Any], finished: inout Set<String>, running: inout StepBrief?) -> Bool {
+    private static func readTool(_ record: [String: Any], finished: inout Set<String>, running: inout StepBrief?, finishedTool: inout String?) -> Bool {
         guard let blocks = (record["message"] as? [String: Any])?["content"] as? [[String: Any]] else { return false }
         for block in blocks.reversed() {
             switch block["type"] as? String {
@@ -82,7 +90,10 @@ public enum TranscriptReader {
                 if let id = block["tool_use_id"] as? String { finished.insert(id) }
             case "tool_use":
                 guard let id = block["id"] as? String, let name = block["name"] as? String else { continue }
-                if finished.contains(id) { return true }
+                if finished.contains(id) {
+                    finishedTool = name
+                    return true
+                }
                 let input = ActivityReader.input(name, block["input"] as? [String: Any] ?? [:])
                 let kind = StepKind(tool: name)
                 let file = (kind == .read || kind == .edit || kind == .write) ? input.target.map { URL(fileURLWithPath: $0).lastPathComponent } : nil
@@ -93,6 +104,11 @@ public enum TranscriptReader {
             }
         }
         return false
+    }
+
+    private static func hasToolResult(_ record: [String: Any]) -> Bool {
+        guard let blocks = (record["message"] as? [String: Any])?["content"] as? [[String: Any]] else { return false }
+        return blocks.contains { $0["type"] as? String == "tool_result" }
     }
 
     private static func lastRecord(_ record: [String: Any]) -> LastRecord {

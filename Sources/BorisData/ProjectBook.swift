@@ -52,7 +52,8 @@ public enum ProjectBook {
         let pastIds = Set(past.map(\.id))
         let newer = work.sessions.filter { session in
             guard !session.state.isActive, !pastIds.contains(session.id) else { return false }
-            guard let logsReadAt else { return true }
+            // A chat never has a log, so not being among the logs says nothing about it.
+            guard let logsReadAt, session.environment != .chat else { return true }
             return (session.lastActivity ?? session.startedAt ?? .distantPast) > logsReadAt
         }
         return active + past.filter { !activeIds.contains($0.id) } + newer

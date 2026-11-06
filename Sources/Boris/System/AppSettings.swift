@@ -51,6 +51,8 @@ final class AppSettings {
     var usageRefreshMinutes: Int { didSet { defaults?.set(usageRefreshMinutes, forKey: "usageRefreshMinutes"); SettingsLog.changed("usageRefreshMinutes", from: oldValue, to: usageRefreshMinutes) } }
     /// Which products and environments Boris deals with, and how.
     var sources: SourceSettings { didSet { save(sources, "sources"); SettingsLog.changed("sources", from: oldValue, to: sources) } }
+    /// The person agreed in «Sources» that Boris may look into Claude Desktop's window. Until then it does not.
+    var chatConsent: Bool { didSet { defaults?.set(chatConsent, forKey: "chatConsent"); SettingsLog.changed("chatConsent", from: oldValue, to: chatConsent) } }
 
     init(defaults: UserDefaults? = .standard) {
         self.defaults = defaults
@@ -77,6 +79,7 @@ final class AppSettings {
         usageRefreshEnabled = defaults?.object(forKey: "usageRefreshEnabled") as? Bool ?? true
         usageRefreshMinutes = defaults?.object(forKey: "usageRefreshMinutes") as? Int ?? 15
         sources = Self.load(defaults, "sources") ?? SourceSettings()
+        chatConsent = defaults?.bool(forKey: "chatConsent") ?? false
         Localizer.use(language)
         NSApp?.appearance = theme.appearance
     }

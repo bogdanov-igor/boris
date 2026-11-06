@@ -1,0 +1,18 @@
+{
+ "Accessibility permission": "Разрешение Accessibility",
+ "Answer in chat": "Ответ в чате",
+ "Boris cannot see into the Claude Desktop window right now, so it may miss an answer.": "Сейчас Boris не может заглянуть в окно Claude Desktop и может пропустить ответ.",
+ "Connected. Boris tells you when an answer is ready while Claude Desktop is in the background.": "Подключён. Boris сообщит, что ответ готов, пока Claude Desktop не на переднем плане.",
+ "Connected. Claude Desktop is closed right now.": "Подключён. Сейчас Claude Desktop закрыт.",
+ "Continue": "Продолжить",
+ "Cowork task": "Задача Cowork",
+ "Every few seconds, while Claude Desktop is in the background, Boris will look in its window for one thing: whether the button that stops an answer is on screen. Boris does not read your chats and presses nothing. Claude Desktop may run a little slower while this is on.": "Раз в несколько секунд, пока Claude Desktop не на переднем плане, Boris будет искать в его окне только одно: есть ли на экране кнопка остановки ответа. Boris не читает ваши чаты и ничего не нажимает. Пока это включено, Claude Desktop может работать немного медленнее.",
+ "For a chat in Claude Desktop, only whether an answer is ready can be known. Its tokens and actions are not available, and its text is never read.": "О чате в Claude Desktop можно узнать только, готов ли ответ. Токены и действия чата недоступны, а его текст Boris никогда не читает.",
+ "Not connected. To see that an answer is ready, Boris needs the Accessibility permission.": "Не подключён. Чтобы видеть, что ответ готов, Boris нужно разрешение Accessibility.",
+ "The answer is ready": "Ответ готов",
+ "The text of chats is never read, and their tokens and actions are not available. Claude Desktop has notifications of its own, so this helps when those are off.": "Текст чатов Boris не читает, а их токены и действия недоступны. У Claude Desktop есть свои уведомления, поэтому это полезно, когда они выключены.",
+ "This needs the Accessibility permission. macOS will ask for it next, and you can take it back in System Settings at any time.": "Для этого нужно разрешение Accessibility. Сейчас его запросит macOS, а отозвать его можно в настройках системы в любой момент.",
+ "Waiting for the permission. Turn Boris on in System Settings, under Privacy & Security, Accessibility.": "Ждём разрешения. Включите Boris в настройках системы: «Конфиденциальность и безопасность», «Универсальный доступ».",
+ "Writing an answer": "Пишет ответ",
+ "answer is ready": "ответ готов"
+}

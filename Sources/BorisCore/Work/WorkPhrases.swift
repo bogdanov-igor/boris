@@ -54,6 +54,8 @@ public enum WorkPhrases {
 
     /// The line under a session's name.
     public static func line(_ session: WorkSession, mode: DisplayMode) -> String {
+        // All that is known about a chat is said in its own words, and it has no steps or agents.
+        if session.environment == .chat { return session.state == .running ? L("Writing an answer") : L("The answer is ready") }
         switch session.state {
         case .waiting:
             return waiting(session.waitingFor, mode: mode)
@@ -92,8 +94,12 @@ extension WorkSession {
     /// The name Claude or the person gave it, otherwise its project.
     public var displayName: String {
         if let title, !title.isEmpty { return title }
-        if let cwd, !cwd.isEmpty { return URL(fileURLWithPath: cwd).lastPathComponent }
-        return String(id.prefix(8))
+        if let workingFolder, !workingFolder.isEmpty { return URL(fileURLWithPath: workingFolder).lastPathComponent }
+        switch environment {
+        case .cowork: return L("Cowork task")
+        case .chat: return L("Answer in chat")
+        default: return String(id.prefix(8))
+        }
     }
 
     /// The simple mode shows no ids, so a session with nothing else to go by is just a session.
@@ -108,6 +114,11 @@ extension WorkSession {
 
     /// A folder is set in a monospaced font, a person's words are not.
     public var nameIsFolder: Bool {
-        title?.isEmpty != false && cwd?.isEmpty == false
+        title?.isEmpty != false && workingFolder?.isEmpty == false
+    }
+
+    /// The folder it works in, if that means anything to a person. Cowork's is a made-up name inside a virtual machine.
+    public var workingFolder: String? {
+        environment == .cowork ? nil : cwd
     }
 }

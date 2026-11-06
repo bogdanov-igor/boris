@@ -130,6 +130,7 @@ extension WorkPhrases {
 
     /// The headline of a session in the simple mode: the current occupation, never «nothing» while it works.
     public static func occupation(_ session: WorkSession, mode: DisplayMode) -> String {
+        if session.environment == .chat { return line(session, mode: mode) }
         switch session.state {
         case .waiting: return waiting(session.waitingFor, mode: mode)
         case .running: return step(session.root.step, mode: mode) ?? state(.running, mode: mode)

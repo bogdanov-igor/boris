@@ -32,6 +32,7 @@ extension AppModel {
     /// After a switch in the settings. Reading means a new look at the logs, and several switches in a row are one change.
     func sourcesChanged(reading: Bool) {
         hooks.applySources()
+        updateChatWatch()
         // The chat and remote machines have no files here: they cost nothing to change.
         guard reading, !sourceFilter.readsSameFiles(off: settings.sources.readingOff) else { return }
         sourcesRestart?.cancel()
@@ -41,6 +42,11 @@ extension AppModel {
             self.restartEngine()
             self.losses.sourcesChanged(self)
         }
+    }
+
+    /// Claude Desktop's window is looked at only with the person's agreement, and only while its source is on.
+    func updateChatWatch() {
+        chat.update(consent: settings.chatConsent && settings.sources.reads(.chat))
     }
 
     /// Whether an event goes out to the Mac, the speakers and Telegram. It stays visible in Boris either way.
