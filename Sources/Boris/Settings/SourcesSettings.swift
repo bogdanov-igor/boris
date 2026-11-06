@@ -24,7 +24,7 @@ struct SourcesSettings: View {
             .padding(.vertical, 7)
             // The group lifts its first row by the width of a line, which this one does not draw.
             .padding(.top, 1)
-            ForEach(SourceProduct.allCases) { product in
+            ForEach(SourceProduct.allCases.filter { $0 != .chat }) { product in
                 productRow(product)
                 ForEach(product.sources) { sourceRow($0) }
             }

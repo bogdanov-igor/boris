@@ -200,7 +200,9 @@ private struct SessionContent: View {
                     ForEach(cards) { WorkflowProgressCard(node: $0) }
                 }
             }
-            .frame(maxHeight: 190)
+            // Exactly two whole cards, with a line under them, so that the list does not end in half a card.
+            .frame(maxHeight: 162)
+            Rectangle().fill(Palette.separator).frame(height: 1)
         } else {
             ForEach(cards) { WorkflowProgressCard(node: $0) }
         }
