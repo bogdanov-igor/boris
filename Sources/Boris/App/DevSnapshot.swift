@@ -25,6 +25,9 @@ enum DevSnapshot {
         #endif
     }
 
+    /// Whether this process may go on at all: for a check it knows, or as the real app.
+    static var mayRun: Bool { isRequested || mayStartForReal }
+
     /// Snapshots of other debug builds come and go under the same bundle id, and they are not another Boris to give way to.
     static var ignoresOtherCopies: Bool {
         #if DEBUG
@@ -48,7 +51,10 @@ enum DevSnapshot {
         func list(_ key: String, _ all: [String]) -> [String] {
             environment[key].map { $0.split(separator: ",").map(String.init) } ?? all
         }
-        let screens = list("BORIS_SCREEN", Screen.allCases.map(\.rawValue)).compactMap(Screen.init(rawValue:))
+        let names = list("BORIS_SCREEN", Screen.allCases.map(\.rawValue))
+        // A misspelt name must not pass for a run that had nothing to show.
+        for unknown in names where Screen(rawValue: unknown) == nil { print("no such screen: \(unknown)") }
+        let screens = names.compactMap(Screen.init(rawValue:))
         let themes = list("BORIS_THEME", ["dark", "light"]).compactMap(ThemeMode.init(rawValue:))
         let modes = list("BORIS_MODE", ["simple", "technical"]).compactMap(DisplayMode.init(rawValue:))
         let languages = list("BORIS_LANGUAGE", ["ru", "en"]).compactMap(AppLanguage.init(rawValue:))
@@ -83,7 +89,8 @@ enum DevSnapshot {
     private enum Screen: String, CaseIterable {
         case now, projects, spend, requests, activity, losses, walrus, mini, load
         case general, sources, surfaces, notifications, connections, about
-        case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
+        case license, thirdParty, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
+        case connectFailed, spendFolderMissing, generalTaken, generalApproval, connectionsConnected, connectionsBroken, connectionsSilent, connectionsFolderMissing, connectionsFormat, connectionsEntries
         case walrusThemes, walrusPacks, walrusError, walrusLine, walrusSurfaces
         case notchClosed, notchOpen, panelClosed, panelOpen, surfacesLast, surfacesHotKey, surfacesGone
         case panelTight, panelFull, panelFullOpen, panelHidden, panelHiddenOpen, panelHiddenWaiting
@@ -97,11 +104,14 @@ enum DevSnapshot {
 
         var page: AppPage? {
             if self == .requestsNoHooks { return .requests }
+            if self == .spendFolderMissing { return .spend }
             return DevUsageData.Scenario(rawValue: rawValue) != nil ? .spend : AppPage(rawValue: rawValue)
         }
 
         var section: SettingsSection? {
-            if self == .license { return .about }
+            if self == .license || self == .thirdParty { return .about }
+            if self == .generalTaken || self == .generalApproval { return .general }
+            if rawValue.hasPrefix("connections") { return .connections }
             if self == .surfacesLast || self == .surfacesHotKey || self == .surfacesGone { return .surfaces }
             if rawValue.hasPrefix("notifications"), self != .notificationsPreview { return .notifications }
             return SettingsSection(rawValue: rawValue)
@@ -152,14 +162,43 @@ enum DevSnapshot {
             model.projectFilter.period = .dates(from: Date().addingTimeInterval(-10 * 86400), to: Date())
             view = AnyView(ProjectDatesPicker(model: model).background(Palette.pop))
             canvas = CGSize(width: 240, height: 0)
-        case .general, .sources, .surfaces, .notifications, .connections, .about, .license, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
+        case .general, .sources, .surfaces, .notifications, .connections, .about, .license, .thirdParty, .generalTaken, .generalApproval, .connectionsConnected, .connectionsBroken, .connectionsSilent, .connectionsFolderMissing, .connectionsFormat, .connectionsEntries, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
             if screen == .surfacesLast { settings.surfaces = SurfaceSwitches(icon: false, notch: true, mini: false) }
             if screen == .surfacesHotKey {
                 settings.surfaces = SurfaceSwitches(icon: true, notch: false, mini: true)
                 model.hotKeyTaken = true
             }
             if screen == .surfacesGone { settings.surfaceScreen = .screen(id: "gone", name: "Studio Monitor") }
-            view = AnyView(SettingsView(model: model, connect: connect, actions: SettingsActions()))
+            let actions = SettingsActions()
+            switch screen {
+            case .generalTaken:
+                model.hotKeyTaken = true
+            case .generalApproval:
+                actions.isAutostartAvailable = { true }
+                actions.autostartState = { .needsApproval }
+            case .connectionsConnected, .connectionsEntries:
+                settings.hooksWanted = true
+                model.hooks.showForSnapshot(status: .installed)
+                if screen == .connectionsEntries {
+                    connect.stage = .entries(["+   \"hooks\" : {", "+     \"PermissionRequest\" : [ … boris-hook … ],", "+     \"PreToolUse\" : [ … boris-hook … ],", "+   }"])
+                    connect.showIn(.settings)
+                }
+            case .connectionsBroken:
+                settings.hooksWanted = true
+                model.hooks.showForSnapshot(status: .notInstalled)
+            case .connectionsSilent:
+                settings.hooksWanted = true
+                model.hooks.showForSnapshot(status: .installed)
+                data.fill(model, sessions: [SessionInfo(sessionId: "s", pid: 1, entrypoint: "cli", status: "busy", statusUpdatedAt: Date().addingTimeInterval(-600))])
+                model.hooks.showForSnapshot(since: Date().addingTimeInterval(-3600))
+            case .connectionsFolderMissing:
+                data.fill(model, folderFound: false)
+            case .connectionsFormat:
+                data.fill(model, issues: [.unreadableSessions])
+            default:
+                break
+            }
+            view = AnyView(SettingsView(model: model, connect: connect, actions: actions, openLicense: screen == .license ? .own : screen == .thirdParty ? .thirdParty : nil))
             canvas = size ?? CGSize(width: 760, height: 720)
         case .feed:
             view = DevFeedScreens.feed(model)
@@ -185,7 +224,11 @@ enum DevSnapshot {
             case .waiting:
                 connect.stage = .waiting(since: Date())
             case .connected:
-                connect.stage = .connected
+                connect.stage = .connected(firstEvent: Date())
+            case .connectFailed:
+                connect.stage = .failed(L("Could not write Claude's settings. Nothing has changed."))
+            case .spendFolderMissing:
+                data.fill(model, folderFound: false)
             case .iconNotice:
                 model.showIconNotice = true
             case .repair:

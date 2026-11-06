@@ -23,6 +23,9 @@ final class HookController {
     /// When the hooks could first have spoken.
     private(set) var since = Date()
 
+    /// Reads and writes Claude's settings although everything else stays off, for checking the connection on a made-up folder.
+    var checksSettingsWhileOff = false
+
     private let settings: AppSettings
     private let live: Bool
     private var server: HookServer?
@@ -75,8 +78,9 @@ final class HookController {
 
     /// Looks at the settings again and listens only when something can talk to us.
     func refresh() {
-        guard live else { return }
+        guard live || checksSettingsWhileOff else { return }
         status = HookInstaller.status(at: settingsFile, plan: plan)
+        guard live else { return }
         let shouldListen = status == .installed || status == .outdated || HookServer.movedPath != nil
         if shouldListen { startServer() } else { stopServer() }
     }
@@ -332,6 +336,10 @@ final class HookController {
     #if DEBUG
     func showForSnapshot(status: HookInstaller.Status) {
         self.status = status
+    }
+
+    func showForSnapshot(since: Date) {
+        self.since = since
     }
 
     func showRequestsForSnapshot(open: [PendingPermission], expired: [PendingPermission], decisions: [RequestDecision]) {

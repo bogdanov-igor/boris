@@ -239,6 +239,22 @@ struct AppModelFreshnessTests {
         await model.stop()
     }
 
+    @Test("То, что старая папка успела отправить, после смены папки не показывается")
+    func lateOutputIsDropped() async {
+        let first = ClaudeFolder()
+        let second = ClaudeFolder()
+        let model = makeModel(folder: first)
+        let generation = model.pastGeneration
+        model.chooseClaudeFolder(second.url)
+        let old = WorkEngine.Output(at: Date(), model: work(WorkSession(id: "old", state: .running, root: WorkNode(id: "old", kind: .main, state: .running))), world: WorldSnapshot(takenAt: Date()), tokensVersion: 1, tokens: [TokenRecord(sessionId: "old", day: "2026-11-05", usage: TokenUsage(input: 500))])
+        model.received(old, generation: generation)
+        #expect(!model.work.sessions.contains { $0.id == "old" })
+        #expect(!model.usage.records.contains { $0.sessionId == "old" })
+        model.received(old, generation: model.pastGeneration)
+        #expect(model.work.sessions.contains { $0.id == "old" }, "от нынешнего движка данные принимаются")
+        await model.stop()
+    }
+
     @Test("Сборка книги токенов, начатая для старой папки, не возвращает её числа")
     func lateBuildIsDropped() async {
         let usage = UsageModel()

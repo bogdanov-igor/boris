@@ -16,7 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let power = PowerGuard()
     private let hotKey = HotKeyController()
     private var tickTimer: Timer?
-    private var hiddenFor: TimeInterval = 0
+    private var iconWatch = IconWatch()
     private var observers: [NSObjectProtocol] = []
 
     private var isBundled: Bool { Bundle.main.bundleURL.pathExtension == "app" }
@@ -79,15 +79,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         actions.applyHotKey = { [weak self] in self?.registerHotKey() }
         actions.isAutostartAvailable = { [weak self] in self?.managesAutostart ?? false }
-        actions.isAutostartOn = { [weak self] in self?.launch.agent.status == .enabled }
-        actions.setAutostart = { [weak self] on in
-            guard let self, self.managesAutostart else { return }
-            if on { try? self.launch.agent.register() } else { try? self.launch.agent.unregister() }
+        actions.autostartState = { [weak self] in self?.launch.autostartState ?? .off }
+        actions.setAutostart = { [weak self, weak model] on in
+            guard let self, self.managesAutostart else { return true }
+            return self.launch.setAutostart(on) { model?.persistNow() }
         }
+        actions.openLoginItems = { SMAppService.openSystemSettingsLoginItems() }
         model.onPresenceChange = { [weak self, weak statusBar, weak model] in
             statusBar?.update()
             guard let model else { return }
-            self?.power.update(shouldHold: model.settings.keepAwake && model.work.isWorking)
+            self?.power.update(shouldHold: model.shouldKeepAwake)
         }
 
         model.notifications.onOpen = { [weak model] route in model?.open(route) }
@@ -103,6 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         surface.start()
         startTicking()
         if model.isFirstLaunch { main.show() }
+        if managesAutostart, launch.shouldReopenSettings() { settings.show(.general) }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -128,9 +130,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Moods with an end time need redrawing even when no file changes, and another program may have edited the settings.
         model.hooks.refresh()
         model.refreshPresence()
-        hiddenFor = statusBar.isIconVisible || !model.settings.surfaces.icon ? 0 : hiddenFor + seconds
-        // Once, when the notice appears. Doing this on every tick would take the keyboard from the person twice a minute.
-        if hiddenFor >= 60, model.noteIconHidden() { mainWindow?.show() }
+        // The window comes forward once, when the notice appears. Coming forward at every tick would take the keyboard from the person until they answer.
+        if iconWatch.note(visible: statusBar.isIconVisible, wanted: model.settings.surfaces.icon, seconds: seconds), model.noteIconHidden() {
+            mainWindow?.show()
+        }
     }
 
     private func registerHotKey() {

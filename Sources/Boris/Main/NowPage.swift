@@ -243,20 +243,28 @@ struct FolderMissing: View {
         VStack(spacing: 8) {
             WalrusView(mood: .broken, outfit: model.outfit, size: 110)
             Text(L("Cannot find Claude's folder")).font(.system(size: 14, weight: .bold))
-            Text(L("Boris looks in ~/.claude. If Claude Code keeps its data somewhere else, choose that folder."))
+            Text(Self.explanation(model))
                 .font(.system(size: 12))
                 .foregroundStyle(Palette.text2)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 420)
             HStack(spacing: 6) {
-                Button(L("Copy diagnostics")) { model.copyDiagnostics() }.buttonStyle(PlainActionStyle())
-                Button(L("Choose folder…")) { choose() }.buttonStyle(PlainActionStyle(primary: true))
+                CopyDiagnosticsButton(model: model)
+                Button(L("Choose folder…")) { Self.choose(model) }.buttonStyle(PlainActionStyle(primary: true))
             }
         }
         .padding(24)
     }
 
-    private func choose() {
+    /// Names the folder being looked for, which may be one the person chose earlier and that has gone since.
+    @MainActor
+    static func explanation(_ model: AppModel) -> String {
+        let folder = model.hooks.settingsFile.deletingLastPathComponent().path.replacingOccurrences(of: NSHomeDirectory(), with: "~")
+        return L("Boris looks in %@. If Claude Code keeps its data somewhere else, choose that folder.", folder)
+    }
+
+    @MainActor
+    static func choose(_ model: AppModel) {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
