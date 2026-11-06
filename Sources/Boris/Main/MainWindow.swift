@@ -222,6 +222,7 @@ struct ConnectionNotices: View {
             ForEach(Self.shown(model.connectionStatus.problems, page: model.page), id: \.self) { problem in
                 notice(problem)
             }
+            UpdateNotice(updates: model.updates)
         }
     }
 

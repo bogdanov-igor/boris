@@ -74,6 +74,7 @@ final class AppModel {
     /// What counts as written since this launch, kept when the engine starts again because of a setting.
     private let launchedAt = Date()
     @ObservationIgnored var sourcesRestart: Task<Void, Never>?
+    let updates = Updates.forThisBuild()
     private let store: StateStore?
     /// Nothing has been saved yet, so this is the very first launch.
     let isFirstLaunch: Bool

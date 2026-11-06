@@ -1,6 +1,8 @@
 import Foundation
 import BorisCore
 
+/// Foundation keeps a file's buffer and the parsed records until the pool around them ends, and a list of past sessions reads thousands of files in one go.
+/// Without a pool of its own, each read here adds up to 4 MB that nobody frees before the whole list is done. That reached 1.4 GB on 3 GB of real logs.
 public enum TranscriptReader {
     public struct Tail: Sendable, Equatable {
         /// The very last line, whatever it is. In a session's log that is usually one of Claude's own records.
@@ -36,6 +38,10 @@ public enum TranscriptReader {
 
     /// Reads from the end of the file only. A 27 MB transcript costs the same as a small one.
     public static func tail(_ url: URL) -> Tail {
+        autoreleasepool { readTail(url) }
+    }
+
+    private static func readTail(_ url: URL) -> Tail {
         guard let size = FileInfo.size(url), size > 0, let handle = try? FileHandle(forReadingFrom: url) else { return Tail() }
         defer { try? handle.close() }
         var result = Tail()
@@ -141,6 +147,10 @@ public enum TranscriptReader {
 
     /// What an ordinary agent said last, which is its result.
     public static func lastText(_ url: URL) -> String? {
+        autoreleasepool { readLastText(url) }
+    }
+
+    private static func readLastText(_ url: URL) -> String? {
         guard let size = FileInfo.size(url), let handle = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? handle.close() }
         let length = min(UInt64(4 * 1024 * 1024), size)
@@ -156,6 +166,10 @@ public enum TranscriptReader {
 
     /// The agent's prompt: `message.content` of the first line.
     public static func firstPrompt(_ url: URL) -> String? {
+        autoreleasepool { readFirstPrompt(url) }
+    }
+
+    private static func readFirstPrompt(_ url: URL) -> String? {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? handle.close() }
         var buffer = Data()
@@ -199,7 +213,8 @@ public enum TranscriptReader {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return }
         defer { try? handle.close() }
         var pending = Data()
-        while let chunk = try? handle.read(upToCount: 512 * 1024), !chunk.isEmpty {
+        while autoreleasepool(invoking: {
+            guard let chunk = try? handle.read(upToCount: 512 * 1024), !chunk.isEmpty else { return false }
             pending.append(chunk)
             var start = pending.startIndex
             while let newline = pending[start...].firstIndex(of: 0x0A) {
@@ -207,12 +222,17 @@ public enum TranscriptReader {
                 start = pending.index(after: newline)
             }
             pending = Data(pending[start...])
-        }
+            return true
+        }) {}
         if !pending.isEmpty { body(pending) }
     }
 
     /// Whether the end of the parent transcript has a `TaskStop` call naming this run.
     public static func hasStopCall(in parent: URL, ids: [String]) -> Bool {
+        autoreleasepool { readStopCall(in: parent, ids: ids) }
+    }
+
+    private static func readStopCall(in parent: URL, ids: [String]) -> Bool {
         guard let size = FileInfo.size(parent), let handle = try? FileHandle(forReadingFrom: parent) else { return false }
         defer { try? handle.close() }
         let length = min(UInt64(2 * 1024 * 1024), size)
@@ -230,6 +250,10 @@ public enum TranscriptReader {
 
     /// A run started from a file has no copy in `workflows/scripts`. Its launch result in the parent transcript names it.
     public static func launchInfo(in parent: URL, runId: String) -> LaunchInfo? {
+        autoreleasepool { readLaunchInfo(in: parent, runId: runId) }
+    }
+
+    private static func readLaunchInfo(in parent: URL, runId: String) -> LaunchInfo? {
         guard let size = FileInfo.size(parent), let handle = try? FileHandle(forReadingFrom: parent) else { return nil }
         defer { try? handle.close() }
         let length = min(UInt64(8 * 1024 * 1024), size)
@@ -252,6 +276,10 @@ public enum TranscriptReader {
 
     /// Where a session runs and what started it, from its first transcript lines.
     public static func origin(in parent: URL) -> (cwd: String?, entrypoint: String?, gitBranch: String?) {
+        autoreleasepool { readOrigin(in: parent) }
+    }
+
+    private static func readOrigin(in parent: URL) -> (cwd: String?, entrypoint: String?, gitBranch: String?) {
         guard let handle = try? FileHandle(forReadingFrom: parent) else { return (nil, nil, nil) }
         defer { try? handle.close() }
         guard let data = try? handle.read(upToCount: 256 * 1024) else { return (nil, nil, nil) }
@@ -265,6 +293,10 @@ public enum TranscriptReader {
 
     /// The title Claude gave the conversation. It is rewritten often, so its newest copy is close to the end.
     public static func title(in url: URL) -> String? {
+        autoreleasepool { readTitle(in: url) }
+    }
+
+    private static func readTitle(in url: URL) -> String? {
         guard let size = FileInfo.size(url), let handle = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? handle.close() }
         let length = min(UInt64(4 * 1024 * 1024), size)

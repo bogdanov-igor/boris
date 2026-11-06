@@ -27,6 +27,14 @@
         <string>en</string>
         <string>ru</string>
     </array>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUAllowsAutomaticUpdates</key>
+    <false/>
+    <key>SUScheduledCheckInterval</key>
+    <integer>86400</integer>
+    <key>SUVerifyUpdateBeforeExtraction</key>
+    <true/>
     <key>NSHumanReadableCopyright</key>
     <string>© 2026 Igor Bogdanov</string>
 </dict>
