@@ -35,12 +35,12 @@ public enum LoadGrouping {
     /// The group of each process, with every process in exactly one.
     /// - Parameters:
     ///   - sessions: the processes of running sessions. They and everything under them are Claude, whichever program they run in.
-    ///   - off: sources with reading turned off. Their processes are the rest, Claude working inside them included.
-    public static func groups(of processes: [LoadProcess], sessions: Set<Int32>, off: Set<LoadGroup> = []) -> [Int32: LoadGroup] {
+    ///   - off: what reading turned off takes out of the rows. A session shown in Boris stays Claude, whatever program it runs in.
+    public static func groups(of processes: [LoadProcess], sessions: Set<Int32>, off: LoadOff = LoadOff()) -> [Int32: LoadGroup] {
         let tree = Tree(processes)
         var result: [Int32: LoadGroup] = [:]
         for process in processes {
-            result[process.pid] = tree.owner(of: process, sessions: sessions).group(off: off)
+            result[process.pid] = tree.owner(of: process, sessions: sessions, hidden: off.sessions).group(off: off)
         }
         return result
     }
@@ -48,7 +48,7 @@ public enum LoadGrouping {
     public static func load(
         processes: [LoadProcess],
         sessions: [String: Int32],
-        off: Set<LoadGroup> = [],
+        off: LoadOff = LoadOff(),
         totalCPU: Double?,
         cpuPending: Bool = false,
         usedMemory: UInt64?,
@@ -66,13 +66,13 @@ public enum LoadGrouping {
         for (id, pid) in sessions { idsByPid[pid, default: []].append(id) }
 
         for process in processes {
-            let owner = tree.owner(of: process, sessions: sessionPids)
+            let owner = tree.owner(of: process, sessions: sessionPids, hidden: off.sessions)
             let group = owner.group(off: off)
             if group != .rest {
                 cpu[group, default: 0] += process.cpu
                 memory[group, default: 0] += Double(process.memory)
             }
-            offFound.formUnion(owner.named.intersection(off))
+            offFound.formUnion(owner.turnedOff(off, went: group))
             for ancestor in tree.chain(from: process) {
                 for id in idsByPid[ancestor.pid] ?? [] {
                     var load = perSession[id] ?? SessionLoad(cpu: 0, memory: 0)
@@ -102,17 +102,29 @@ public enum LoadGrouping {
     /// Who a process answers to, up its whole line of parents.
     private struct Owner {
         var isClaude = false
+        /// Under a session on the list, which Boris shows, so its load is Claude's.
+        var inShownSession = false
+        /// Under a session whose source is off.
+        var inHiddenSession = false
         /// The closest program above it, or itself, that is not Claude.
         var program: LoadGroup?
 
-        var named: Set<LoadGroup> {
-            Set([isClaude ? .claude : nil, program].compactMap { $0 })
+        func group(off: LoadOff) -> LoadGroup {
+            if inHiddenSession { return .rest }
+            if inShownSession { return .claude }
+            if isClaude {
+                let isOff = program.map(off.claudeIn.contains) ?? off.claudeOnItsOwn
+                return isOff ? .rest : .claude
+            }
+            if let program { return off.programs.contains(program) ? .rest : program }
+            return .rest
         }
 
-        func group(off: Set<LoadGroup>) -> LoadGroup {
-            if let program, off.contains(program) { return .rest }
-            if isClaude { return off.contains(.claude) ? .rest : .claude }
-            return program ?? .rest
+        /// What the note under the block should mention. A program that is off says enough about the Claude inside it.
+        func turnedOff(_ off: LoadOff, went group: LoadGroup) -> Set<LoadGroup> {
+            guard group == .rest else { return [] }
+            if let program, off.programs.contains(program) { return [program] }
+            return isClaude || inHiddenSession ? [.claude] : []
         }
     }
 
@@ -135,9 +147,11 @@ public enum LoadGrouping {
             return result
         }
 
-        func owner(of process: LoadProcess, sessions: Set<Int32>) -> Owner {
+        func owner(of process: LoadProcess, sessions: Set<Int32>, hidden: Set<Int32> = []) -> Owner {
             var owner = Owner()
             for link in chain(from: process) {
+                if hidden.contains(link.pid) { owner.inHiddenSession = true }
+                if sessions.contains(link.pid) { owner.inShownSession = true }
                 if link.mark == .claude || sessions.contains(link.pid) {
                     owner.isClaude = true
                 } else if owner.program == nil, let mark = link.mark {

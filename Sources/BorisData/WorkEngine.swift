@@ -62,6 +62,7 @@ public actor WorkEngine {
     private var rescanNeeded = false
     private let index: TokenIndex
     private let others: @Sendable () -> [ClaudePaths]
+    private let filter: SourceFilter
     private nonisolated let history: SessionHistory
     private var tokens: [TokenRecord] = []
     private var tokenProgress: TokenProgress?
@@ -80,13 +81,17 @@ public actor WorkEngine {
     /// Files can change or go away without an event reaching us, so now and then all the logs are looked at anyway.
     private static let indexFallback: TimeInterval = 60
 
-    /// - Parameter tokenCache: nil keeps the token index in memory.
-    public init(paths: ClaudePaths, runs: [String: RunMemory] = [:], detector: DetectorMemory = DetectorMemory(), status: StatusConfig = StatusConfig(), events: DetectorConfig = DetectorConfig(), tokenCache: URL? = nil, others: @escaping @Sendable () -> [ClaudePaths], handler: @escaping @Sendable (Output) -> Void) {
+    /// - Parameters:
+    ///   - tokenCache: nil keeps the token index in memory.
+    ///   - filter: which sources are left alone. A change of it means a new engine.
+    ///   - startedAt: when the app started, which an engine started again keeps.
+    public init(paths: ClaudePaths, runs: [String: RunMemory] = [:], detector: DetectorMemory = DetectorMemory(), status: StatusConfig = StatusConfig(), events: DetectorConfig = DetectorConfig(), tokenCache: URL? = nil, others: @escaping @Sendable () -> [ClaudePaths], filter: SourceFilter = SourceFilter(), startedAt: Date = Date(), handler: @escaping @Sendable (Output) -> Void) {
         self.paths = paths
         self.index = TokenIndex(cacheFile: tokenCache)
         self.others = others
-        self.scanner = RunScanner(paths: paths, others: others)
-        self.history = SessionHistory(paths: paths, others: others)
+        self.filter = filter
+        self.scanner = RunScanner(paths: paths, others: others, filter: filter, startedAt: startedAt)
+        self.history = SessionHistory(paths: paths, others: others, filter: filter)
         self.tracker = RunTracker(memory: runs, config: status)
         self.detector = EventDetector(memory: detector, config: events)
         self.handler = handler
@@ -275,16 +280,17 @@ public actor WorkEngine {
         changedFolders = []
         let roots = [paths] + others()
         let index = index
+        let filter = filter
         let engine = self
         Task.detached(priority: .utility) {
             let changed: Bool
             if walk {
-                changed = await index.update(roots: roots) { done, total in
+                changed = await index.update(roots: roots, filter: filter) { done, total in
                     guard done == total || done % 50 == 0 else { return }
                     Task { await engine.noteProgress(done: done, total: total) }
                 }
             } else {
-                changed = await index.update(folders: folders, roots: roots)
+                changed = await index.update(folders: folders, roots: roots, filter: filter)
             }
             await engine.tokensRead(changed || firstPass ? await index.records() : nil)
         }

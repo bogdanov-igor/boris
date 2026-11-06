@@ -20,8 +20,10 @@ public struct PendingPermission: Identifiable, Equatable, Sendable {
     public let deadline: Date
     /// Finds the end of this very call among the session's tools.
     public let digest: String?
+    /// What the hook found out about where it runs.
+    public let source: SourceID?
 
-    public init(id: UUID = UUID(), session: String, agent: String? = nil, agentType: String? = nil, tool: String, command: String = "", content: RequestContent, project: String? = nil, cwd: String? = nil, mode: String? = nil, askedAt: Date = Date(), deadline: Date = Date().addingTimeInterval(120), digest: String? = nil) {
+    public init(id: UUID = UUID(), session: String, agent: String? = nil, agentType: String? = nil, tool: String, command: String = "", content: RequestContent, project: String? = nil, cwd: String? = nil, mode: String? = nil, askedAt: Date = Date(), deadline: Date = Date().addingTimeInterval(120), digest: String? = nil, source: SourceID? = nil) {
         self.id = id
         self.session = session
         self.agent = agent
@@ -35,7 +37,17 @@ public struct PendingPermission: Identifiable, Equatable, Sendable {
         self.askedAt = askedAt
         self.deadline = deadline
         self.digest = digest
+        self.source = source
     }
+}
+
+/// What the app does with what a hook sends. The hook has already asked the same of its file, and this catches what that could not know.
+public enum HookAdmission: Sendable, Equatable {
+    case welcome
+    /// A request is let go at once, and only the fact that the session waits stays.
+    case noAnswers
+    /// Reading is off, so none of it was heard.
+    case ignore
 }
 
 /// Listens on a Unix socket only this user can reach. There is no network port, so no other process can impersonate Boris.
@@ -57,6 +69,8 @@ public final class HookServer: @unchecked Sendable {
     public var onPermissionExpired: (@Sendable (UUID) -> Void)?
     /// A tool with this input has finished.
     public var onToolDone: (@Sendable (_ session: String, _ digest: String) -> Void)?
+    /// Whether what comes from this session is taken in. Nil takes everything. Called on the queue of the connection, so it must not wait for anything.
+    public var admission: (@Sendable (_ session: String?, _ source: SourceID?) -> HookAdmission)?
 
     public init(path: String) {
         self.path = path
@@ -164,6 +178,12 @@ public final class HookServer: @unchecked Sendable {
             AppLog.note(.hookMessageUnreadable)
             return
         }
+        let source = (payload["boris_source"] as? String).flatMap(SourceID.init(rawValue:))
+        let admitted = admission?(payload["session_id"] as? String, source) ?? .welcome
+        if admitted == .ignore {
+            close(fd)
+            return
+        }
         guard payload["wait"] as? Bool == true else {
             close(fd)
             if let session = payload["session_id"] as? String, let digest = payload["input_digest"] as? String {
@@ -172,7 +192,13 @@ public final class HookServer: @unchecked Sendable {
             if let signal = HookSignal(payload: payload) { onSignal?(signal) }
             return
         }
-        hold(fd, payload: payload)
+        if admitted == .noAnswers {
+            // The closed connection ends the hook with no decision, so Claude handles the request by itself.
+            close(fd)
+            if let signal = HookSignal(payload: payload) { onSignal?(signal) }
+            return
+        }
+        hold(fd, payload: payload, source: source)
     }
 
     private func readMessage(_ fd: Int32) -> [String: Any]? {
@@ -187,7 +213,7 @@ public final class HookServer: @unchecked Sendable {
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     }
 
-    private func hold(_ fd: Int32, payload: [String: Any]) {
+    private func hold(_ fd: Int32, payload: [String: Any], source: SourceID?) {
         guard let session = payload["session_id"] as? String else {
             close(fd)
             return
@@ -216,7 +242,8 @@ public final class HookServer: @unchecked Sendable {
             mode: payload["permission_mode"] as? String,
             askedAt: now,
             deadline: now.addingTimeInterval(window),
-            digest: payload["input_digest"] as? String
+            digest: payload["input_digest"] as? String,
+            source: source
         )
         // When the hook goes away, it closes its end, and the request disappears from the queue.
         let closed = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)

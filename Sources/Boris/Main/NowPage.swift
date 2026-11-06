@@ -176,6 +176,7 @@ struct NowPage: View {
                     }
                     .padding(.top, 6)
                 }
+                SourcesIncompleteNote(settings: model.settings.sources)
             }
             card {
                 Text(L("Limits")).font(.system(size: 12)).foregroundStyle(Palette.text2)

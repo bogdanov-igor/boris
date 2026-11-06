@@ -147,22 +147,23 @@ public struct EventDetector: Sendable {
     /// All runs hitting one limit make one event, sent as soon as the first agent fails.
     /// A run can also fall between two looks or while Boris is closed, never seen at work with a failed agent.
     private mutating func limitEvents(_ runs: [RunState], justFailed: Set<String>, hookLimit: Bool, now: Date) -> [BorisEvent] {
-        var hit: [String: (kind: LimitKind, resets: String?, runs: Set<String>, agents: Int, projects: Set<String>)] = [:]
+        var hit: [String: (kind: LimitKind, resets: String?, runs: Set<String>, agents: Int, projects: Set<String>, places: Set<WorkEnvironment>)] = [:]
         // A limit reported by a hook has no details of its own. It only counts when no run reports one.
         for run in runs where run.status.isActive || justFailed.contains(run.runId) {
             for agent in run.agents where agent.state == .failed {
                 guard let failure = agent.failure, failure.failureClass == .limit else { continue }
                 let kind = failure.limitKind ?? .other
                 let key = "\(kind.rawValue)|\(failure.resets ?? "")"
-                var entry = hit[key] ?? (kind, failure.resets, [], 0, [])
+                var entry = hit[key] ?? (kind, failure.resets, [], 0, [], [])
                 entry.runs.insert(run.runId)
                 entry.agents += 1
                 if let project = run.projectName { entry.projects.insert(project) }
+                if let place = run.environment { entry.places.insert(place) }
                 hit[key] = entry
             }
         }
         if hookLimit, hit.isEmpty, !memory.limitFired.contains(where: { now.timeIntervalSince($0.value) < limitMemory(.session) }) {
-            hit["\(LimitKind.other.rawValue)|"] = (.other, nil, [], 0, [])
+            hit["\(LimitKind.other.rawValue)|"] = (.other, nil, [], 0, [], [])
         }
         var events: [BorisEvent] = []
         for key in hit.keys.sorted() {
@@ -177,7 +178,9 @@ public struct EventDetector: Sendable {
                 agentsFailed: entry.agents,
                 limitKind: entry.kind,
                 resets: entry.resets,
-                affectedRuns: entry.runs.count
+                affectedRuns: entry.runs.count,
+                // Only one place to name, or a source with its notifications off could silence a limit that others hit too.
+                environment: entry.places.count == 1 ? entry.places.first : nil
             ))
         }
         return events

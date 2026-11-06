@@ -44,6 +44,28 @@ func tokens() async {
     print("records \(records.count), book built in \(clock.now - building), all time ≈ $\(Int(book.report(.all).estimate.dollars))")
 }
 
+/// `boris-dump sources`: what each source has, counts only. `BORIS_SOURCES_OFF=cursor,cowork` looks at it the way Boris would with those turned off.
+func sources() async {
+    let off = Set((ProcessInfo.processInfo.environment["BORIS_SOURCES_OFF"] ?? "").split(separator: ",").compactMap { SourceID(rawValue: String($0)) })
+    let filter = SourceFilter(off: off)
+    let roots = ([paths] + others()).filter(filter.reads(root:))
+    print("off: \(off.map(\.rawValue).sorted())")
+    print("roots read: \(roots.count), of them not this Mac's processes: \(roots.filter { !$0.processesAreHere }.count)")
+    let live = roots.filter(\.processesAreHere).flatMap { SessionReader.read($0).sessions }.filter { SessionReader.isLive($0) }.map(filter.editors.identified)
+    let shown = live.filter(filter.allows(session:))
+    func count<T>(_ items: [T], by key: (T) -> String) -> String {
+        Dictionary(grouping: items, by: key).map { "\($0.key) \($0.value.count)" }.sorted().joined(separator: ", ")
+    }
+    print("running sessions seen \(live.count): \(count(live) { SourceID($0.environment)?.rawValue ?? "?" })")
+    print("running sessions shown \(shown.count), hidden \(live.count - shown.count)")
+    let index = TokenIndex(cacheFile: nil)
+    await index.update(roots: roots, filter: filter)
+    let records = await index.records()
+    let bySource = Dictionary(grouping: records) { SourceID(entrypoint: $0.entrypoint)?.rawValue ?? "?" }.mapValues { $0.reduce(0) { $0 + $1.usage.total } }
+    print("tokens by source: \(bySource.map { "\($0.key) \($0.value)" }.sorted().joined(separator: ", "))")
+    print("sessions in token records: \(Set(records.map(\.sessionId)).count)")
+}
+
 func limits() {
     guard let profile = UsageReader.profile(paths.profile, settings: paths.settings) else {
         print("profile: cannot be read")
@@ -275,7 +297,9 @@ func cost(seconds: Int) async {
     await engine.stop()
 }
 
-if arguments.first == "tokens" {
+if arguments.first == "sources" {
+    await sources()
+} else if arguments.first == "tokens" {
     await tokens()
 } else if arguments.first == "load" {
     await load()

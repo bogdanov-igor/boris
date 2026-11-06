@@ -12,6 +12,7 @@ struct LossesPage: View {
             if let book = model.losses.book {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        SourcesIncompleteNote(settings: model.settings.sources)
                         LossSummaryLayout {
                             ReasonsCard(book: book, mode: mode)
                             KindsCard(book: book)

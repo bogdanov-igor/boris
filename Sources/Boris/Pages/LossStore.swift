@@ -30,6 +30,16 @@ final class LossStore {
         }
     }
 
+    /// What was read under the old choice of sources must not stay on the page. It comes back from the logs in the next pass.
+    func sourcesChanged(_ model: AppModel) {
+        guard !frozen else { return }
+        book = nil
+        updated = false
+        if model.page == .losses, model.mainWindowIsOpen, model.loaded {
+            Task { await update(model) }
+        }
+    }
+
     /// The numbers for the chosen period, without reading the logs again.
     func periodChanged(_ model: AppModel) async {
         guard updated, !frozen else { return }
@@ -39,9 +49,10 @@ final class LossStore {
     private func update(_ model: AppModel) async {
         let folder = model.settings.claudeFolder
         let index = index
+        let filter = model.sourceFilter
         let reader = Task.detached(priority: .utility) { [weak self] in
             let paths = ClaudePaths.resolve(custom: folder)
-            await index.update(roots: [paths] + ClaudeFolders.others(besides: paths)) { progress in
+            await index.update(roots: [paths] + ClaudeFolders.others(besides: paths), filter: filter) { progress in
                 guard progress.done == progress.total || progress.done % 50 == 0 else { return }
                 Task { @MainActor in self?.progress = progress }
             }

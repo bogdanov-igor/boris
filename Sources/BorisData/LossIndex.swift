@@ -87,6 +87,7 @@ public actor LossIndex {
     private var runs: [String: Run] = [:]
     private var diedSessions: [SessionInfo] = []
     private var meta: [String: String?] = [:]
+    private var filter = SourceFilter()
 
     /// - Parameter cacheFile: nil keeps everything in memory.
     public init(cacheFile: URL?, timeZone: TimeZone = .current) {
@@ -107,9 +108,11 @@ public actor LossIndex {
     /// Brings the index up to date. Read off the main thread, as nothing here is quick on the first pass.
     /// - Returns: true if anything changed.
     @discardableResult
-    public func update(roots: [ClaudePaths], progress: (@Sendable (Progress) -> Void)? = nil) async -> Bool {
+    public func update(roots: [ClaudePaths], filter: SourceFilter = SourceFilter(), progress: (@Sendable (Progress) -> Void)? = nil) async -> Bool {
         loadCache()
-        let files = TokenIndex.transcripts(in: roots)
+        self.filter = filter
+        let roots = roots.filter(filter.reads(root:))
+        let files = TokenIndex.transcripts(in: roots, filter: filter)
         var changed = false
 
         let existing = Set(files.map(\.path))
@@ -128,7 +131,8 @@ public actor LossIndex {
         saveWhenDue(changed: changed)
         if Task.isCancelled { return changed }
         if readRuns(roots) { changed = true }
-        let died = roots.filter(\.processesAreHere).flatMap { SessionReader.read($0).sessions }.filter(Self.diedAtWork)
+        let died = roots.filter(\.processesAreHere).flatMap { SessionReader.read($0).sessions }
+            .filter { Self.diedAtWork($0) && filter.allows(session: filter.editors.identified($0)) }
         if died != diedSessions {
             diedSessions = died
             changed = true
@@ -198,7 +202,12 @@ public actor LossIndex {
         }
 
         // Boris's own hidden sessions are not the person's work.
-        return LossHistory(entries: entries.filter { !BorisPaths.isUsageProbe(cwd: $0.cwd) }, calls: calls)
+        let shown = entries.filter { !BorisPaths.isUsageProbe(cwd: $0.cwd) }.map { entry in
+            var entry = entry
+            entry.entrypoint = filter.editors.entrypoint(entry.entrypoint, session: entry.sessionId)
+            return entry
+        }
+        return LossHistory(entries: shown, calls: calls)
     }
 
     /// What the page shows. All the adding up happens here, off the main thread.
@@ -510,6 +519,7 @@ public actor LossIndex {
             for project in FileInfo.names(in: root.projects) where !project.hasPrefix(".") {
                 let projectDir = root.projects.appendingPathComponent(project)
                 for session in FileInfo.names(in: projectDir) where !session.hasSuffix(".jsonl") && !session.hasPrefix(".") {
+                    guard filter.allows(transcript: projectDir.appendingPathComponent("\(session).jsonl")) else { continue }
                     let sessionDir = projectDir.appendingPathComponent(session)
                     let finals = sessionDir.appendingPathComponent("workflows")
                     let journals = sessionDir.appendingPathComponent("subagents/workflows")

@@ -11,7 +11,10 @@ struct SpendTokensColumn: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             if let book = usage.book {
-                note(book)
+                VStack(alignment: .leading, spacing: 2) {
+                    note(book)
+                    SourcesIncompleteNote(settings: model.settings.sources)
+                }
                 let report = book.report(usage.period)
                 totals(report)
                 if report.usage.total > 0 {
@@ -27,7 +30,7 @@ struct SpendTokensColumn: View {
         Group {
             if let earliest = book.earliestDay {
                 Text(L("Data from %@: Claude keeps logs for a limited time.", UsageFormat.longDay(earliest, today: book.today)))
-            } else {
+            } else if !model.settings.sources.allOff {
                 Text(L("Claude has no logs yet."))
             }
         }

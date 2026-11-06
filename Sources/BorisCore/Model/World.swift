@@ -134,6 +134,8 @@ public struct WorldSnapshot: Sendable, Equatable {
     public var agentTokens: [String: TokenUsage] = [:]
     /// Where sessions and agents work in git, by their id.
     public var places: [String: GitPlace] = [:]
+    /// Running sessions left out because their source is off. Only these numbers are known about them.
+    public var hiddenSessions: [String: Int32] = [:]
 
     public init(
         takenAt: Date,

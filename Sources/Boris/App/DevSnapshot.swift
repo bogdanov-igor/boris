@@ -101,10 +101,15 @@ enum DevSnapshot {
         case project, projectDates, datesPicker, session, sessionTrouble, sessionPast, sessionGone, bigRun
         case feed, feedWaiting, feedChanges, feedDiff, activityCommands
         case requestCards, requestsNoHooks, nowRequests, miniRequests
+        case sourcesMixed, sourcesAllOff, spendIncomplete, lossesIncomplete, projectsIncomplete, nowIncomplete, nowAllOff, miniIncomplete, miniAllOff
 
         var page: AppPage? {
             if self == .requestsNoHooks { return .requests }
             if self == .spendFolderMissing { return .spend }
+            if self == .spendIncomplete { return .spend }
+            if self == .lossesIncomplete { return .losses }
+            if self == .projectsIncomplete { return .projects }
+            if self == .nowIncomplete || self == .nowAllOff { return .now }
             return DevUsageData.Scenario(rawValue: rawValue) != nil ? .spend : AppPage(rawValue: rawValue)
         }
 
@@ -113,6 +118,7 @@ enum DevSnapshot {
             if self == .generalTaken || self == .generalApproval { return .general }
             if rawValue.hasPrefix("connections") { return .connections }
             if self == .logProblems || self == .logHuge { return .log }
+            if self == .sourcesMixed || self == .sourcesAllOff { return .sources }
             if self == .surfacesLast || self == .surfacesHotKey || self == .surfacesGone { return .surfaces }
             if rawValue.hasPrefix("notifications"), self != .notificationsPreview { return .notifications }
             return SettingsSection(rawValue: rawValue)
@@ -120,6 +126,8 @@ enum DevSnapshot {
     }
 
     private static func capture(_ screen: Screen, theme: ThemeMode, mode: DisplayMode, language: AppLanguage, data: DevData, size: CGSize?, to path: String) async {
+        // Each picture starts from the built-in walrus, whatever the previous one chose.
+        WalrusArt.shared.pack = nil
         let settings = AppSettings(defaults: nil)
         settings.theme = theme
         settings.language = language
@@ -131,6 +139,7 @@ enum DevSnapshot {
         data.fill(model)
         WalrusDev.dress(model)
         NotificationSnapshots.prepare(screen.rawValue, model: model)
+        SourceSnapshots.prepare(screen.rawValue, model: model)
         DevUsageData.Scenario(rawValue: screen.rawValue)?.fill(model)
         if let page = screen.page { model.page = page }
         if let section = screen.section { model.settingsSection = section }
@@ -139,7 +148,7 @@ enum DevSnapshot {
         let view: AnyView
         var canvas = size ?? CGSize(width: 1200, height: 800)
         switch screen {
-        case .mini, .miniRequests:
+        case .mini, .miniRequests, .miniIncomplete, .miniAllOff:
             view = AnyView(MiniWindowView(model: model, openMain: {}))
             canvas = CGSize(width: 360, height: 0)
         case .requestCards:
@@ -163,7 +172,7 @@ enum DevSnapshot {
             model.projectFilter.period = .dates(from: Date().addingTimeInterval(-10 * 86400), to: Date())
             view = AnyView(ProjectDatesPicker(model: model).background(Palette.pop))
             canvas = CGSize(width: 240, height: 0)
-        case .general, .sources, .surfaces, .notifications, .connections, .log, .logProblems, .logHuge, .about, .license, .thirdParty, .generalTaken, .generalApproval, .connectionsConnected, .connectionsBroken, .connectionsSilent, .connectionsFolderMissing, .connectionsFormat, .connectionsEntries, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
+        case .sourcesMixed, .sourcesAllOff, .general, .sources, .surfaces, .notifications, .connections, .log, .logProblems, .logHuge, .about, .license, .thirdParty, .generalTaken, .generalApproval, .connectionsConnected, .connectionsBroken, .connectionsSilent, .connectionsFolderMissing, .connectionsFormat, .connectionsEntries, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
             if screen == .surfacesLast { settings.surfaces = SurfaceSwitches(icon: false, notch: true, mini: false) }
             if screen == .surfacesHotKey {
                 settings.surfaces = SurfaceSwitches(icon: true, notch: false, mini: true)

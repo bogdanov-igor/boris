@@ -60,9 +60,10 @@ final class NotificationHub {
     #endif
 
     /// What one scan found. `quiet` is whether do not disturb was on during it.
-    func scanned(_ events: [(event: BorisEvent, reaction: Reaction)], quiet: Bool, now: Date) {
+    /// - Parameter muted: events of sources with their notifications off, by id. They go to no channel, Telegram included.
+    func scanned(_ events: [(event: BorisEvent, reaction: Reaction)], muted: Set<String> = [], quiet: Bool, now: Date) {
         let preferences = settings.notifications
-        let items = events.map { NotificationRouter.Item(event: $0.event, reaction: $0.reaction, telegram: preferences.wantsTelegram($0.event, quiet: quiet)) }
+        let items = events.map { NotificationRouter.Item(event: $0.event, reaction: $0.reaction, telegram: !muted.contains($0.event.id) && preferences.wantsTelegram($0.event, quiet: quiet)) }
         perform(router.route(items, now: now))
     }
 

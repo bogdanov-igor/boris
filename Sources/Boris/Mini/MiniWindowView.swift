@@ -88,6 +88,7 @@ struct MiniWindowView: View {
                     }
                 }
             }
+            SourcesIncompleteNote(settings: model.settings.sources)
             Rectangle().fill(Palette.separator).frame(height: 1).padding(.top, 1)
             MacLoadBlock(model: model, kind: mode == .technical ? .miniTechnical : .miniSimple)
         }
@@ -110,12 +111,22 @@ struct MiniWindowView: View {
     @ViewBuilder private var sessions: some View {
         if model.requestCount == 0, model.activeSessions.isEmpty {
             VStack(spacing: 4) {
-                Text(L("Nothing is going on")).font(.system(size: 13, weight: .semibold))
-                Text(idleLine)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Palette.text2)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
+                if model.settings.sources.allOff {
+                    Text(L("All sources are off")).font(.system(size: 13, weight: .semibold))
+                    Text(L("Claude works as usual. Boris reads nothing until you turn a source back on."))
+                        .font(.system(size: 12))
+                        .foregroundStyle(Palette.text2)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 14)
+                } else {
+                    Text(L("Nothing is going on")).font(.system(size: 13, weight: .semibold))
+                    Text(idleLine)
+                        .font(.system(size: 12))
+                        .foregroundStyle(Palette.text2)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .frame(maxWidth: .infinity)
             .padding(EdgeInsets(top: 22, leading: 14, bottom: 22, trailing: 14))

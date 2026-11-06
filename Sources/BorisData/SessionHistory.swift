@@ -16,24 +16,26 @@ public actor SessionHistory {
     private let paths: ClaudePaths
     private let others: @Sendable () -> [ClaudePaths]
     private let scanner: RunScanner
+    private let filter: SourceFilter
     private var known: [String: Known] = [:]
 
-    public init(paths: ClaudePaths, others: @escaping @Sendable () -> [ClaudePaths] = { [] }) {
+    public init(paths: ClaudePaths, others: @escaping @Sendable () -> [ClaudePaths] = { [] }, filter: SourceFilter = SourceFilter()) {
         self.paths = paths
         self.others = others
+        self.filter = filter
         var config = RunScanner.Config()
         config.window = .infinity
-        scanner = RunScanner(paths: paths, config: config, others: others)
+        scanner = RunScanner(paths: paths, config: config, others: others, filter: filter)
     }
 
     /// Reads only what changed since the last time. Which of these are still at work, only the live scan can say.
     public func sessions(now: Date = Date()) async -> [WorkSession] {
-        let transcripts = Self.transcripts(in: [paths] + others())
+        let transcripts = Self.transcripts(in: ([paths] + others()).filter(filter.reads(root:))).filter { filter.allows(transcript: $0.value) }
         known = known.filter { transcripts[$0.key] != nil }
         for (id, file) in transcripts {
             let modified = FileInfo.modified(file)
             if let entry = known[id], entry.modified == modified { continue }
-            known[id] = Self.read(id: id, file: file, modified: modified)
+            known[id] = Self.read(id: id, file: file, modified: modified, editors: filter.editors)
             await Task.yield()
         }
 
@@ -60,11 +62,11 @@ public actor SessionHistory {
             }
     }
 
-    private static func read(id: String, file: URL, modified: Date?) -> Known {
+    private static func read(id: String, file: URL, modified: Date?, editors: EditorBook) -> Known {
         let origin = TranscriptReader.origin(in: file)
         let tail = TranscriptReader.tail(file)
         // Its process is gone, so the number only has to be positive: zero would mean a session that never had a process.
-        var info = SessionInfo(sessionId: id, pid: 1, cwd: origin.cwd, entrypoint: origin.entrypoint, status: "idle", startedAt: FileInfo.created(file), statusUpdatedAt: modified)
+        var info = SessionInfo(sessionId: id, pid: 1, cwd: origin.cwd, entrypoint: editors.entrypoint(origin.entrypoint, session: id), status: "idle", startedAt: FileInfo.created(file), statusUpdatedAt: modified)
         info.title = TranscriptReader.title(in: file)
         info.contextTokens = tail.usage?.context
         info.model = tail.model

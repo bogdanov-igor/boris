@@ -49,6 +49,8 @@ final class AppSettings {
     /// Fresh limits come from starting Claude Code for a moment, so this can be turned off.
     var usageRefreshEnabled: Bool { didSet { defaults?.set(usageRefreshEnabled, forKey: "usageRefreshEnabled"); SettingsLog.changed("usageRefreshEnabled", from: oldValue, to: usageRefreshEnabled) } }
     var usageRefreshMinutes: Int { didSet { defaults?.set(usageRefreshMinutes, forKey: "usageRefreshMinutes"); SettingsLog.changed("usageRefreshMinutes", from: oldValue, to: usageRefreshMinutes) } }
+    /// Which products and environments Boris deals with, and how.
+    var sources: SourceSettings { didSet { save(sources, "sources"); SettingsLog.changed("sources", from: oldValue, to: sources) } }
 
     init(defaults: UserDefaults? = .standard) {
         self.defaults = defaults
@@ -74,6 +76,7 @@ final class AppSettings {
         notifications = Self.load(defaults, "notifications") ?? NotificationPreferences()
         usageRefreshEnabled = defaults?.object(forKey: "usageRefreshEnabled") as? Bool ?? true
         usageRefreshMinutes = defaults?.object(forKey: "usageRefreshMinutes") as? Int ?? 15
+        sources = Self.load(defaults, "sources") ?? SourceSettings()
         Localizer.use(language)
         NSApp?.appearance = theme.appearance
     }

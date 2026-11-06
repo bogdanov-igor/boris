@@ -44,6 +44,7 @@ public actor TokenIndex {
     private var loaded = false
     private var unsaved = false
     private var lastSaved: Date?
+    private var editors: EditorBook?
     private let timestamps: ISO8601DateFormatter
     private let dayKeys: DateFormatter
 
@@ -73,13 +74,17 @@ public actor TokenIndex {
         seen = Set(cache.entries.values.flatMap(\.ids))
     }
 
-    /// Brings the index up to date. A transcript that Claude has deleted leaves the totals with it.
-    /// - Parameter progress: how many transcripts are done and how many there are.
+    /// Brings the index up to date. A transcript that Claude has deleted leaves the totals with it, and so does one whose source is off:
+    /// turning the source on reads it again from the logs.
+    /// - Parameters:
+    ///   - filter: which sources are left alone.
+    ///   - progress: how many transcripts are done and how many there are.
     /// - Returns: true if anything changed.
     @discardableResult
-    public func update(roots: [ClaudePaths], progress: (@Sendable (Int, Int) -> Void)? = nil) async -> Bool {
+    public func update(roots: [ClaudePaths], filter: SourceFilter = SourceFilter(), progress: (@Sendable (Int, Int) -> Void)? = nil) async -> Bool {
         loadCache()
-        let files = Self.transcripts(in: roots)
+        editors = filter.editors
+        let files = Self.transcripts(in: roots.filter(filter.reads(root:)), filter: filter)
         var changed = false
 
         let existing = Set(files.map(\.path))
@@ -102,11 +107,13 @@ public actor TokenIndex {
     /// Something deleted, or a change that was never reported, waits for the next `update(roots:)`.
     /// - Returns: true if anything changed.
     @discardableResult
-    public func update(folders: Set<String>, roots: [ClaudePaths]) async -> Bool {
+    public func update(folders: Set<String>, roots: [ClaudePaths], filter: SourceFilter = SourceFilter()) async -> Bool {
         loadCache()
+        editors = filter.editors
+        let roots = roots.filter(filter.reads(root:))
         var changed = false
         for folder in folders.sorted() {
-            for file in Self.transcripts(inFolder: folder, roots: roots) where autoreleasepool(invoking: { read(file) }) {
+            for file in Self.transcripts(inFolder: folder, roots: roots, filter: filter) where autoreleasepool(invoking: { read(file) }) {
                 changed = true
             }
             await Task.yield()
@@ -131,7 +138,7 @@ public actor TokenIndex {
                     agentId: owner.agent,
                     runId: owner.run,
                     cwd: entry.cwd,
-                    entrypoint: entry.entrypoint,
+                    entrypoint: editors?.entrypoint(entry.entrypoint, session: owner.session) ?? entry.entrypoint,
                     day: bucket.day,
                     model: bucket.model,
                     usage: bucket.usage
@@ -234,7 +241,7 @@ public actor TokenIndex {
     }
 
     /// The main transcript comes before its subagents, so a fork's repeats are the ones left out.
-    static func transcripts(in roots: [ClaudePaths]) -> [URL] {
+    static func transcripts(in roots: [ClaudePaths], filter: SourceFilter = SourceFilter()) -> [URL] {
         var files: [URL] = []
         let hidden = BorisPaths.usageProbeProject
         for root in roots {
@@ -243,8 +250,8 @@ public actor TokenIndex {
                 for name in FileInfo.names(in: folder) where !name.hasPrefix(".") {
                     let item = folder.appendingPathComponent(name)
                     if name.hasSuffix(".jsonl") {
-                        files.append(item)
-                    } else {
+                        if filter.allows(transcript: item) { files.append(item) }
+                    } else if filter.allows(transcript: folder.appendingPathComponent("\(name).jsonl")) {
                         files += agentFiles(in: item.appendingPathComponent("subagents"))
                         let workflows = item.appendingPathComponent("subagents/workflows")
                         for run in FileInfo.names(in: workflows) where run.hasPrefix("wf_") {
@@ -259,7 +266,7 @@ public actor TokenIndex {
 
     /// The transcripts lying directly in one folder, by the same rules as `transcripts(in:)`. Anything else in Claude's folders holds none.
     /// The file system reports real paths while the folder may be reached through a link, so they are compared resolved, and what comes back is spelled as a whole pass spells it.
-    static func transcripts(inFolder path: String, roots: [ClaudePaths]) -> [URL] {
+    static func transcripts(inFolder path: String, roots: [ClaudePaths], filter: SourceFilter = SourceFilter()) -> [URL] {
         let inner = URL(fileURLWithPath: path).resolvingSymlinksInPath().pathComponents
         for root in roots {
             let outer = root.projects.resolvingSymlinksInPath().pathComponents
@@ -272,10 +279,11 @@ public actor TokenIndex {
                 return FileInfo.names(in: folder)
                     .filter { $0.hasSuffix(".jsonl") && !$0.hasPrefix(".") }
                     .map { folder.appendingPathComponent($0) }
-            case 3 where parts[2] == "subagents":
-                return agentFiles(in: folder)
-            case 5 where parts[2] == "subagents" && parts[3] == "workflows" && parts[4].hasPrefix("wf_"):
-                return agentFiles(in: folder)
+                    .filter(filter.allows(transcript:))
+            case 3 where parts[2] == "subagents", 5 where parts[2] == "subagents" && parts[3] == "workflows" && parts[4].hasPrefix("wf_"):
+                // Agents and workflows go by their session's own transcript.
+                let session = root.projects.appendingPathComponent(parts[0]).appendingPathComponent("\(parts[1]).jsonl")
+                return filter.allows(transcript: session) ? agentFiles(in: folder) : []
             default:
                 return []
             }

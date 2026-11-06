@@ -34,6 +34,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             created.isMovableByWindowBackground = true
             created.isReleasedWhenClosed = false
             created.delegate = self
+            model.capture.watch(created, as: .main)
             created.setContentSize(NSSize(width: 1200, height: 800))
             created.minSize = NSSize(width: 900, height: 600)
             created.setFrameAutosaveName("main")
@@ -56,6 +57,11 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         AppLog.note(.windowClosed, .word(.mainWindow))
         model.setLookingClosely(false, from: .mainWindow)
+        // A window hidden from captures can never come back to them, so the next time a new one is made.
+        if let closing = window, model.capture.wasHidden(closing) {
+            closing.setFrameAutosaveName("")
+            window = nil
+        }
     }
 }
 
@@ -176,6 +182,7 @@ private struct PageContent: View {
                 Rectangle().fill(Palette.separator).frame(height: 1)
             }
             ConnectionNotices(model: model, connect: connect)
+            SourcesOffNotice(model: model, openSettings: openSettings)
             page.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }

@@ -283,6 +283,7 @@ struct RequestNoticeCard: View {
     private var text: String {
         if case .expired = row { return L("You can still answer in Claude.") }
         if isCowork { return L("This request cannot be answered from Boris. Answer it in Claude Desktop.") }
+        if let off = SourcesRequestWords.notAnswered(session, settings: model.settings.sources) { return off }
         switch model.hooks.connection {
         case .notConnected: return L("Answering from Boris is not connected. Answer in the session, or connect answers in a couple of clicks.")
         case .damaged: return L("Answering from Boris is not working right now. Answer in the session, or repair the connection.")
@@ -292,7 +293,7 @@ struct RequestNoticeCard: View {
     }
 
     private var offersConnecting: Bool {
-        if case .waiting = row, !isCowork { return model.hooks.connection.canConnect }
+        if case .waiting = row, !isCowork, SourcesRequestWords.notAnswered(session, settings: model.settings.sources) == nil { return model.hooks.connection.canConnect }
         return false
     }
 

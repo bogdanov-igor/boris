@@ -275,6 +275,12 @@ public struct RequestQueue: Sendable, Equatable {
         answeredAt = answeredAt.filter { now.timeIntervalSince($0.value) < Self.settling }
     }
 
+    /// The person no longer wants Boris to deal with this source. Nothing was decided, so no history stays, and neither does its text.
+    public mutating func forget(_ id: UUID) {
+        _ = take(id)
+        expired.removeAll { $0.id == id }
+    }
+
     private mutating func take(_ id: UUID) -> PendingPermission? {
         guard let index = open.firstIndex(where: { $0.id == id }) else { return nil }
         return open.remove(at: index)

@@ -11,7 +11,7 @@ public final class MacLoadWatch {
     /// Nil before the first reading. It comes as soon as a block appears, with CPU load following a second later.
     public private(set) var current: MacLoad?
     /// Sources with reading turned off, whose processes are counted in the rest.
-    public var off = Set<LoadGroup>()
+    public var off = LoadOff()
 
     @ObservationIgnored public var reader: Reader?
     @ObservationIgnored public var sessions: @MainActor () -> [String: Int32] = { [:] }

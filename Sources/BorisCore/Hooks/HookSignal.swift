@@ -8,7 +8,8 @@ public enum HookPayload {
     /// A larger request is not sent whole. It cannot be read in full in Boris, so it cannot be allowed there either.
     static let inputLimit = 256 * 1024
 
-    public static func reduce(_ input: [String: Any]) -> [String: Any] {
+    /// - Parameter withRequest: false when nobody will answer it here, so what it asks has no reason to travel.
+    public static func reduce(_ input: [String: Any], withRequest: Bool = true) -> [String: Any] {
         var out: [String: Any] = [:]
         for field in allowedFields {
             if let value = input[field] as? String { out[field] = value }
@@ -19,7 +20,7 @@ public enum HookPayload {
         if event == "PostToolUse", input["tool_name"] as? String == "Workflow", let response = input["tool_response"] as? [String: Any] {
             if let run = response["runId"] as? String { out["run_id"] = run }
         }
-        if event == "PermissionRequest", let toolInput = input["tool_input"] as? [String: Any] {
+        if withRequest, event == "PermissionRequest", let toolInput = input["tool_input"] as? [String: Any] {
             out["command_text"] = commandText(toolInput)
             if let whole = canonical(toolInput), whole.count <= inputLimit { out["tool_input"] = toolInput }
         }

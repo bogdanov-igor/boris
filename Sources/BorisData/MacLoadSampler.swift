@@ -6,11 +6,11 @@ import Foundation
 public struct LoadRequest: Sendable, Equatable {
     /// The process of each running session on this Mac.
     public var sessions: [String: Int32]
-    public var off: Set<LoadGroup>
+    public var off: LoadOff
     /// CPU load is the difference between two readings. After a pause the old one says nothing about now, so it is dropped.
     public var restart: Bool
 
-    public init(sessions: [String: Int32] = [:], off: Set<LoadGroup> = [], restart: Bool = false) {
+    public init(sessions: [String: Int32] = [:], off: LoadOff = LoadOff(), restart: Bool = false) {
         self.sessions = sessions
         self.off = off
         self.restart = restart

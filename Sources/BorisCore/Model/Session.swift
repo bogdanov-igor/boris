@@ -68,7 +68,7 @@ public struct SessionInfo: Sendable, Equatable, Identifiable {
 
     /// True when the session belongs to an editor extension rather than a terminal.
     public var isEditorSession: Bool {
-        entrypoint?.contains("vscode") == true
+        entrypoint?.contains("vscode") == true || entrypoint?.contains("cursor") == true
     }
 
     /// Known only by its transcript: there is no process to look at, as with Cowork, whose processes live in a virtual machine.
