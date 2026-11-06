@@ -49,6 +49,7 @@ mkdir -p build
 python3 scripts/build-strings.py build/Localizable.xcstrings
 xcrun xcstringstool compile build/Localizable.xcstrings --output-directory "$APP/Contents/Resources"
 cp LICENSE "$APP/Contents/Resources/LICENSE.txt"
+cp docs/remote-ssh.md "$APP/Contents/Resources/"
 cp THIRD_PARTY_LICENSES.txt "$APP/Contents/Resources/"
 if [ -d Resources/Sounds ]; then
     cp -R Resources/Sounds/. "$APP/Contents/Resources/"

@@ -151,7 +151,7 @@ public struct TokenBook: Sendable {
             let usage = record.usage
             if record.day == today { todaysSessions.insert(record.sessionId) }
             let cost = price(record.model)
-            let environment = WorkEnvironment(entrypoint: record.entrypoint ?? entrypoints[record.sessionId], unlisted: false)
+            let environment = record.host.map { WorkEnvironment.remote(host: $0) } ?? WorkEnvironment(entrypoint: record.entrypoint ?? entrypoints[record.sessionId], unlisted: false)
             let keys = [
                 (TokenBreakdown.days, TokenLine.Key.day(record.day)),
                 (.environments, .environment(environment)),

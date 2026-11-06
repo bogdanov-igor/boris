@@ -107,6 +107,7 @@ extension StatusGlyph.Kind {
         case .failed: self = .failed
         case .stopped: self = .stopped
         case .interrupted: self = .interrupted
+        case .unreachable: self = .unknown
         }
     }
 }

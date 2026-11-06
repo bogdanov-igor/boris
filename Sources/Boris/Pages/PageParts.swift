@@ -199,6 +199,7 @@ extension WorkState {
         case .finished: return Palette.done
         case .failed, .interrupted: return Palette.redText
         case .stopped: return Palette.grey
+        case .unreachable: return Palette.text2
         }
     }
 }

@@ -19,19 +19,32 @@ final class UsageModel {
     private(set) var records: [TokenRecord] = []
     /// Who these numbers come from. Added up with them, off the main thread.
     private(set) var sources: Set<SourceID> = []
+    /// What the logs of this Mac said, and what remote machines reported. They change at different times.
+    @ObservationIgnored private var localRecords: [TokenRecord]?
+    @ObservationIgnored private var remoteRecords: [TokenRecord] = []
     @ObservationIgnored private var building = false
     @ObservationIgnored private var buildAgain = false
     @ObservationIgnored private var generation = 0
 
     /// New numbers from the logs.
     func read(_ records: [TokenRecord]) {
-        self.records = records
+        localRecords = records
+        self.records = records + remoteRecords
+        build()
+    }
+
+    /// New numbers from remote machines. Until the first pass over this Mac's own logs is done, nothing is known yet either way.
+    func readRemote(_ records: [TokenRecord]) {
+        remoteRecords = records
+        guard let localRecords else { return }
+        self.records = localRecords + records
         build()
     }
 
     /// Another Claude folder: nothing is known about it yet. A build still under way must not bring the old numbers back.
     func reset() {
         generation += 1
+        localRecords = nil
         records = []
         sources = []
         book = nil

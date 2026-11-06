@@ -30,6 +30,11 @@ public enum WorkEnvironment: Sendable, Hashable {
         }
     }
 
+    public var isRemote: Bool {
+        if case .remote = self { return true }
+        return false
+    }
+
     public var product: WorkProduct {
         switch self {
         case .cowork: return .cowork
@@ -42,8 +47,12 @@ public enum WorkEnvironment: Sendable, Hashable {
 /// What is going on with a session or a node.
 public enum WorkState: String, Sendable, Equatable {
     case running, silent, waiting, finished, failed, stopped, interrupted
+    /// On a remote machine there is no connection to. Claude goes on working there, as far as anyone knows, so this is not an ending.
+    case unreachable
 
     public var isActive: Bool { self == .running || self == .silent || self == .waiting }
+    /// Not over yet, whether or not it can be seen working: what lists of current sessions show.
+    public var isCurrent: Bool { isActive || self == .unreachable }
 }
 
 public enum WorkNodeKind: String, Sendable, Equatable, CaseIterable {

@@ -74,6 +74,7 @@ public actor WorkEngine {
     private var tokenReadPlanned = false
     private var emitPlanned = false
     private var scanned: (world: WorldSnapshot, runs: [RunState])?
+    private var remote = RemoteWorld()
     private var lastIndexed = Date.distantPast
 
     /// How often the logs are looked at again while they are being written.
@@ -200,8 +201,13 @@ public actor WorkEngine {
     }
 
     /// Hooks only say where to look and add details. The scan that follows still decides every status.
-    public func receive(_ signal: HookSignal) async {
-        hooks.apply(signal, now: Date())
+    /// - Parameter fromThisMac: false for a remote machine. Its files are not here, so there is nothing to scan for it.
+    public func receive(_ signal: HookSignal, fromThisMac: Bool = true) async {
+        hooks.apply(signal, now: Date(), fromThisMac: fromThisMac)
+        guard fromThisMac else {
+            emitSoon()
+            return
+        }
         if case .workflowLaunched = signal {
             // A new run is rare and worth showing at once, so it does not wait for the gate.
             await scanner.markDiscovery()
@@ -211,6 +217,24 @@ public actor WorkEngine {
         if case .agentStarted = signal { await scanner.markDiscovery() }
         emitSoon()
         requestScan()
+    }
+
+    /// What remote machines report, laid over the scan of this Mac from now on.
+    public func setRemote(_ world: RemoteWorld) {
+        remote = world
+        for session in world.lost { hooks.forget(session: session) }
+        emitSoon()
+    }
+
+    /// A machine can name any session it likes, but it cannot take the place of one on this Mac.
+    private func withRemote(_ world: WorldSnapshot) -> WorldSnapshot {
+        var world = world
+        let here = Set(world.sessions.map(\.sessionId) + world.endedSessions.map(\.sessionId))
+        world.sessions += remote.sessions.filter { !here.contains($0.sessionId) }
+        world.endedSessions += remote.ended.filter { !here.contains($0.sessionId) }
+        world.agents += remote.agents.filter { !here.contains($0.sessionId) }
+        world.places.merge(remote.places) { own, _ in own }
+        return world
     }
 
     /// Shows what a signal added without reading anything, and only once for a burst of signals.
@@ -332,7 +356,7 @@ public actor WorkEngine {
         let runs = tracker.resolve(world) { ProcessInspector.startTime(pid: $0) }
         scanned = (world, runs)
         hooks.expire(now: now)
-        let events = detector.detect(runs: hooks.overlay(runs: runs), sessions: hooks.overlay(sessions: world.sessions), usage: world.usage, now: now, failures: hooks.drainFailures(), endedSessions: world.endedSessions)
+        let events = detector.detect(runs: hooks.overlay(runs: runs), sessions: hooks.overlay(sessions: withRemote(world).sessions), usage: world.usage, now: now, failures: hooks.drainFailures(), endedSessions: world.endedSessions)
         // Just assigned, so it is always there.
         return assemble(now: now, events: events) ?? emptyOutput(now: now, world: world, runs: runs, events: events)
     }
@@ -344,6 +368,7 @@ public actor WorkEngine {
     /// The last scan with the hooks laid over it. Statuses come from the scan, so hooks cannot change them.
     private func assemble(now: Date, events: [BorisEvent]) -> Output? {
         guard var (world, runs) = scanned else { return nil }
+        world = withRemote(world)
         hooks.expire(now: now)
         runs = hooks.overlay(runs: runs)
         world.sessions = hooks.overlay(sessions: world.sessions)

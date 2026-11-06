@@ -115,6 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        model?.remote.quit()
         model?.hooks.quit()
         model?.chat.quit()
         model?.persistNow()

@@ -102,6 +102,7 @@ public enum PhraseBook {
         case .failed: return L("Broke")
         case .stopped: return L("Stopped")
         case .interrupted: return L("Cut off")
+        case .unreachable: return L("No connection")
         }
     }
 

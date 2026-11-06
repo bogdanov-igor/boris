@@ -47,11 +47,11 @@ public enum ProjectBook {
     /// One that ended before the logs were read and is not among them has had its log deleted, whatever the live scan still remembers.
     /// - Parameter logsReadAt: when the logs were last read. Nil until they have been.
     public static func sessions(work: WorkModel, past: [WorkSession], logsReadAt: Date? = nil) -> [WorkSession] {
-        let active = work.sessions.filter(\.state.isActive)
+        let active = work.sessions.filter(\.state.isCurrent)
         let activeIds = Set(active.map(\.id))
         let pastIds = Set(past.map(\.id))
         let newer = work.sessions.filter { session in
-            guard !session.state.isActive, !pastIds.contains(session.id) else { return false }
+            guard !session.state.isCurrent, !pastIds.contains(session.id) else { return false }
             // A chat never has a log, so not being among the logs says nothing about it.
             guard let logsReadAt, session.environment != .chat else { return true }
             return (session.lastActivity ?? session.startedAt ?? .distantPast) > logsReadAt
@@ -89,7 +89,7 @@ public enum ProjectBook {
             owners[session.id] = session
             guard filter.environment == nil || session.environment == filter.environment else { continue }
             var project = projects[session.projectPath] ?? ProjectSummary(path: session.projectPath)
-            if session.state.isActive {
+            if session.state.isCurrent {
                 project.active.append(session)
             } else if overlaps(session, days) {
                 project.past.append(session)
@@ -110,7 +110,7 @@ public enum ProjectBook {
         }
         for record in tokens {
             let owner = owners[record.sessionId]
-            let environment = owner?.environment ?? WorkEnvironment(entrypoint: record.entrypoint, unlisted: false)
+            let environment = owner?.environment ?? record.host.map { .remote(host: $0) } ?? WorkEnvironment(entrypoint: record.entrypoint, unlisted: false)
             guard filter.environment == nil || environment == filter.environment else { continue }
             // For a session not in the list yet, the record has to say by itself where it belongs.
             let path = owner.map(\.projectPath) ?? GitPlace.projectPath(cwd: record.cwd, environment: environment)

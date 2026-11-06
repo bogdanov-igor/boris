@@ -144,8 +144,9 @@ public struct HookState: Sendable, Equatable {
 
     public init() {}
 
-    public mutating func apply(_ signal: HookSignal, now: Date) {
-        lastEventAt = now
+    /// - Parameter fromThisMac: false for a remote machine, whose events say nothing about whether the hooks here are alive.
+    public mutating func apply(_ signal: HookSignal, now: Date, fromThisMac: Bool = true) {
+        if fromThisMac { lastEventAt = now }
         switch signal {
         case .agentStarted:
             break
@@ -190,6 +191,12 @@ public struct HookState: Sendable, Equatable {
         waitingTool[session] = nil
     }
 
+    /// What was said about a session no longer holds: there is no connection to it, and when there is one again the machine will say what is true by then.
+    public mutating func forget(session: String) {
+        sessionTool[session] = nil
+        clearWaiting(session)
+    }
+
     public mutating func expire(now: Date) {
         for (session, since) in waiting where now.timeIntervalSince(since) > Self.waitingExpiry {
             clearWaiting(session)
@@ -204,6 +211,7 @@ public struct HookState: Sendable, Equatable {
     /// A session hooks know to be waiting counts as waiting, even when its file does not say so.
     public func overlay(sessions: [SessionInfo]) -> [SessionInfo] {
         sessions.map { session in
+            guard session.status != SessionInfo.noConnectionStatus else { return session }
             var session = session
             if let tool = sessionTool[session.sessionId], session.currentStep?.tool != tool {
                 session.currentStep = StepBrief(kind: StepKind(tool: tool), tool: tool)

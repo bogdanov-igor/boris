@@ -106,6 +106,7 @@ enum DevSnapshot {
         case requestCards, requestsNoHooks, nowRequests, miniRequests
         case sourcesMixed, sourcesAllOff, spendIncomplete, lossesIncomplete, projectsIncomplete, nowIncomplete, nowAllOff, miniIncomplete, miniAllOff
         case sessionCowork, coworkWaiting, sessionCoworkWaiting, sourcesChatAsk, sourcesChatPermission, sourcesChatOn, sourcesChatClosed, sourcesChatBlind, chatAnswering, chatReady, sessionChat
+        case connectionsRemote, connectionsRemotePreview, nowRemote, projectsRemote, sessionRemote, spendRemote
 
         var page: AppPage? {
             if self == .requestsNoHooks || self == .coworkWaiting { return .requests }
@@ -114,6 +115,9 @@ enum DevSnapshot {
             if self == .lossesIncomplete { return .losses }
             if self == .projectsIncomplete { return .projects }
             if self == .nowIncomplete || self == .nowAllOff { return .now }
+            if self == .nowRemote { return .now }
+            if self == .projectsRemote { return .projects }
+            if self == .spendRemote { return .spend }
             return DevUsageData.Scenario(rawValue: rawValue) != nil ? .spend : AppPage(rawValue: rawValue)
         }
 
@@ -181,7 +185,7 @@ enum DevSnapshot {
         case .sourcesChatAsk:
             view = AnyView(ScrollView { ChatSourceBlock(model: model, explaining: true).padding(22) }.background(Palette.window).foregroundStyle(Palette.text1))
             canvas = size ?? CGSize(width: 760, height: 320)
-        case .sourcesMixed, .sourcesAllOff, .general, .sources, .surfaces, .notifications, .connections, .log, .logProblems, .logHuge, .about, .license, .thirdParty, .generalTaken, .generalApproval, .connectionsConnected, .connectionsBroken, .connectionsSilent, .connectionsFolderMissing, .connectionsFormat, .connectionsEntries, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect, .updatesCurrent, .updatesChecking, .updatesAvailable, .updatesOffline, .updatesNoCheck, .sourcesChatPermission, .sourcesChatOn, .sourcesChatClosed, .sourcesChatBlind:
+        case .sourcesMixed, .sourcesAllOff, .general, .sources, .surfaces, .notifications, .connections, .log, .logProblems, .logHuge, .about, .license, .thirdParty, .generalTaken, .generalApproval, .connectionsConnected, .connectionsBroken, .connectionsSilent, .connectionsFolderMissing, .connectionsFormat, .connectionsEntries, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect, .updatesCurrent, .updatesChecking, .updatesAvailable, .updatesOffline, .updatesNoCheck, .connectionsRemote, .connectionsRemotePreview, .sourcesChatPermission, .sourcesChatOn, .sourcesChatClosed, .sourcesChatBlind:
             switch screen {
             case .sourcesChatPermission: model.chat.showForSnapshot([.noPermission])
             case .sourcesChatOn: model.chat.showForSnapshot([.notAnswering])
@@ -191,6 +195,7 @@ enum DevSnapshot {
             }
             if screen.rawValue.hasPrefix("sourcesChat") { settings.chatConsent = true }
             model.updates.prepareForSnapshot(screen.rawValue, long: data == .long)
+            if screen == .connectionsRemote || screen == .connectionsRemotePreview { RemoteDevData.fillSettings(model, data: data, preview: screen == .connectionsRemotePreview) }
             if screen == .surfacesLast { settings.surfaces = SurfaceSwitches(icon: false, notch: true, mini: false) }
             if screen == .surfacesHotKey {
                 settings.surfaces = SurfaceSwitches(icon: true, notch: false, mini: true)
@@ -314,6 +319,10 @@ enum DevSnapshot {
             case .sessionChat:
                 DevCowork.showChat(model, ready: true)
                 model.openSession(ChatTracker.sessionId)
+            case .nowRemote, .projectsRemote, .sessionRemote, .spendRemote:
+                RemoteDevData.fillWork(model, data: data)
+                if screen == .sessionRemote { model.openSession(RemoteDevData.lostSession) }
+                if screen == .spendRemote { model.usage.breakdown = .environments }
             case .bigRun:
                 DevData.big.fill(model)
                 model.openSession(DevProjects.big)

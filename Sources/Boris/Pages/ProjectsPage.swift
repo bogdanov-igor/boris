@@ -209,6 +209,9 @@ struct ProjectStateLabel: View {
             return "\(WorkPhrases.state(.running, mode: mode)) · \(WorkPhrases.agents(max(lead.workingAgents, 1)))"
         case .silent, .finished, .failed, .stopped, .interrupted:
             return WorkPhrases.outcome(lead.state, mode: mode)
+        case .unreachable:
+            if case .remote(let host) = lead.environment { return L("No connection to %@", host) }
+            return WorkPhrases.state(.unreachable, mode: mode)
         }
     }
 

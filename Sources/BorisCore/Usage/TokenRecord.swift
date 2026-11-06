@@ -11,8 +11,10 @@ public struct TokenRecord: Sendable, Equatable {
     public var day: String
     public var model: String?
     public var usage: TokenUsage
+    /// The remote machine it was spent on. Nil on this Mac.
+    public var host: String?
 
-    public init(sessionId: String, agentId: String? = nil, runId: String? = nil, cwd: String? = nil, entrypoint: String? = nil, day: String, model: String? = nil, usage: TokenUsage) {
+    public init(sessionId: String, agentId: String? = nil, runId: String? = nil, cwd: String? = nil, entrypoint: String? = nil, day: String, model: String? = nil, usage: TokenUsage, host: String? = nil) {
         self.sessionId = sessionId
         self.agentId = agentId
         self.runId = runId
@@ -21,5 +23,6 @@ public struct TokenRecord: Sendable, Equatable {
         self.day = day
         self.model = model
         self.usage = usage
+        self.host = host
     }
 }

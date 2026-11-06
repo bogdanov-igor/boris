@@ -311,6 +311,7 @@ private struct ConnectionSettings: View {
             Text(problem).font(.system(size: 11.5)).foregroundStyle(Palette.redText)
         }
         UsageRefreshSettings(model: model)
+        RemoteMachinesSettings(model: model)
         SettingsGroup(title: L("Diagnostics")) {
             folderRow
             checkRow(L("File reading"), ok: !status.problems.contains(.filesUnreadable), text: status.problems.contains(.filesUnreadable) ? L("cannot read") : WorkFormat.ago(model.now.timeIntervalSince(status.lastRead)))
@@ -324,6 +325,9 @@ private struct ConnectionSettings: View {
                 warning: status.hooksSilent ? L("The hooks are connected and Claude is working, but no events are coming. Start a new Claude session, and if that does not help, copy the diagnostics.") : ""
             )
             checkRow(L("Limits data"), ok: true, text: limitsWord, neutral: status.limits == .noData)
+            if status.remote.machines > 0 {
+                checkRow(L("Remote machines"), ok: true, text: L("%lld of %lld connected", status.remote.connected, status.remote.machines), neutral: status.remote.connected < status.remote.machines)
+            }
             SettingsRow(title: "") {
                 if status.hooks == .damaged {
                     Button(L("Repair")) { connect.repair(model, in: .settings, asker: .repairInDiagnostics) }.buttonStyle(PlainActionStyle(height: 22))

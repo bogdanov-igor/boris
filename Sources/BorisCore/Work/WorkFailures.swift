@@ -134,7 +134,7 @@ public struct NowDigest: Sendable, Equatable {
 
     public init(_ model: WorkModel, now: Date) {
         waiting = model.waitingSessions
-        active = model.sessions.filter { $0.state.isActive && $0.state != .waiting }
+        active = model.sessions.filter { $0.state.isCurrent && $0.state != .waiting }
         failures = Array(model.sessions.flatMap(\.failures)
             .filter { now.timeIntervalSince($0.at ?? .distantPast) <= Self.failureWindow }
             .sorted { ($0.at ?? .distantPast) > ($1.at ?? .distantPast) }

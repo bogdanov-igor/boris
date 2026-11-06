@@ -29,6 +29,8 @@ final class HookController {
     private let settings: AppSettings
     private let live: Bool
     private var server: HookServer?
+    /// Each remote machine has a socket of its own. Their requests stand in the same queue, and each answer goes only down its own connection.
+    private var remoteServers: [HookServer] = []
     private var keys: RequestHotKeys?
     private var sightings: [UUID: Sighting] = [:]
     private var lastTarget: UUID?
@@ -48,6 +50,8 @@ final class HookController {
     }
 
     var onSignal: ((HookSignal) -> Void)?
+    /// The person answered a remote machine's request here.
+    var onRemoteAnswered: ((String) -> Void)?
     /// Anything that changes what the menu bar shows.
     var onChange: (() -> Void)?
     /// Offers to connect the answers, where the flow can be shown.
@@ -163,11 +167,39 @@ final class HookController {
     private func startServer() {
         guard server == nil else { return }
         let server = HookServer(path: HookServer.defaultPath)
-        server.setAnswerWindow(TimeInterval(settings.permissionWaitSeconds))
         let owner = WeakHooks(self)
-        server.onSignal = { signal in
+        wire(server) { signal in
             Task { @MainActor in owner.value?.receive(signal) }
         }
+        server.admission = { [admissions] session, source in admissions.decide(session: session, source: source) }
+        serverRunning = server.start()
+        self.server = server
+        heardFromHooks = false
+        AppLog.note(serverRunning ? .hookServerStarted : .hookServerFailed)
+    }
+
+    /// Requests from a remote machine's socket join the queue. Its signals go where the caller says: they are not news about the hooks of this Mac.
+    func adopt(_ server: HookServer, signals: @escaping @Sendable (HookSignal) -> Void) {
+        let owner = WeakHooks(self)
+        wire(server) { signal in
+            Task { @MainActor in
+                owner.value?.closeRequests(on: signal)
+                signals(signal)
+            }
+        }
+        // Whatever the hook over there calls itself, here it is the remote source.
+        server.admission = { [admissions] session, _ in admissions.decide(session: session, source: .remote) }
+        remoteServers.append(server)
+    }
+
+    func release(_ server: HookServer) {
+        remoteServers.removeAll { $0 === server }
+    }
+
+    private func wire(_ server: HookServer, signal: @escaping @Sendable (HookSignal) -> Void) {
+        server.setAnswerWindow(TimeInterval(settings.permissionWaitSeconds))
+        let owner = WeakHooks(self)
+        server.onSignal = signal
         server.onPermission = { request in
             Task { @MainActor in owner.value?.add(request) }
         }
@@ -180,11 +212,6 @@ final class HookController {
         server.onToolDone = { session, digest in
             Task { @MainActor in owner.value?.toolDone(session: session, digest: digest) }
         }
-        server.admission = { [admissions] session, source in admissions.decide(session: session, source: source) }
-        serverRunning = server.start()
-        self.server = server
-        heardFromHooks = false
-        AppLog.note(serverRunning ? .hookServerStarted : .hookServerFailed)
     }
 
     /// Every held hook exits without a decision, so whatever is open stays in Claude.
@@ -195,11 +222,12 @@ final class HookController {
         }
         server = nil
         serverRunning = false
-        for request in queue.open {
+        // A remote machine's requests are held by its own socket, which has nothing to do with the hooks of this Mac.
+        for request in queue.open where request.host == nil {
             AppLog.note(.requestTimedOut, .tool(request.tool), .session(request.session))
             queue.expire(request.id)
+            drafts[request.id] = nil
         }
-        drafts = [:]
         syncKeys()
     }
 
@@ -220,8 +248,9 @@ final class HookController {
         admissions.note(settings: sources)
         if live { try? sources.hookPolicy.save(to: URL(fileURLWithPath: HookServer.defaultPath).deletingLastPathComponent().appendingPathComponent(HookPolicy.fileName)) }
         let before = queue.decisions.last?.id
-        for request in queue.open where !sources.answers(request.source ?? SourceID(queue.session(request.session)?.environment)) {
+        for request in queue.open where !sources.answers(request.host != nil ? .remote : request.source ?? SourceID(queue.session(request.session)?.environment)) {
             server?.release(request.id)
+            for remote in remoteServers { remote.release(request.id) }
             queue.forget(request.id)
             drafts[request.id] = nil
         }
@@ -234,6 +263,7 @@ final class HookController {
     /// The chosen time applies to the requests that come next.
     func applyWait() {
         server?.setAnswerWindow(TimeInterval(settings.permissionWaitSeconds))
+        for remote in remoteServers { remote.setAnswerWindow(TimeInterval(settings.permissionWaitSeconds)) }
     }
 
     // MARK: - Requests
@@ -280,15 +310,20 @@ final class HookController {
             heardFromHooks = true
             AppLog.note(.hookFirstEvent)
         }
+        closeRequests(on: signal)
+        onSignal?(signal)
+    }
+
+    private func closeRequests(on signal: HookSignal) {
         let before = queue.decisions.last?.id
         release(queue.note(signal, now: Date()))
         settle(savingFrom: before)
-        onSignal?(signal)
     }
 
     private func release(_ ids: [UUID]) {
         for id in ids {
             server?.release(id)
+            for remote in remoteServers { remote.release(id) }
             drafts[id] = nil
         }
     }
@@ -316,18 +351,27 @@ final class HookController {
             return
         }
         let before = queue.decisions.last?.id
-        guard let session = queue.open.first(where: { $0.id == id })?.session,
+        guard let request = queue.open.first(where: { $0.id == id }),
               queue.answered(id, with: answer, place: place, now: now)
         else {
             AppLog.note(.requestAnswerRefused, .tool(tool), .word(.tooLate))
             return
         }
+        let session = request.session
         drafts[id] = nil
+        // A server knows only the requests it holds, so an answer can reach no other.
         server?.answer(id, answer)
+        for remote in remoteServers { remote.answer(id, answer) }
         settledAt = now
         // The session goes on waiting for as long as another of its requests does.
         let stillAsks = queue.open.contains { $0.session == session } || queue.expired.contains { $0.session == session }
-        if !stillAsks { onSignal?(.permissionAnswered(session: session)) }
+        if !stillAsks {
+            if request.host == nil {
+                onSignal?(.permissionAnswered(session: session))
+            } else {
+                onRemoteAnswered?(session)
+            }
+        }
         settle(savingFrom: before)
     }
 

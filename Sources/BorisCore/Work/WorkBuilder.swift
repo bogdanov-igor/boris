@@ -132,6 +132,8 @@ public enum WorkBuilder {
             return WaitingReason(info.waitingFor) == .dialog ? .running : .waiting
         case "idle":
             return .finished
+        case SessionInfo.noConnectionStatus:
+            return .unreachable
         default:
             return .running
         }
@@ -139,7 +141,7 @@ public enum WorkBuilder {
 
     /// A session whose main agent has ended a turn is still at work while something under it is.
     private static func combined(_ own: WorkState, under root: WorkNode) -> WorkState {
-        if own == .waiting || own == .interrupted { return own }
+        if own == .waiting || own == .interrupted || own == .unreachable { return own }
         let below = root.children.flatMap(\.flattened).map(\.state)
         if below.contains(.waiting) { return .waiting }
         if own == .running || below.contains(.running) { return .running }

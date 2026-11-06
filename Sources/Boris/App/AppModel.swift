@@ -75,6 +75,7 @@ final class AppModel {
     private let launchedAt = Date()
     @ObservationIgnored var sourcesRestart: Task<Void, Never>?
     let updates = Updates.forThisBuild()
+    let remote: RemoteHub
     private let store: StateStore?
     /// Nothing has been saved yet, so this is the very first launch.
     let isFirstLaunch: Bool
@@ -139,6 +140,7 @@ final class AppModel {
         hooks = HookController(settings: settings, live: live)
         editors = live ? EditorBook(file: BorisPaths.support.appendingPathComponent(EditorBook.fileName), onlyCursorInstalled: EditorBook.isOnlyCursorInstalled()) : EditorBook()
         chat = ChatWatch(probe: live ? AccessibilityChatProbe() : NoChatProbe())
+        remote = RemoteHub(hooks: hooks, store: live ? store.map { RemoteStore(folder: $0.folder) } : nil, tool: live ? .system() : nil)
         // Without a store nothing may touch Boris's real folder.
         packShelf = WalrusPackShelf(folder: (store?.folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("boris-memory")).appendingPathComponent("Packs", isDirectory: true))
         // The walrus is one for the whole process, and a model made for a check must not change him under whoever is looking.
@@ -157,6 +159,7 @@ final class AppModel {
             settings.wardrobe.firstLaunch = loaded.firstLaunch
         }
         hooks.onSignal = { [weak self] signal in self?.receive(signal) }
+        connectRemote()
         load.sessions = { [weak self] in self?.sessionProcesses ?? [:] }
         usage.onBuilt = { [weak self] in self?.tokensAddedUp() }
         usageRefresher.onFinished = { [weak self] in
@@ -191,6 +194,9 @@ final class AppModel {
         }
         self.engine = engine
         logWatch.started()
+        remote.setReading(settings.sources.reads(.remote))
+        let remoteNow = remote.world
+        Task { await engine.setRemote(remoteNow) }
         // Only the sizes the file system knows, for the disk row. No file is opened by this.
         let sampler = MacLoadSampler(logRoots: { ([paths] + others()).map(\.projects) })
         load.reader = { await sampler.read($0) }
@@ -225,6 +231,21 @@ final class AppModel {
 
     func noteWake() {
         Task { await engine?.noteWake(at: Date()) }
+        remote.retryAll()
+    }
+
+    /// Remote machines reach the rest of Boris the same way a Mac's own files do: through the engine and the sums.
+    private func connectRemote() {
+        remote.onWorld = { [weak self] world in
+            guard let engine = self?.engine else { return }
+            Task { await engine.setRemote(world) }
+        }
+        remote.onSignal = { [weak self] signal in
+            guard let engine = self?.engine else { return }
+            Task { await engine.receive(signal, fromThisMac: false) }
+        }
+        remote.onRecords = { [weak self] records in self?.usage.readRemote(records) }
+        remote.loadNumbers()
     }
 
     /// Where a session's transcript is, for a feed that is on screen.
@@ -291,7 +312,7 @@ final class AppModel {
         usage.noteTime(output.at)
         today = usage.spentToday(output.at)
         // Its sessions going unseen does not stop it being asked for limits, unless it is off altogether: then the limits are not read either.
-        if settings.sources.isOn(.claudeCode) { usageRefresher.refreshIfDue(now: output.at, liveSessions: output.world.sessions.count, account: output.world.account, fetchedAt: output.world.usage?.fetchedAt) }
+        if settings.sources.isOn(.claudeCode) { usageRefresher.refreshIfDue(now: output.at, liveSessions: output.world.sessions.filter { $0.host == nil }.count, account: output.world.account, fetchedAt: output.world.usage?.fetchedAt) }
 
         var changed = state.runs != output.runMemory || state.detector != output.detectorMemory
         state.runs = output.runMemory
@@ -460,7 +481,7 @@ final class AppModel {
 
     /// Every session there is: what works from the live scan, the rest from the logs.
     var allSessions: [WorkSession] {
-        ProjectBook.sessions(work: work, past: pastSessions, logsReadAt: pastLoaded ? pastRead : nil)
+        ProjectBook.sessions(work: work, past: pastSessions + remote.pastSessions, logsReadAt: pastLoaded ? pastRead : nil)
     }
 
     func session(_ id: String) -> WorkSession? {
@@ -484,7 +505,9 @@ final class AppModel {
     }
 
     var connectionStatus: ConnectionStatus {
-        ConnectionStatus(world: world, hooks: hooks.connection, hookState: hookState, hooksSince: hooks.since, now: now)
+        var status = ConnectionStatus(world: world, hooks: hooks.connection, hookState: hookState, hooksSince: hooks.since, now: now)
+        status.remote = remote.summary
+        return status
     }
 
     var offerConnecting: Bool {
@@ -513,7 +536,8 @@ final class AppModel {
 
     /// Only while Claude is at work, and only if the person asked for it.
     var shouldKeepAwake: Bool {
-        settings.keepAwake && work.isWorking
+        // Work on another machine goes on whether this Mac sleeps or not.
+        settings.keepAwake && work.sessions.contains { $0.state.isActive && $0.environment?.isRemote != true }
     }
 
     func chooseClaudeFolder(_ url: URL) {

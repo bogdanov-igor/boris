@@ -22,8 +22,10 @@ public struct PendingPermission: Identifiable, Equatable, Sendable {
     public let digest: String?
     /// What the hook found out about where it runs.
     public let source: SourceID?
+    /// The remote machine it came from. Nil on this Mac.
+    public let host: String?
 
-    public init(id: UUID = UUID(), session: String, agent: String? = nil, agentType: String? = nil, tool: String, command: String = "", content: RequestContent, project: String? = nil, cwd: String? = nil, mode: String? = nil, askedAt: Date = Date(), deadline: Date = Date().addingTimeInterval(120), digest: String? = nil, source: SourceID? = nil) {
+    public init(id: UUID = UUID(), session: String, agent: String? = nil, agentType: String? = nil, tool: String, command: String = "", content: RequestContent, project: String? = nil, cwd: String? = nil, mode: String? = nil, askedAt: Date = Date(), deadline: Date = Date().addingTimeInterval(120), digest: String? = nil, source: SourceID? = nil, host: String? = nil) {
         self.id = id
         self.session = session
         self.agent = agent
@@ -38,6 +40,7 @@ public struct PendingPermission: Identifiable, Equatable, Sendable {
         self.deadline = deadline
         self.digest = digest
         self.source = source
+        self.host = host
     }
 }
 
@@ -53,6 +56,8 @@ public enum HookAdmission: Sendable, Equatable {
 /// Listens on a Unix socket only this user can reach. There is no network port, so no other process can impersonate Boris.
 public final class HookServer: @unchecked Sendable {
     private let path: String
+    /// Which socket a message came through says which machine it is from. A machine has no say in that.
+    private let host: String?
     private let queue = DispatchQueue(label: "app.boris.hooks", qos: .userInitiated)
     private var listener: Int32 = -1
     private var source: DispatchSourceRead?
@@ -72,8 +77,9 @@ public final class HookServer: @unchecked Sendable {
     /// Whether what comes from this session is taken in. Nil takes everything. Called on the queue of the connection, so it must not wait for anything.
     public var admission: (@Sendable (_ session: String?, _ source: SourceID?) -> HookAdmission)?
 
-    public init(path: String) {
+    public init(path: String, host: String? = nil) {
         self.path = path
+        self.host = host
     }
 
     public static var defaultPath: String {
@@ -243,7 +249,8 @@ public final class HookServer: @unchecked Sendable {
             askedAt: now,
             deadline: now.addingTimeInterval(window),
             digest: payload["input_digest"] as? String,
-            source: source
+            source: source,
+            host: host
         )
         // When the hook goes away, it closes its end, and the request disappears from the queue.
         let closed = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)

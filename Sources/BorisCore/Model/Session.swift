@@ -34,6 +34,11 @@ public struct SessionInfo: Sendable, Equatable, Identifiable {
     /// How full the main agent's context is and on which model, from the last record. Read while someone looks closely.
     public var contextTokens: Int?
     public var model: String?
+    /// The remote machine it runs on. Nil on this Mac.
+    public var host: String?
+
+    /// What a session on a remote machine shows while there is no connection to it. Claude's own files never say this.
+    public static let noConnectionStatus = "unreachable"
 
     public init(
         sessionId: String,
@@ -80,7 +85,10 @@ public struct SessionInfo: Sendable, Equatable, Identifiable {
         nameSource == "derived" ? title ?? name : name ?? title
     }
 
-    public var environment: WorkEnvironment? { WorkEnvironment(entrypoint: entrypoint, unlisted: isUnlisted) }
+    public var environment: WorkEnvironment? {
+        if let host { return .remote(host: host) }
+        return WorkEnvironment(entrypoint: entrypoint, unlisted: isUnlisted)
+    }
 }
 
 /// `procStart` is the text of `ps -o lstart=` taken in UTC, for example `Wed Nov  4 06:51:16 2026`.

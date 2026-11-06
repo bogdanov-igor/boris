@@ -33,6 +33,7 @@ extension AppModel {
     func sourcesChanged(reading: Bool) {
         hooks.applySources()
         updateChatWatch()
+        remote.setReading(settings.sources.reads(.remote))
         // The chat and remote machines have no files here: they cost nothing to change.
         guard reading, !sourceFilter.readsSameFiles(off: settings.sources.readingOff) else { return }
         sourcesRestart?.cancel()

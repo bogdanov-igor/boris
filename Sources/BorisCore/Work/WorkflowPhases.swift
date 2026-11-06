@@ -19,7 +19,7 @@ public struct WorkflowPhase: Sendable, Equatable, Identifiable {
             case .finished: done += 1
             case .running, .silent, .waiting: running += 1
             case .failed: failed += 1
-            case .stopped, .interrupted: cancelled += 1
+            case .stopped, .interrupted, .unreachable: cancelled += 1
             }
         }
     }
