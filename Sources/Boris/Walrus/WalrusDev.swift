@@ -14,7 +14,7 @@ enum WalrusDev {
         try? FileManager.default.removeItem(at: model.packShelf.folder)
         let outfit = environment["BORIS_OUTFIT"].flatMap(Outfit.init(rawValue:))
         model.showWalrusForSnapshot(mood: environment["BORIS_MOOD"].flatMap(mood), outfit: outfit)
-        if environment["BORIS_PACK"] == "1" { WalrusArt.shared.pack = makePack(in: model.packShelf) }
+        WalrusArt.shared.pack = environment["BORIS_PACK"] == "1" ? makePack(in: model.packShelf) : nil
         if environment["BORIS_WALRUS_LINE"] == "1" {
             model.walrus.sayForSnapshot(L("We shall answer in the notch, we shall answer in the menu bar. We shall never surrender."), count: 1)
         }

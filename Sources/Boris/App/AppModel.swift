@@ -123,7 +123,8 @@ final class AppModel {
         hooks = HookController(settings: settings, live: live)
         // Without a store nothing may touch Boris's real folder.
         packShelf = WalrusPackShelf(folder: (store?.folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("boris-memory")).appendingPathComponent("Packs", isDirectory: true))
-        WalrusArt.shared.pack = packShelf.pack(id: settings.wardrobe.pack)
+        // There is one walrus in a process. A model made for a check must not take his pack away from another one that is using it.
+        if live { WalrusArt.shared.pack = packShelf.pack(id: settings.wardrobe.pack) }
         notifications = NotificationHub(settings: settings, live: live)
         usageRefresher = UsageRefresher(settings: settings)
         var loaded = store?.loadState() ?? AppState()
@@ -361,6 +362,12 @@ final class AppModel {
     func openProject(_ path: String?) {
         projectsRoute = .project(path)
         page = .projects
+    }
+
+    /// Changes the mode for the whole app. A page the new one does not have gives way to «Now», which tells the same failures in plain words.
+    func setDisplayMode(_ mode: DisplayMode) {
+        settings.displayMode = mode
+        if !page.isShown(in: mode) { page = .now }
     }
 
     /// Choosing the page one is already on goes back to the top of it.

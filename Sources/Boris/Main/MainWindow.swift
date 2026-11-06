@@ -88,9 +88,6 @@ struct MainWindowView: View {
         .background(Palette.window)
         .foregroundStyle(Palette.text1)
         .ignoresSafeArea()
-        .onChange(of: model.settings.displayMode) { _, mode in
-            if !model.page.isShown(in: mode) { model.page = .now }
-        }
     }
 }
 
@@ -99,7 +96,7 @@ private struct Sidebar: View {
     var openSettings: (SettingsSection) -> Void
 
     private var mode: Binding<DisplayMode> {
-        Binding { model.settings.displayMode } set: { model.settings.displayMode = $0 }
+        Binding { model.settings.displayMode } set: { model.setDisplayMode($0) }
     }
 
     var body: some View {

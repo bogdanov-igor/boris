@@ -128,7 +128,7 @@ struct MiniWindowView: View {
                 .foregroundStyle(color)
                 .padding(.horizontal, 6)
             ForEach(sessions) { session in
-                SessionRow(session: session, mode: mode, trailing: trailing(session), compact: true)
+                SessionRow(session: session, mode: mode, trailing: trailing(session), compact: true, lineEnd: mode == .technical ? WorkPhrases.contextLine(session) ?? "" : "")
             }
         }
     }

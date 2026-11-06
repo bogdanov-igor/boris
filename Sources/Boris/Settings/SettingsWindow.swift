@@ -193,7 +193,7 @@ private struct GeneralSettings: View {
         Binding { settings.keepAwake } set: { settings.keepAwake = $0 }
     }
 
-    private var mode: Binding<DisplayMode> { Binding { settings.displayMode } set: { settings.displayMode = $0 } }
+    private var mode: Binding<DisplayMode> { Binding { settings.displayMode } set: { model.setDisplayMode($0) } }
     private var language: Binding<AppLanguage> { Binding { settings.language } set: { settings.language = $0 } }
     private var theme: Binding<ThemeMode> { Binding { settings.theme } set: { settings.theme = $0 } }
 
