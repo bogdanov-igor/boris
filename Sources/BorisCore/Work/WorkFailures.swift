@@ -15,20 +15,33 @@ public struct WorkFailure: Sendable, Equatable, Identifiable {
     public var sessionId: String
     public var project: String?
     public var name: String?
+    /// The type of an agent with no name of its own, for those who know what it means.
+    public var agentType: String?
     public var source: Source
     public var cause: FailureClass?
+    /// What an API error was about, as far as its text says.
+    public var problem: ApiProblem?
     public var resets: String?
     public var at: Date?
 
-    public init(id: String, sessionId: String, project: String? = nil, name: String? = nil, source: Source, cause: FailureClass? = nil, resets: String? = nil, at: Date? = nil) {
+    public init(id: String, sessionId: String, project: String? = nil, name: String? = nil, agentType: String? = nil, source: Source, cause: FailureClass? = nil, problem: ApiProblem? = nil, resets: String? = nil, at: Date? = nil) {
         self.id = id
         self.sessionId = sessionId
         self.project = project
         self.name = name
+        self.agentType = agentType
         self.source = source
         self.cause = cause
+        self.problem = problem
         self.resets = resets
         self.at = at
+    }
+}
+
+extension FailureInfo {
+    /// What an API error was about. Nothing for any other failure.
+    var apiProblem: ApiProblem? {
+        failureClass == .api ? ApiProblem(code: nil, status: nil, text: text) : nil
     }
 }
 
@@ -40,10 +53,10 @@ extension WorkSession {
     public var failures: [WorkFailure] {
         var result: [WorkFailure] = []
         if state == .interrupted {
-            result.append(WorkFailure(id: id, sessionId: id, project: projectName, name: displayName, source: .session, at: lastActivity))
+            result.append(WorkFailure(id: id, sessionId: id, project: projectName, name: hasName ? displayName : nil, source: .session, at: lastActivity))
         }
         if state == .failed {
-            result.append(WorkFailure(id: id, sessionId: id, project: projectName, name: displayName, source: .sessionError, cause: root.failure?.failureClass, resets: root.failure?.resets, at: lastActivity))
+            result.append(WorkFailure(id: id, sessionId: id, project: projectName, name: hasName ? displayName : nil, source: .sessionError, cause: root.failure?.failureClass, problem: root.failure?.apiProblem, resets: root.failure?.resets, at: lastActivity))
         }
         var stack = Array(root.children.reversed())
         while let node = stack.popLast() {
@@ -60,6 +73,7 @@ extension WorkSession {
                     name: node.title,
                     source: .workflow(details.status, failed: failed.count, total: details.total),
                     cause: details.topFailure,
+                    problem: failed.lazy.compactMap { $0.failure?.apiProblem }.first,
                     resets: failed.lazy.compactMap { $0.failure?.resets }.first,
                     at: node.lastActivity
                 ))
@@ -70,9 +84,11 @@ extension WorkSession {
                     id: node.id,
                     sessionId: id,
                     project: projectName,
-                    name: node.title ?? node.agentType,
+                    name: node.title,
+                    agentType: node.agentType,
                     source: .agent(node.kind),
                     cause: node.failure?.failureClass,
+                    problem: node.failure?.apiProblem,
                     resets: node.failure?.resets,
                     at: node.lastActivity
                 ))

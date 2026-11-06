@@ -170,11 +170,11 @@ public enum SurfaceWords {
             guard let at = session.lastActivity, now.timeIntervalSince(at) < failureFreshFor, at > latest?.at ?? .distantPast else { continue }
             let nodes = session.root.flattened
             if let node = nodes.first(where: { $0.state == .failed }) {
-                latest = SurfaceFailure(sessionId: session.id, name: session.displayName, nameIsFolder: session.nameIsFolder, who: who(node, mode: mode), what: what(node, mode: mode), at: at)
+                latest = SurfaceFailure(sessionId: session.id, name: session.name(in: mode), nameIsFolder: session.nameIsFolder, who: who(node, mode: mode), what: what(node, mode: mode), at: at)
             } else if let node = nodes.first(where: { $0.state == .interrupted }) {
                 // A workflow can be cut off while its session counts as finished.
                 let what = mode == .simple ? L("Cut off: Claude Code closed") : L("Interrupted: the process closed")
-                latest = SurfaceFailure(sessionId: session.id, name: session.displayName, nameIsFolder: session.nameIsFolder, who: who(node, mode: mode), what: what, at: at)
+                latest = SurfaceFailure(sessionId: session.id, name: session.name(in: mode), nameIsFolder: session.nameIsFolder, who: who(node, mode: mode), what: what, at: at)
             }
         }
         return latest
@@ -186,7 +186,7 @@ public enum SurfaceWords {
         switch node.kind {
         case .main: return ""
         case .subagent, .fork: return simple ? L("helper “%@”", title) : L("subagent “%@”", title)
-        case .workflow: return simple ? title : L("workflow “%@”", title)
+        case .workflow: return simple ? PhraseBook.taskName(title) : L("workflow “%@”", title)
         case .workflowAgent: return simple ? L("helper “%@”", title) : L("agent “%@”", title)
         }
     }
@@ -204,19 +204,17 @@ public enum SurfaceWords {
             }
             return resets.map { L("Did not work out: the limit ran out, resets %@", $0) } ?? L("Did not work out: the limit ran out")
         case .network:
-            return simple ? L("No connection to Claude") : L("Network error")
+            return simple ? PhraseBook.advice(cause: .network) : L("Network error")
         case .sleep:
-            return simple ? L("The Mac went to sleep") : L("Interrupted by sleep")
+            return simple ? PhraseBook.advice(cause: .sleep) : L("Interrupted by sleep")
         case .stall:
-            return simple ? L("The task got stuck") : L("Stalled: no progress")
+            return simple ? PhraseBook.advice(cause: .stall) : L("Stalled: no progress")
         case .api:
             // The error's own words decide only which sentence to show, and are not shown.
-            if failure?.text?.lowercased().contains("overload") == true {
-                return simple ? L("Claude is overloaded right now, try again later") : L("API error: overloaded")
-            }
-            return simple ? L("Claude returned an error") : L("API error")
+            guard !simple else { return PhraseBook.advice(cause: .api, problem: failure?.apiProblem) }
+            return failure?.apiProblem == .overloaded ? L("API error: overloaded") : L("API error")
         case .unknown:
-            return simple ? L("Something went wrong") : L("Unknown failure")
+            return simple ? PhraseBook.advice(cause: .unknown) : L("Unknown failure")
         }
     }
 }

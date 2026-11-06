@@ -3,75 +3,63 @@ import Foundation
 /// The words for workflows, failures and the outcome of a session. Technical names go only to the technical mode.
 extension WorkPhrases {
     public static func workflow(_ status: RunStatus, mode: DisplayMode) -> String {
-        let simple = mode == .simple
+        guard mode == .technical else { return PhraseBook.status(status) }
         switch status {
-        case .running: return simple ? L("Working") : L("Running")
-        case .silent: return simple ? L("No news for a while") : L("Silent")
-        case .completed: return simple ? L("Done") : L("Finished")
-        case .completedWithErrors: return simple ? L("Partly done") : L("Finished with errors")
-        case .allAgentsFailed: return simple ? L("Did not work") : L("All agents failed")
-        case .failed: return simple ? L("Broke") : L("Failed")
-        case .stopped: return simple ? L("Stopped") : L("Halted")
-        case .interrupted: return simple ? L("Cut off") : L("Interrupted")
-        case .unknown(let raw): return simple ? L("Ended") : raw
+        case .running: return L("Running")
+        case .silent: return L("Silent")
+        case .completed: return L("Finished")
+        case .completedWithErrors: return L("Finished with errors")
+        case .allAgentsFailed: return L("All agents failed")
+        case .failed: return L("Failed")
+        case .stopped: return L("Halted")
+        case .interrupted: return L("Interrupted")
+        case .unknown(let raw): return raw
         }
     }
 
-    /// `Silktrace final verify` for `silktrace-final-verify`. An id is not a name.
+    /// The simple mode has a plain name for it, the technical one shows it as it is.
     public static func workflowName(_ raw: String?, mode: DisplayMode) -> String {
-        guard let raw, !raw.isEmpty else { return mode == .simple ? L("A big task") : L("Workflow") }
-        guard !raw.hasPrefix("wf_") else { return mode == .simple ? L("A big task") : raw }
-        guard mode == .simple, !raw.contains(" ") else { return raw }
-        let words = raw.split(whereSeparator: { $0 == "-" || $0 == "_" }).joined(separator: " ")
-        return words.prefix(1).uppercased() + words.dropFirst()
+        guard mode == .technical else { return PhraseBook.taskName(raw) }
+        guard let raw, !raw.isEmpty else { return L("Workflow") }
+        return raw
     }
 
     /// Why it fell, in lowercase for the middle of a line.
     public static func cause(_ cause: FailureClass?, resets: String? = nil, mode: DisplayMode) -> String {
-        let simple = mode == .simple
+        guard mode == .technical else { return PhraseBook.reason(cause, resets: resets) }
         switch cause {
-        case .limit:
-            if let resets { return simple ? L("ran out of limit, resets at %@", resets) : L("limit, resets at %@", resets) }
-            return simple ? L("ran out of limit") : L("limit")
-        case .network: return simple ? L("no connection to Claude") : L("network")
-        case .sleep: return simple ? L("the Mac went to sleep") : L("Mac asleep")
-        case .stall: return simple ? L("the task got stuck") : L("stalled")
-        case .api: return simple ? L("a Claude error") : L("API error")
-        case .unknown, nil: return simple ? L("reason unknown") : L("unknown")
+        case .limit: return resets.map { L("limit, resets at %@", $0) } ?? L("limit")
+        case .network: return L("network")
+        case .sleep: return L("Mac asleep")
+        case .stall: return L("stalled")
+        case .api: return L("API error")
+        case .unknown, nil: return L("unknown")
         }
     }
 
     /// A failure in one line: `Did not work: ran out of limit, resets at 18:40`, or `All agents failed · 12 of 12 · limit` in the technical mode.
     public static func failure(_ failure: WorkFailure, mode: DisplayMode) -> String {
-        let simple = mode == .simple
+        guard mode == .technical else { return PhraseBook.failure(failure) }
         switch failure.source {
         case .session:
-            return simple ? "\(L("Cut off")): \(L("Claude Code closed"))" : "\(L("Interrupted")) · \(L("Claude Code closed"))"
+            return "\(L("Interrupted")) · \(L("Claude Code closed"))"
         case .sessionError, .agent:
-            return simple ? hint(failure.cause, resets: failure.resets) : capitalized(cause(failure.cause, resets: failure.resets, mode: mode))
+            let why = capitalized(cause(failure.cause, resets: failure.resets, mode: mode))
+            // The kind of an API error is what a person with a reason came for.
+            return failure.problem.flatMap(LossPhrases.problemWord).map { "\(why) · \($0)" } ?? why
         case .workflow(let status, let failed, let total):
             let word = workflow(status, mode: mode)
-            if status == .interrupted { return simple ? "\(word): \(L("Claude Code closed"))" : "\(word) · \(L("Claude Code closed"))" }
-            if status == .failed, failed == 0 { return simple ? "\(word): \(L("an error in the task"))" : "\(word) · \(L("script error"))" }
+            if status == .interrupted { return "\(word) · \(L("Claude Code closed"))" }
+            if status == .failed, failed == 0 { return "\(word) · \(L("script error"))" }
             let why = cause(failure.cause, resets: failure.resets, mode: mode)
-            if status == .allAgentsFailed {
-                return simple ? "\(word): \(why)" : "\(word) · \(L("%lld of %lld", failed, total)) · \(why)"
-            }
-            let count = L("failed %lld of %lld", failed, total)
-            return simple ? "\(word): \(count), \(why)" : "\(word) · \(count) · \(why)"
+            if status == .allAgentsFailed { return "\(word) · \(L("%lld of %lld", failed, total)) · \(why)" }
+            return "\(word) · \(L("failed %lld of %lld", failed, total)) · \(why)"
         }
     }
 
     /// What it means for the person, for the simple mode.
-    public static func hint(_ cause: FailureClass?, resets: String?) -> String {
-        switch cause {
-        case .limit: return resets.map { L("The limit ran out, it resets at %@", $0) } ?? L("The limit ran out")
-        case .network: return L("No connection to Claude, try again when it is back")
-        case .sleep: return L("The Mac went to sleep while this was going on")
-        case .stall: return L("The task got stuck")
-        case .api: return L("Claude is overloaded right now, try again later")
-        case .unknown, nil: return L("Something went wrong")
-        }
+    public static func hint(_ cause: FailureClass?, problem: ApiProblem? = nil, resets: String?) -> String {
+        PhraseBook.advice(cause: cause, problem: problem, resets: resets)
     }
 
     /// Who it is, for a list of failures.
@@ -82,8 +70,9 @@ extension WorkPhrases {
         case .workflow:
             return workflowName(failure.name, mode: mode)
         case .agent(let kind):
-            guard let name = failure.name, !name.isEmpty else { return mode == .simple ? L("A helper") : agentKind(kind) }
-            return mode == .simple ? L("Helper «%@»", name) : "\(agentKind(kind)) «\(name)»"
+            guard mode == .technical else { return PhraseBook.helperName(failure.name) }
+            guard let name = failure.name ?? failure.agentType, !name.isEmpty else { return agentKind(kind) }
+            return "\(agentKind(kind)) «\(name)»"
         }
     }
 
@@ -125,6 +114,13 @@ extension WorkPhrases {
         case .interrupted: return L("Session interrupted")
         case .running, .silent, .waiting: return self.state(state, mode: mode)
         }
+    }
+
+    /// What a failed step was stopped by, in the tool's own terms. The output itself stays where it is.
+    public static func stepError(_ step: ActivityStep) -> String? {
+        guard step.state == .failed else { return nil }
+        let failure = ToolFailure.classify(String((step.output ?? "").prefix(300)))
+        return LossPhrases.toolFailureWords(failure.kind, code: failure.code)
     }
 
     /// `3 agents working`. Counts everything that works, the main agent too.

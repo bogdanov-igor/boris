@@ -23,16 +23,16 @@ public enum LossPhrases {
     }
 
     public static func reason(_ reason: LossReason, mode: DisplayMode) -> String {
-        let simple = mode == .simple
+        guard mode == .technical else { return PhraseBook.reasonTitle(reason) }
         switch reason {
-        case .limit: return simple ? L("Out of limit") : L("Limit")
-        case .network: return simple ? L("No connection to Claude") : L("Network")
-        case .stall: return simple ? L("The task hung") : L("Stall")
-        case .api: return simple ? L("Claude error") : L("API error")
-        case .sleep: return simple ? L("The Mac went to sleep") : L("Mac sleep")
-        case .script: return simple ? L("Error in the task") : L("Script error")
+        case .limit: return L("Limit")
+        case .network: return L("Network")
+        case .stall: return L("Stall")
+        case .api: return L("API error")
+        case .sleep: return L("Mac sleep")
+        case .script: return L("Script error")
         case .closed: return L("Claude Code closed")
-        case .unknown: return simple ? L("Reason unknown") : L("Unknown")
+        case .unknown: return L("Unknown")
         }
     }
 
@@ -44,23 +44,7 @@ public enum LossPhrases {
         case .retry: return L("Claude had to ask again")
         case .crash, .apiError, .cut: break
         }
-        switch entry.reason ?? .unknown {
-        case .limit:
-            return resetsText(entry).map { L("Out of limit, %@", $0) } ?? L("Out of limit, wait until it resets")
-        case .network: return L("No connection to Claude, check the internet and try again")
-        case .stall: return L("The task hung, try starting it again")
-        case .sleep: return L("The Mac went to sleep and the work stopped, try again")
-        case .script: return L("Error in the task, start it again or change it")
-        case .closed: return L("Claude Code closed, open the session to continue")
-        case .api:
-            switch entry.problem ?? .other {
-            case .overloaded: return L("Claude is overloaded right now, try again later")
-            case .billing: return L("Claude asks to sort out payment, check your account")
-            case .access: return L("Claude asks to sign in again")
-            case .request, .other: return L("Claude returned an error, try again")
-            }
-        case .unknown: return L("Something went wrong")
-        }
+        return PhraseBook.advice(reason: entry.reason ?? .unknown, problem: entry.problem, resets: resetsText(entry))
     }
 
     /// The text of a row in the technical mode.
@@ -130,12 +114,17 @@ public enum LossPhrases {
     }
 
     private static func apiProblem(_ entry: LossEntry) -> String {
-        switch entry.problem ?? .other {
+        problemWord(entry.problem ?? .other) ?? entry.code ?? L("API error, no details")
+    }
+
+    /// The name of what an API error was about. Nil when its text does not say.
+    public static func problemWord(_ problem: ApiProblem) -> String? {
+        switch problem {
         case .overloaded: return L("overloaded")
         case .billing: return L("billing")
         case .access: return L("no access to the account")
         case .request: return L("bad request")
-        case .other: return entry.code ?? L("API error, no details")
+        case .other: return nil
         }
     }
 
@@ -157,8 +146,12 @@ public enum LossPhrases {
     }
 
     private static func toolFailure(_ entry: LossEntry) -> String {
-        switch entry.toolFailure ?? .other {
-        case .exitCode: return entry.toolCode.map { L("exit code %lld", $0) } ?? L("returned an error")
+        toolFailureWords(entry.toolFailure ?? .other, code: entry.toolCode)
+    }
+
+    public static func toolFailureWords(_ failure: ToolFailure, code: Int?) -> String {
+        switch failure {
+        case .exitCode: return code.map { L("exit code %lld", $0) } ?? L("returned an error")
         case .noFile: return L("file not found")
         case .notRead: return L("file was not read first")
         case .changed: return L("file changed in the meantime")
@@ -167,7 +160,7 @@ public enum LossPhrases {
         case .timeout: return L("timed out")
         case .tooLarge: return L("too large")
         case .permission: return L("no access")
-        case .http: return entry.toolCode.map { L("HTTP %lld", $0) } ?? L("returned an error")
+        case .http: return code.map { L("HTTP %lld", $0) } ?? L("returned an error")
         case .network: return L("no connection")
         case .other: return L("returned an error")
         }

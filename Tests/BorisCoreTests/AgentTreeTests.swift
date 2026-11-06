@@ -169,10 +169,10 @@ struct NowDigestTests {
 
     @Test("Простой режим называет причину сбоя агента и подсказывает, что делать")
     func agentFailureWords() throws {
-        let broken = WorkNode(id: "a", kind: .subagent, title: "Миграции", state: .failed, failure: FailureInfo(failureClass: .api), lastActivity: now)
+        let broken = WorkNode(id: "a", kind: .subagent, title: "Миграции", state: .failed, failure: FailureInfo(failureClass: .api, text: "Overloaded"), lastActivity: now)
         let failure = try #require(session(state: .finished, children: [broken]).failures.first)
         #expect(WorkPhrases.failure(failure, mode: .simple) == "Claude is overloaded right now, try again later")
-        #expect(WorkPhrases.failure(failure, mode: .technical) == "API error")
+        #expect(WorkPhrases.failure(failure, mode: .technical) == "API error · overloaded")
         #expect(WorkPhrases.failureName(failure, mode: .simple) == "Helper «Миграции»")
         #expect(WorkPhrases.failureName(failure, mode: .technical) == "Subagent «Миграции»")
     }

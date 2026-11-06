@@ -16,24 +16,22 @@ enum RequestWords {
         switch brief.kind {
         case .questions: return L("Claude asks")
         case .plan: return L("Proposes a plan")
-        case .command: return denying ? L("Deny command") : L("Wants to run a command")
+        case .command: return denying ? L("Deny command") : PhraseBook.asks(.command)
         case .file:
             if denying { return L("Deny file edit") }
             if case .file(_, _, true, _) = request.content { return L("Wants to write a file") }
-            return L("Wants to edit a file")
+            return PhraseBook.asks(.write)
         case .other:
             if denying { return L("Deny request") }
-            switch WorkAction(tool: request.tool) {
-            case .webFetch, .webSearch: return L("Wants to go online")
-            case .read: return L("Wants to read files")
-            case .mcp: return L("Wants to use an outside tool")
-            case .startAgent: return L("Wants to start an agent")
-            case .skill: return L("Wants to use a skill")
-            case .write: return L("Wants to edit a file")
-            case .command: return L("Wants to run a command")
-            case .other: return L("Asks for permission")
-            }
+            return PhraseBook.asks(WorkAction(tool: request.tool))
         }
+    }
+
+    /// The project a request comes from. Simple mode shows no ids, so without anything else to go by it is just a session.
+    static func project(_ project: String?, session: WorkSession?, id: String, mode: DisplayMode) -> String {
+        if let project { return project }
+        if let session { return session.name(in: mode) }
+        return mode == .simple ? L("Session") : String(id.prefix(8))
     }
 
     /// The tool and the permission mode, which only the technical view shows.
