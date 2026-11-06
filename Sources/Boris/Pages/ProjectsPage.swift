@@ -81,6 +81,7 @@ private struct ProjectList: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
+                        SourcesIncompleteNote(settings: model.settings.sources).padding(.leading, 4)
                         table(projects)
                         Text(L("Tokens: today and for the period. Chat and Cowork without a project folder go under «No project»."))
                             .font(.system(size: 11))

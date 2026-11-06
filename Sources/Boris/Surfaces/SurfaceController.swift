@@ -121,6 +121,7 @@ final class SurfaceController {
         host.onHover = { [weak self] inside in self?.pointer(inside: inside) }
         self.host = host
         panel.contentView = host
+        model.capture.watch(panel, as: .notch)
         panel.onKeyChange = { [weak self] typing in
             self?.behavior.typingChanged(typing)
             self?.arrange(animated: true)

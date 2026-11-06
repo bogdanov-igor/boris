@@ -111,17 +111,6 @@ struct SettingsView: View {
     }
 }
 
-struct SettingsStub: View {
-    var text: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(L("This section is still being built")).font(.system(size: 13, weight: .semibold))
-            Text(text).font(.system(size: 12.5)).foregroundStyle(Palette.text2).fixedSize(horizontal: false, vertical: true)
-        }
-    }
-}
-
 /// A rounded block of rows, as in System Settings.
 struct SettingsGroup<Content: View>: View {
     var title = ""

@@ -64,6 +64,13 @@ final class AppModel {
     let load = MacLoadWatch()
     let losses = LossStore()
     let notifications: NotificationHub
+    let capture = CaptureKeeper()
+    /// The filter the running engine reads through. A change of it means a new engine.
+    private(set) var sourceFilter = SourceFilter()
+    private let editors: EditorBook
+    /// What counts as written since this launch, kept when the engine starts again because of a setting.
+    private let launchedAt = Date()
+    @ObservationIgnored var sourcesRestart: Task<Void, Never>?
     private let store: StateStore?
     /// False reaches nothing of the person's: no other Claude folders, no files of Boris's own.
     private let live: Bool
@@ -121,9 +128,11 @@ final class AppModel {
         self.store = store
         self.live = live
         hooks = HookController(settings: settings, live: live)
+        editors = live ? EditorBook(file: BorisPaths.support.appendingPathComponent(EditorBook.fileName), onlyCursorInstalled: EditorBook.isOnlyCursorInstalled()) : EditorBook()
         // Without a store nothing may touch Boris's real folder.
         packShelf = WalrusPackShelf(folder: (store?.folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("boris-memory")).appendingPathComponent("Packs", isDirectory: true))
-        WalrusArt.shared.pack = packShelf.pack(id: settings.wardrobe.pack)
+        // The art is shared, so a model made for a test or a picture with no pack of its own must not take it from whoever else is drawing.
+        if live || settings.wardrobe.pack != nil { WalrusArt.shared.pack = packShelf.pack(id: settings.wardrobe.pack) }
         notifications = NotificationHub(settings: settings, live: live)
         usageRefresher = UsageRefresher(settings: settings)
         var loaded = store?.loadState() ?? AppState()
@@ -143,12 +152,18 @@ final class AppModel {
             Task { await self?.engine?.usageChanged() }
         }
         hooks.onChange = { [weak self] in self?.refreshPresence() }
+        capture.hides = { [weak self] in self?.hidesFromCapture($0) ?? false }
     }
 
     func start() {
         let paths = ClaudePaths.resolve(custom: settings.claudeFolder)
         let owner = WeakModel(self)
-        let others: @Sendable () -> [ClaudePaths] = { [live] in live ? ClaudeFolders.others(besides: paths) : [] }
+        let filter = SourceFilter(off: settings.sources.readingOff, editors: editors)
+        sourceFilter = filter
+        hooks.applySources()
+        let others: @Sendable () -> [ClaudePaths] = { [live] in live ? ClaudeFolders.others(besides: paths).filter(filter.reads(root:)) : [] }
+        // Grows with every new engine, so the last words of an old one cannot bring back what it was told to leave alone.
+        let generation = pastGeneration
         let engine = WorkEngine(
             paths: paths,
             runs: state.runs,
@@ -156,11 +171,14 @@ final class AppModel {
             status: settings.statusConfig,
             events: settings.detectorConfig,
             tokenCache: live ? BorisPaths.tokenIndex : nil,
-            others: others
+            others: others,
+            filter: filter,
+            startedAt: launchedAt
         ) { output in
-            Task { @MainActor in owner.model?.apply(output) }
+            Task { @MainActor in owner.model?.apply(output, generation: generation) }
         }
         self.engine = engine
+        // Only the sizes the file system knows, for the disk row. No file is opened by this.
         let sampler = MacLoadSampler(logRoots: { ([paths] + others()).map(\.projects) })
         load.reader = { await sampler.read($0) }
         Task { await engine.start() }
@@ -229,9 +247,16 @@ final class AppModel {
         Task { await engine?.receive(signal) }
     }
 
+    private func apply(_ output: WorkEngine.Output, generation: Int) {
+        if generation == pastGeneration { apply(output) }
+    }
+
     func apply(_ output: WorkEngine.Output) {
         work = usage.book?.applied(to: output.model) ?? output.model
         hooks.note(work: output.model, now: output.at)
+        hooks.noteHidden(Set(output.world.hiddenSessions.keys))
+        let loadOff = settings.sources.loadOff(hiddenSessions: Set(output.world.hiddenSessions.values))
+        if load.off != loadOff { load.off = loadOff }
         world = output.world
         runs = output.runs
         hookState = output.hooks
@@ -247,19 +272,23 @@ final class AppModel {
         if page == .projects, surfacesOpen.contains(.mainWindow) { refreshPastSessions() }
         usage.noteTime(output.at)
         today = usage.spentToday(output.at)
-        usageRefresher.refreshIfDue(now: output.at, liveSessions: output.world.sessions.count, account: output.world.account, fetchedAt: output.world.usage?.fetchedAt)
+        // Its sessions going unseen does not stop it being asked for limits, unless it is off altogether: then the limits are not read either.
+        if settings.sources.isOn(.claudeCode) { usageRefresher.refreshIfDue(now: output.at, liveSessions: output.world.sessions.count, account: output.world.account, fetchedAt: output.world.usage?.fetchedAt) }
 
         var changed = state.runs != output.runMemory || state.detector != output.detectorMemory
         state.runs = output.runMemory
         state.detector = output.detectorMemory
         let quietDuringScan = quiet.isOn(now: output.at)
         var news: [(event: BorisEvent, reaction: Reaction)] = []
+        var muted = Set<String>()
         for event in output.events {
             let wanted = settings.notifications.reaction(for: event, mood: settings.matrix.reaction(for: event.kind).mood)
-            let reaction = quiet.filter(wanted, kind: event.kind, now: output.at)
+            // A muted source was never going to call anyone, so do not disturb has nothing to save up for later.
+            let reaction = notifies(about: event) ? quiet.filter(wanted, kind: event.kind, now: output.at) : Reaction(banner: false, sound: false, mood: wanted.mood)
             board.apply(event, reaction: reaction.mood, now: output.at)
             onEvent?(event, reaction)
             news.append((event, reaction))
+            if !notifies(about: event) { muted.insert(event.id) }
             // Do not disturb silences his reactions too. His pose keeps telling the truth.
             if !quietDuringScan { walrus.hear(event) }
             if let run = output.runs.first(where: { $0.runId == event.runId }), run.status.isTerminal {
@@ -267,7 +296,7 @@ final class AppModel {
             }
             changed = true
         }
-        notifications.scanned(news, quiet: quietDuringScan, now: output.at)
+        notifications.scanned(news, muted: muted, quiet: quietDuringScan, now: output.at)
         if let missed = quiet.finish(now: output.at) {
             notifications.quietEnded(missed: missed, requestsWaiting: requestCount)
             changed = true

@@ -30,6 +30,7 @@ final class HookController {
     private var sightings: [UUID: Sighting] = [:]
     private var lastTarget: UUID?
     private var settledAt = Date.distantPast
+    private let admissions = SourceAdmissions()
 
     private struct Sighting {
         var request: UUID
@@ -140,6 +141,7 @@ final class HookController {
         server.onToolDone = { session, digest in
             Task { @MainActor in owner.value?.toolDone(session: session, digest: digest) }
         }
+        server.admission = { [admissions] session, source in admissions.decide(session: session, source: source) }
         serverRunning = server.start()
         self.server = server
     }
@@ -160,6 +162,28 @@ final class HookController {
         RequestLog.flush()
     }
 
+    /// Running sessions left out because their source is off.
+    func noteHidden(_ sessions: Set<String>) {
+        admissions.note(hidden: sessions)
+    }
+
+    /// Tells the hook what the person chose, and lets go of whatever may no longer wait here. Those requests stay in Claude.
+    func applySources() {
+        let sources = settings.sources
+        admissions.note(settings: sources)
+        if live { try? sources.hookPolicy.save(to: URL(fileURLWithPath: HookServer.defaultPath).deletingLastPathComponent().appendingPathComponent(HookPolicy.fileName)) }
+        let before = queue.decisions.last?.id
+        for request in queue.open where !sources.answers(request.source ?? SourceID(queue.session(request.session)?.environment)) {
+            server?.release(request.id)
+            queue.forget(request.id)
+            drafts[request.id] = nil
+        }
+        for request in queue.expired {
+            if let source = SourceID(queue.session(request.session)?.environment), !sources.reads(source) { queue.forget(request.id) }
+        }
+        settle(savingFrom: before)
+    }
+
     /// The chosen time applies to the requests that come next.
     func applyWait() {
         server?.setAnswerWindow(TimeInterval(settings.permissionWaitSeconds))
@@ -169,6 +193,7 @@ final class HookController {
 
     /// Called with every new picture of the work, so it stays quiet unless a request has ended.
     func note(work: WorkModel, now: Date = Date()) {
+        admissions.note(sessions: work.sessions)
         let before = queue.decisions.last?.id
         queue.note(work: work, now: now)
         if queue.decisions.last?.id != before { settle(savingFrom: before) }
@@ -338,6 +363,43 @@ final class HookController {
         queue.showForSnapshot(open: open, expired: expired, decisions: decisions)
     }
     #endif
+}
+
+/// What the server's queue needs to know to turn a hook away at once. It runs off the main thread and must not wait for it.
+private final class SourceAdmissions: @unchecked Sendable {
+    private let lock = NSLock()
+    private var settings = SourceSettings()
+    private var known: [String: SourceID] = [:]
+    private var hidden: Set<String> = []
+
+    func note(settings: SourceSettings) {
+        lock.lock()
+        self.settings = settings
+        lock.unlock()
+    }
+
+    func note(sessions: [WorkSession]) {
+        let known = Dictionary(sessions.compactMap { session in SourceID(session.environment).map { (session.id, $0) } }) { first, _ in first }
+        lock.lock()
+        self.known = known
+        lock.unlock()
+    }
+
+    func note(hidden: Set<String>) {
+        lock.lock()
+        self.hidden = hidden
+        lock.unlock()
+    }
+
+    /// The scan knows a session better than its hook does: a remote one, for one, calls itself a terminal.
+    func decide(session: String?, source claimed: SourceID?) -> HookAdmission {
+        lock.lock()
+        defer { lock.unlock() }
+        if let session, hidden.contains(session) { return .ignore }
+        guard let source = session.flatMap({ known[$0] }) ?? claimed else { return .welcome }
+        if !settings.reads(source) { return .ignore }
+        return settings.answers(source) ? .welcome : .noAnswers
+    }
 }
 
 private struct WeakHooks: @unchecked Sendable {

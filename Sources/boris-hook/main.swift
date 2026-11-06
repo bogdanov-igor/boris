@@ -15,13 +15,24 @@ let socketPath = ProcessInfo.processInfo.environment["BORIS_HOOK_SOCKET"]
 guard access(socketPath, F_OK) == 0 else { exit(0) }
 
 let arguments = CommandLine.arguments
-let waitSeconds: Int32? = arguments.firstIndex(of: "--permission").flatMap { index in
+var waitSeconds: Int32? = arguments.firstIndex(of: "--permission").flatMap { index in
     index + 1 < arguments.count ? Int32(arguments[index + 1]) : nil
 }
 
 let input = FileHandle.standardInput.readDataToEndOfFile()
 guard let object = (try? JSONSerialization.jsonObject(with: input)) as? [String: Any] else { exit(0) }
-var payload = HookPayload.reduce(object)
+
+// A source the person turned off or does not want answered must not hold Claude up. The file says which, and nothing here waits for the app.
+let policy = HookPolicy.load(from: URL(fileURLWithPath: socketPath).deletingLastPathComponent().appendingPathComponent(HookPolicy.fileName))
+let entrypoint = ProcessInfo.processInfo.environment["CLAUDE_CODE_ENTRYPOINT"]
+    ?? (object["transcript_path"] as? String).flatMap { TranscriptHead.entrypoint(in: URL(fileURLWithPath: $0)).entrypoint }
+let source = SourceDetection.source(entrypoint: entrypoint) { SourceDetection.editor(of: getpid()) }
+let action = policy.action(for: source, asking: waitSeconds != nil)
+if action == .leave { exit(0) }
+if action == .tell { waitSeconds = nil }
+
+var payload = HookPayload.reduce(object, withRequest: action == .ask)
+if let source { payload["boris_source"] = source.rawValue }
 if waitSeconds != nil { payload["wait"] = true }
 guard var message = try? JSONSerialization.data(withJSONObject: payload) else { exit(0) }
 message.append(0x0A)

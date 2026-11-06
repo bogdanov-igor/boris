@@ -78,6 +78,7 @@ public actor RunScanner {
     /// Ordinary agents seen so far, so that one whose session has died can still be reported.
     private var singleAgents: [String: SingleAgent] = [:]
     private let startedAt: Date
+    private let filter: SourceFilter
     private let findOthers: @Sendable () -> [ClaudePaths]
     private var others: [ClaudePaths] = []
     private var unlisted: UnlistedSessions
@@ -85,17 +86,20 @@ public actor RunScanner {
     private var titles: [String: (checked: Date, title: String?)] = [:]
     private var sessionTails: [String: (modified: Date?, tail: TranscriptReader.Tail)] = [:]
 
-    /// - Parameter others: finds the other places Claude keeps files. Only `paths` is the source of usage limits.
-    public init(paths: ClaudePaths, config: Config = Config(), others: @escaping @Sendable () -> [ClaudePaths] = { [] }) {
+    /// - Parameters:
+    ///   - others: finds the other places Claude keeps files. Only `paths` is the source of usage limits.
+    ///   - filter: which sources are left alone.
+    ///   - startedAt: what counts as written since this launch. A scanner started again by a change of settings keeps the launch it had.
+    public init(paths: ClaudePaths, config: Config = Config(), others: @escaping @Sendable () -> [ClaudePaths] = { [] }, filter: SourceFilter = SourceFilter(), startedAt: Date = Date()) {
         self.paths = paths
         self.config = config
         self.findOthers = others
-        let now = Date()
-        self.startedAt = now
-        self.unlisted = UnlistedSessions(startedAt: now)
+        self.filter = filter
+        self.startedAt = startedAt
+        self.unlisted = UnlistedSessions(startedAt: startedAt, allows: { filter.allows(transcript: $0) })
     }
 
-    private var roots: [ClaudePaths] { [paths] + others }
+    private var roots: [ClaudePaths] { ([paths] + others).filter(filter.reads(root:)) }
 
     /// What has to be watched for changes. The list grows when Claude starts using a new place.
     public func watchedFolders() -> [URL] {
@@ -134,13 +138,13 @@ public actor RunScanner {
     }
 
     public func sessionTranscript(_ sessionId: String) -> URL? {
-        if let known = sessionFiles[sessionId] { return known }
+        if let known = sessionFiles[sessionId] { return filter.allows(transcript: known) ? known : nil }
         for root in roots {
             for project in FileInfo.names(in: root.projects) where !project.hasPrefix(".") {
                 let file = root.projects.appendingPathComponent(project).appendingPathComponent("\(sessionId).jsonl")
                 if FileManager.default.fileExists(atPath: file.path) {
                     sessionFiles[sessionId] = file
-                    return file
+                    return filter.allows(transcript: file) ? file : nil
                 }
             }
         }
@@ -154,15 +158,21 @@ public actor RunScanner {
             discoverNow = false
             lastDiscovery = now
         }
-        var read = SessionReader.read(paths)
-        for other in others where other.processesAreHere {
-            let more = SessionReader.read(other)
-            read.sessions += more.sessions
+        var read = SessionReader.Result(sessions: [], unreadable: 0)
+        for root in roots where root.processesAreHere {
+            let more = SessionReader.read(root)
+            read.sessions += more.sessions.map(filter.editors.identified)
             read.unreadable += more.unreadable
         }
-        var sessions = read.sessions.filter { SessionReader.isLive($0) && !BorisPaths.isUsageProbe(cwd: $0.cwd) }
-        let ended = read.sessions.filter { !SessionReader.isLive($0) && !BorisPaths.isUsageProbe(cwd: $0.cwd) && recentlyActive($0, now: now) }
-        sessions += unlistedSessions(listed: Set(read.sessions.map(\.sessionId)), now: now).filter { !BorisPaths.isUsageProbe(cwd: $0.cwd) }
+        let shown = read.sessions.filter(filter.allows(session:))
+        var sessions = shown.filter { SessionReader.isLive($0) && !BorisPaths.isUsageProbe(cwd: $0.cwd) }
+        let ended = shown.filter { !SessionReader.isLive($0) && !BorisPaths.isUsageProbe(cwd: $0.cwd) && recentlyActive($0, now: now) }
+        let hidden = read.sessions.filter { !filter.allows(session: $0) && SessionReader.isLive($0) }
+        sessions += unlistedSessions(listed: Set(read.sessions.map(\.sessionId)), now: now).filter { !BorisPaths.isUsageProbe(cwd: $0.cwd) }.map { session in
+            var session = session
+            session.entrypoint = filter.editors.entrypoint(session.entrypoint, session: session.sessionId)
+            return session
+        }
         applyTitles(&sessions, now: now)
         var places: [String: GitPlace] = [:]
         for index in sessions.indices {
@@ -233,6 +243,7 @@ public actor RunScanner {
         world.runTokens = runTokens
         world.agentTokens = agentTokens
         world.places = places
+        world.hiddenSessions = Dictionary(hidden.map { ($0.sessionId, $0.pid) }) { first, _ in first }
         return world
     }
 
@@ -263,6 +274,7 @@ public actor RunScanner {
                 let projectDir = root.projects.appendingPathComponent(project)
                 unlisted.look(in: projectDir, now: Date())
                 for session in FileInfo.names(in: projectDir) where !session.hasSuffix(".jsonl") && !session.hasPrefix(".") {
+                    guard filter.allows(transcript: projectDir.appendingPathComponent("\(session).jsonl")) else { continue }
                     let sessionDir = projectDir.appendingPathComponent(session)
                     discoverSingleAgents(in: sessionDir.appendingPathComponent("subagents"), session: nil, sessionId: session, now: Date())
                     let workflows = sessionDir.appendingPathComponent("subagents/workflows")
@@ -520,7 +532,7 @@ public actor RunScanner {
             model: agent.model,
             currentStep: agent.step,
             cwd: agent.cwd,
-            entrypoint: agent.entrypoint,
+            entrypoint: filter.editors.entrypoint(agent.entrypoint, session: agent.sessionId),
             startedAt: FileInfo.created(agent.file),
             lastWrite: lastWrite
         )
@@ -612,12 +624,13 @@ public actor RunScanner {
             stoppedByClaude: cache.stoppedByClaude
         )
         snapshot.startedAt = FileInfo.created(cache.journalURL)
-        snapshot.entrypoint = cache.entrypoint
+        snapshot.entrypoint = filter.editors.entrypoint(cache.entrypoint, session: cache.sessionId)
         return snapshot
     }
 
     private func refreshUsage(now: Date) {
-        guard now.timeIntervalSince(usageChecked) >= config.usageRefreshInterval else { return }
+        // The file belongs to Claude Code, and so does the whole of it when Claude Code is off.
+        guard filter.reads(root: paths), now.timeIntervalSince(usageChecked) >= config.usageRefreshInterval else { return }
         usageChecked = now
         let modified = FileInfo.modified(paths.profile)
         guard modified != usageModified else { return }

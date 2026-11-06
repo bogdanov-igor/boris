@@ -17,6 +17,8 @@ final class UsageModel {
     @ObservationIgnored var onBuilt: (() -> Void)?
     /// The Projects and Losses pages add up from these same records. They change only when the logs did.
     private(set) var records: [TokenRecord] = []
+    /// Who these numbers come from. Added up with them, off the main thread.
+    private(set) var sources: Set<SourceID> = []
     @ObservationIgnored private var building = false
     @ObservationIgnored private var buildAgain = false
     @ObservationIgnored private var generation = 0
@@ -31,6 +33,7 @@ final class UsageModel {
     func reset() {
         generation += 1
         records = []
+        sources = []
         book = nil
         progress = nil
         building = false
@@ -62,13 +65,23 @@ final class UsageModel {
         let generation = generation
         Task.detached(priority: .utility) { [weak self] in
             let book = TokenBook(records: records, now: Date())
-            await self?.finish(book, generation: generation)
+            let sources = Self.sources(of: records)
+            await self?.finish(book, sources: sources, generation: generation)
         }
     }
 
-    private func finish(_ book: TokenBook, generation: Int) {
+    private nonisolated static func sources(of records: [TokenRecord]) -> Set<SourceID> {
+        var entrypoints = Set<String>()
+        for record in records {
+            if let entrypoint = record.entrypoint { entrypoints.insert(entrypoint) }
+        }
+        return Set(entrypoints.compactMap { SourceID(entrypoint: $0) })
+    }
+
+    private func finish(_ book: TokenBook, sources: Set<SourceID>, generation: Int) {
         guard generation == self.generation else { return }
         self.book = book
+        self.sources = sources
         building = false
         onBuilt?()
         if buildAgain {
@@ -89,6 +102,7 @@ final class UsageModel {
         self.book = book
         self.records = records
         self.progress = progress
+        sources = Self.sources(of: records)
     }
     #endif
 }

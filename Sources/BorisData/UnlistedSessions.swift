@@ -14,12 +14,15 @@ struct UnlistedSessions {
     }
 
     private let startedAt: Date
+    private let allows: (URL) -> Bool
     private var entries: [String: Entry] = [:]
     /// A session that once had a file and lost it has ended. Its last writes must not bring it back.
     private var everListed: Set<String> = []
 
-    init(startedAt: Date) {
+    /// - Parameter allows: whether a session's transcript may be read at all.
+    init(startedAt: Date, allows: @escaping @Sendable (URL) -> Bool = { _ in true }) {
         self.startedAt = startedAt
+        self.allows = allows
     }
 
     /// Picks up transcripts in a project folder written since launch.
@@ -37,7 +40,7 @@ struct UnlistedSessions {
             // A file older than this launch says nothing: its session may have ended long ago.
             guard let modified = FileInfo.modified(transcript), modified > startedAt, now.timeIntervalSince(modified) <= Self.quietLimit else { return }
         }
-        guard FileManager.default.fileExists(atPath: transcript.path) else { return }
+        guard FileManager.default.fileExists(atPath: transcript.path), allows(transcript) else { return }
         let origin = TranscriptReader.origin(in: transcript)
         let info = SessionInfo(sessionId: id, pid: 0, cwd: origin.cwd, entrypoint: origin.entrypoint, startedAt: FileInfo.created(transcript))
         entries[id] = Entry(file: transcript, info: info)

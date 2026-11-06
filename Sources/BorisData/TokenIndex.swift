@@ -39,6 +39,7 @@ public actor TokenIndex {
     private let cacheFile: URL?
     private var entries: [String: Entry] = [:]
     private var seen: Set<String> = []
+    private var editors: EditorBook?
     private let timestamps: ISO8601DateFormatter
     private let dayKeys: DateFormatter
 
@@ -62,12 +63,16 @@ public actor TokenIndex {
         }
     }
 
-    /// Brings the index up to date. A transcript that Claude has deleted leaves the totals with it.
-    /// - Parameter progress: how many transcripts are done and how many there are.
+    /// Brings the index up to date. A transcript that Claude has deleted leaves the totals with it, and so does one whose source is off:
+    /// turning the source on reads it again from the logs.
+    /// - Parameters:
+    ///   - filter: which sources are left alone.
+    ///   - progress: how many transcripts are done and how many there are.
     /// - Returns: true if anything changed.
     @discardableResult
-    public func update(roots: [ClaudePaths], progress: (@Sendable (Int, Int) -> Void)? = nil) async -> Bool {
-        let files = Self.transcripts(in: roots)
+    public func update(roots: [ClaudePaths], filter: SourceFilter = SourceFilter(), progress: (@Sendable (Int, Int) -> Void)? = nil) async -> Bool {
+        editors = filter.editors
+        let files = Self.transcripts(in: roots.filter(filter.reads(root:)), filter: filter)
         var changed = false
 
         let existing = Set(files.map(\.path))
@@ -95,7 +100,7 @@ public actor TokenIndex {
                     agentId: owner.agent,
                     runId: owner.run,
                     cwd: entry.cwd,
-                    entrypoint: entry.entrypoint,
+                    entrypoint: editors?.entrypoint(entry.entrypoint, session: owner.session) ?? entry.entrypoint,
                     day: bucket.day,
                     model: bucket.model,
                     usage: bucket.usage
@@ -184,7 +189,7 @@ public actor TokenIndex {
     }
 
     /// The main transcript comes before its subagents, so a fork's repeats are the ones left out.
-    static func transcripts(in roots: [ClaudePaths]) -> [URL] {
+    static func transcripts(in roots: [ClaudePaths], filter: SourceFilter = SourceFilter()) -> [URL] {
         var files: [URL] = []
         let hidden = BorisPaths.usageProbeProject
         for root in roots {
@@ -193,8 +198,8 @@ public actor TokenIndex {
                 for name in FileInfo.names(in: folder) where !name.hasPrefix(".") {
                     let item = folder.appendingPathComponent(name)
                     if name.hasSuffix(".jsonl") {
-                        files.append(item)
-                    } else {
+                        if filter.allows(transcript: item) { files.append(item) }
+                    } else if filter.allows(transcript: folder.appendingPathComponent("\(name).jsonl")) {
                         files += agentFiles(in: item.appendingPathComponent("subagents"))
                         let workflows = item.appendingPathComponent("subagents/workflows")
                         for run in FileInfo.names(in: workflows) where run.hasPrefix("wf_") {

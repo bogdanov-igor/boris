@@ -95,7 +95,7 @@ struct MacLoadContent: View {
     private var note: String {
         let off = load?.offWithProcesses ?? []
         return ([L("CPU: 100% is the whole Mac. Activity Monitor counts each core as 100%, so its numbers are higher.")]
-            + off.map { L("%@: reading is off, its load is counted in the rest.", $0.title) })
+            + off.map { $0 == .claude ? L("Claude from sources that are off is counted in the rest.") : L("%@: reading is off, its load is counted in the rest.", $0.title) })
             .joined(separator: " ")
     }
 

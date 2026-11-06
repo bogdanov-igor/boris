@@ -122,6 +122,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
+        if let window = popover.contentViewController?.view.window { model.capture.watch(window, as: .mini) }
         model.miniWindowDidOpen()
     }
 
