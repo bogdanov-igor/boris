@@ -2,12 +2,50 @@ import AppKit
 import BorisCore
 import SwiftUI
 
+/// The link and the texts of the section, apart from the view. Neither of them ever goes to the network: the texts are inside the app, and the link is only handed to the browser.
+enum AboutContent {
+    /// Set in the app's Info.plist. Without a link there is no button. Only a web page counts, so that a mistake in the file cannot start anything else.
+    static func coffeeLink(info: String?, override: String? = nil) -> URL? {
+        guard let text = override ?? info, !text.isEmpty, let link = URL(string: text), link.scheme == "https" || link.scheme == "http", link.host != nil else { return nil }
+        return link
+    }
+
+    static func text(_ license: AboutSection.LicenseText, in bundle: Bundle = .main) -> String? {
+        bundle.url(forResource: license.fileName, withExtension: "txt").flatMap { try? String(contentsOf: $0, encoding: .utf8) }
+    }
+
+    /// License files are broken into lines for a terminal, which in a narrower window leaves a word or two alone on every other line.
+    /// So the lines of a paragraph are joined for showing. Indented lines are lists, and stay as they are.
+    static func flowing(_ text: String) -> String {
+        var result: [String] = []
+        for line in text.components(separatedBy: "\n") {
+            let continues = result.last.map { !$0.isEmpty && !$0.hasPrefix(" ") } ?? false
+            if continues, !line.isEmpty, !line.hasPrefix(" ") {
+                result[result.count - 1] += " " + line
+            } else {
+                result.append(line)
+            }
+        }
+        return result.joined(separator: "\n")
+    }
+}
+
 /// What Boris is, who made it and on what terms.
 struct AboutSection: View {
     @Bindable var model: AppModel
     @State private var license: LicenseText?
+    private let coffeeLink: URL?
+    private let openLink: (URL) -> Void
 
-    private enum LicenseText {
+    /// - Parameter openLink: hands a link to the browser. Boris itself does not go to it.
+    init(model: AppModel, license: LicenseText? = nil, coffeeLink: URL? = AboutSection.configuredCoffeeLink, openLink: @escaping (URL) -> Void = { NSWorkspace.shared.open($0) }) {
+        self.model = model
+        _license = State(initialValue: license)
+        self.coffeeLink = coffeeLink
+        self.openLink = openLink
+    }
+
+    enum LicenseText {
         case own, thirdParty
 
         var fileName: String {
@@ -22,12 +60,12 @@ struct AboutSection: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? BorisCore.version
     }
 
-    /// Set in the app's Info.plist. Without a link there is no button.
-    private var coffeeLink: URL? {
+    static var configuredCoffeeLink: URL? {
+        var override: String?
         #if DEBUG
-        if let link = ProcessInfo.processInfo.environment["BORIS_COFFEE_URL"] { return URL(string: link) }
+        override = ProcessInfo.processInfo.environment["BORIS_COFFEE_URL"]
         #endif
-        return (Bundle.main.object(forInfoDictionaryKey: "BorisCoffeeURL") as? String).flatMap { $0.isEmpty ? nil : URL(string: $0) }
+        return AboutContent.coffeeLink(info: Bundle.main.object(forInfoDictionaryKey: "BorisCoffeeURL") as? String, override: override)
     }
 
     var body: some View {
@@ -82,7 +120,7 @@ struct AboutSection: View {
                 }
                 if let coffeeLink {
                     Button {
-                        NSWorkspace.shared.open(coffeeLink)
+                        openLink(coffeeLink)
                     } label: {
                         Label(L("Buy Boris a coffee"), systemImage: "cup.and.saucer")
                             .font(.system(size: 12.5))
@@ -127,7 +165,7 @@ struct AboutSection: View {
 
     /// The text comes from the app itself: looking at it never reaches for the network.
     private func text(_ license: LicenseText) -> String {
-        Bundle.main.url(forResource: license.fileName, withExtension: "txt").flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? L("The text is missing from this build.")
+        AboutContent.text(license) ?? L("The text is missing from this build.")
     }
 
     private func licenseView(_ shown: LicenseText) -> some View {
@@ -145,7 +183,7 @@ struct AboutSection: View {
             .padding(EdgeInsets(top: 30, leading: 20, bottom: 12, trailing: 20))
             Rectangle().fill(Palette.separator).frame(height: 1)
             ScrollView {
-                Text(text(shown))
+                Text(AboutContent.flowing(text(shown)))
                     .font(.system(size: 11.5, design: .monospaced))
                     .lineSpacing(3)
                     .textSelection(.enabled)

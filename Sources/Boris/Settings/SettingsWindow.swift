@@ -55,6 +55,8 @@ struct SettingsView: View {
     @Bindable var model: AppModel
     var connect: ConnectFlow
     var actions: SettingsActions
+    /// Starts on the text of a license, for a snapshot.
+    var openLicense: AboutSection.LicenseText?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -94,7 +96,7 @@ struct SettingsView: View {
         switch model.settingsSection {
         case .general: page { GeneralSettings(model: model, actions: actions) }
         case .connections: page { ConnectionSettings(model: model, connect: connect) }
-        case .about: AboutSection(model: model)
+        case .about: AboutSection(model: model, license: openLicense)
         case .sources: page { SourcesSettings(model: model) }
         case .surfaces: page { SurfacesSettings(model: model) }
         case .notifications: page { NotificationSettings(model: model) }

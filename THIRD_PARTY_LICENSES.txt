@@ -1,0 +1,5 @@
+Third-party licenses
+
+This version of Boris is built only on what comes with macOS and Swift, so
+there is no third-party code to credit yet. When a library is added, its
+license text goes in this file, in full.
