@@ -104,7 +104,10 @@ struct RemoteHubTests {
     /// A model that reads an empty Claude folder of its own, with the hub pointed at the fake machine.
     private func makeModel(_ machine: Machine) -> AppModel {
         let settings = AppSettings(defaults: nil)
-        settings.claudeFolder = machine.root.appendingPathComponent("here").path
+        // A real, empty Claude folder on this Mac: a missing one would be a problem of its own, whatever the machines do.
+        let here = machine.root.appendingPathComponent("here")
+        try? FileManager.default.createDirectory(at: here.appendingPathComponent("sessions"), withIntermediateDirectories: true)
+        settings.claudeFolder = here.path
         let model = AppModel(settings: settings, store: nil, live: false)
         var timing = RemoteLink.Timing()
         timing.retries = [0.1]

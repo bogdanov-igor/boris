@@ -91,9 +91,12 @@ public enum ClaudeFolders {
 }
 
 public enum BorisPaths {
-    /// A variable meant for a check. Only launchd's own mark may reach a release build, which has no check modes.
+    /// What a release build itself is started with: launchd's mark, and the one a copy leaves for the plain copy that takes over from it when autostart goes off.
+    private static let ownMarks: Set<String> = ["BORIS_LAUNCHD", "BORIS_TAKE_OVER_FROM_AGENT"]
+
+    /// A variable meant for a check. A release build has no check modes, so anything but its own marks stops it.
     public static func checkVariable(in environment: [String: String]) -> String? {
-        environment.keys.filter { $0.hasPrefix("BORIS_") && $0 != "BORIS_LAUNCHD" }.sorted().first
+        environment.keys.filter { $0.hasPrefix("BORIS_") && !ownMarks.contains($0) }.sorted().first
     }
 
     /// Boris's own files. In a debug build `BORIS_STATE_DIR` moves them for tests and tools.

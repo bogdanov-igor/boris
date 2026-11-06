@@ -53,7 +53,8 @@ enum RemoteCommand {
     static func prepare(wait: Int) -> String {
         let script = [
             "umask 077",
-            "mkdir -p \(folder) || exit 71",
+            // The umask does nothing for a folder that is already there.
+            "mkdir -p \(folder) && chmod 700 \(folder) || exit 71",
             "command -v python3 >/dev/null 2>&1 || exit \(noPythonStatus)",
             "cat > \(new) || exit 73",
             "if cmp -s \(new) \(helper); then rm -f \(new); else chmod 700 \(new) && mv -f \(new) \(helper) || exit 73; fi",

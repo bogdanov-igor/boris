@@ -47,7 +47,11 @@ func tokens() async {
 
 /// `boris-dump sources`: what each source has, counts only. `BORIS_SOURCES_OFF=cursor,cowork` looks at it the way Boris would with those turned off.
 func sources() async {
+    #if DEBUG
     let off = Set((ProcessInfo.processInfo.environment["BORIS_SOURCES_OFF"] ?? "").split(separator: ",").compactMap { SourceID(rawValue: String($0)) })
+    #else
+    let off = Set<SourceID>()
+    #endif
     let filter = SourceFilter(off: off)
     let roots = ([paths] + others()).filter(filter.reads(root:))
     print("off: \(off.map(\.rawValue).sorted())")

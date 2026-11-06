@@ -86,11 +86,13 @@ public actor TokenIndex {
         editors = filter.editors
         let files = Self.transcripts(in: roots.filter(filter.reads(root:)), filter: filter)
         var changed = false
+        var forgot = false
 
         let existing = Set(files.map(\.path))
         for path in entries.keys where !existing.contains(path) {
             forget(path)
             changed = true
+            forgot = true
         }
         for (index, file) in files.enumerated() {
             // Without its own pool a long pass keeps every buffer it has read until it ends.
@@ -99,7 +101,13 @@ public actor TokenIndex {
             // Other work gets its turn, however many logs there are.
             await Task.yield()
         }
-        saveWhenDue(changed: changed)
+        // What was let go of leaves the file at once: a source turned off is not kept there even for a minute.
+        if forgot {
+            lastSaved = Date()
+            save()
+        } else {
+            saveWhenDue(changed: changed)
+        }
         return changed
     }
 

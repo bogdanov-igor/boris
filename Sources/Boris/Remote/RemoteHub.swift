@@ -328,7 +328,11 @@ final class RemoteHub {
 
     private func stateChanged(_ state: RemoteLink.State, of id: String) {
         guard let connection = connections[id] else { return }
-        update(id) { $0.state = state }
+        update(id) { row in
+            // A retry does not make the reason go away: it stays on screen until the machine answers or a new one comes.
+            if case .connecting = state, case .down = row.state { return }
+            row.state = state
+        }
         switch state {
         case .up:
             connection.book.linkUp()

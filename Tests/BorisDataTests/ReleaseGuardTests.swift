@@ -17,6 +17,8 @@ struct ReleaseGuardTests {
         #expect(BorisPaths.checkVariable(in: ["BORIS_SNAPSHOT": "/x"]) == "BORIS_SNAPSHOT")
         #expect(BorisPaths.checkVariable(in: ["BORIS_FUTURE_MODE": "1", "HOME": "/x"]) == "BORIS_FUTURE_MODE")
         #expect(BorisPaths.checkVariable(in: ["BORIS_LAUNCHD": "1", "HOME": "/x"]) == nil)
+        // Turning autostart off starts a plain copy with this mark. If it stopped that copy, Boris would be gone with no way back.
+        #expect(BorisPaths.checkVariable(in: ["BORIS_TAKE_OVER_FROM_AGENT": "1", "HOME": "/x"]) == nil)
         #expect(BorisPaths.checkVariable(in: [:]) == nil)
     }
 
@@ -46,7 +48,7 @@ struct ReleaseGuardTests {
                     _ = blocks.popLast()
                 } else if !code.hasPrefix("//"), !(blocks.last ?? false) {
                     let range = NSRange(code.startIndex..., in: code)
-                    for match in names.matches(in: code, range: range) where (code as NSString).substring(with: match.range) != "BORIS_LAUNCHD" {
+                    for match in names.matches(in: code, range: range) where !["BORIS_LAUNCHD", "BORIS_TAKE_OVER_FROM_AGENT"].contains((code as NSString).substring(with: match.range)) {
                         outside.append("\(file.lastPathComponent): \((code as NSString).substring(with: match.range))")
                     }
                 }

@@ -1,6 +1,15 @@
 /// The small program Boris puts on a remote machine as `~/.boris/boris-hook`. A script and not a Linux build:
 /// it has to run on whatever machine a person owns, it can be read before it is trusted, and python3 is nearly everywhere.
 enum RemoteHelperSource {
+    // Only checks change these, so what a released Boris puts on a machine has no such switches at all.
+    #if DEBUG
+    private static let tick = #"float(os.environ.get("BORIS_REMOTE_TICK", "1"))"#
+    private static let managed = #"os.environ.get("BORIS_REMOTE_MANAGED")"#
+    #else
+    private static let tick = "1.0"
+    private static let managed = "None"
+    #endif
+
     static let text = #"""
 #!/usr/bin/env python3
 # Boris's helper on a remote machine. Claude Code's hooks start it for events, and Boris starts it over ssh.
@@ -28,7 +37,7 @@ CACHE = os.path.join(FOLDER, "numbers.json")
 CLAUDE = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(HOME, ".claude")
 SETTINGS = os.path.join(CLAUDE, "settings.json")
 # Seconds in one step of the watch loop. Only checks change it.
-TICK = float(os.environ.get("BORIS_REMOTE_TICK", "1"))
+TICK = \#(tick)
 
 # Words that may leave this machine. Anything else is not sent at all.
 ID = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
@@ -307,7 +316,7 @@ def write_keeping_mode(path, data, like=None):
 
 
 def managed_folders():
-    custom = os.environ.get("BORIS_REMOTE_MANAGED")
+    custom = \#(managed)
     return [custom] if custom else ["/etc/claude-code", "/Library/Application Support/ClaudeCode"]
 
 
