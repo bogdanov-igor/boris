@@ -285,6 +285,18 @@ struct SurfaceBehaviorTests {
         #expect(behavior.isOpen)
     }
 
+    @Test("Курсор, только пролетевший над открытой карточкой, её не сворачивает")
+    func crossedTooFastToCount() {
+        var behavior = SurfaceBehavior()
+        behavior.requestsChanged(to: 1, quiet: false)
+        // Left before the pause on the way in was over, so "entered" never came.
+        behavior.pointerLeft()
+        #expect(behavior.isOpen)
+        behavior.pointerEntered()
+        behavior.pointerLeft()
+        #expect(!behavior.isOpen)
+    }
+
     @Test("В режиме «не беспокоить» запрос не раскрывает чёлку")
     func quiet() {
         var behavior = SurfaceBehavior()

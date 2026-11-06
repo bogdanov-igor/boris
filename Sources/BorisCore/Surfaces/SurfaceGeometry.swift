@@ -176,19 +176,21 @@ public enum SurfaceGeometry {
         }
         guard lastWayIn else { return nil }
         let width = min(narrowest.rounded(.up), screen.frame.width - 2 * screenMargin)
-        let x = max(room.to - width, screen.frame.minX + screenMargin)
+        let x = max((room.to - width).rounded(.down), screen.frame.minX + screenMargin)
         return (CGRect(x: x, y: top - height, width: width, height: height), widths.count - 1)
     }
 
     /// The panel as a whole. Opening adds a sheet below the menu bar and leaves the strip where it is, so the menus and icons stay uncovered.
     /// With the menu bar hidden the sheet starts at the very top and has no strip above it.
-    public static func panel(on screen: SurfaceScreen, widths: [CGFloat], isOpen: Bool, contentHeight: CGFloat, requestWaiting: Bool, lastWayIn: Bool) -> SurfacePlacement? {
+    /// - Parameter around: where the pointer reached the top edge of a hidden bar. With no strip to hang from, the sheet has to open under that pointer,
+    ///   or the pointer is off it at its first move and it closes again.
+    public static func panel(on screen: SurfaceScreen, widths: [CGFloat], isOpen: Bool, contentHeight: CGFloat, requestWaiting: Bool, lastWayIn: Bool, around: CGFloat? = nil) -> SurfacePlacement? {
         let strip = closedStrip(on: screen, widths: widths, requestWaiting: requestWaiting, lastWayIn: lastWayIn)
         guard isOpen else {
             return strip.map { SurfacePlacement(frame: $0.frame, strip: $0.frame, choice: $0.choice) }
         }
         let inBar = screen.menuBar > 0 ? strip : nil
-        let sheet = open(on: screen, contentHeight: contentHeight, around: inBar?.frame.midX)
+        let sheet = open(on: screen, contentHeight: contentHeight, around: inBar?.frame.midX ?? around)
         guard let inBar else {
             return SurfacePlacement(frame: sheet, sheet: sheet, choice: max(widths.count - 1, 0))
         }
@@ -196,8 +198,9 @@ public enum SurfaceGeometry {
     }
 
     /// The very top of a screen whose menu bar is hidden: that is where the system would bring the menu bar back.
+    /// The corners do not count. A sheet stays `screenMargin` off the sides, so it could not open under a pointer there: it would close at the next move and open again at the next touch.
     public static func isAtHiddenBarEdge(of screen: SurfaceScreen, _ point: CGPoint) -> Bool {
-        screen.notch == nil && screen.menuBar <= 0 && contains(screen.frame, point) && point.y >= screen.frame.maxY - 1
+        screen.notch == nil && screen.menuBar <= 0 && contains(screen.frame.insetBy(dx: screenMargin, dy: 0), point) && point.y >= screen.frame.maxY - 1
     }
 
     /// Where an open surface starts: the notch at the very top, the panel below the menu bar, whether that is there or not.

@@ -68,7 +68,9 @@ public struct SurfaceBehavior: Sendable, Equatable {
     }
 
     /// Passing the pointer over an open surface also dismisses it: the closed one still says who is waiting.
+    /// A pointer that only crossed it, too fast to count as coming to it, was on its way somewhere else and leaves a card where it is.
     public mutating func pointerLeft() {
+        guard hovering else { return }
         hovering = false
         if !typing { isOpen = false }
     }

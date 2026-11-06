@@ -148,6 +148,40 @@ struct SurfaceStageTests {
         #expect(stage.sheetInset == 0)
     }
 
+    @Test("С верхнего края панель открывается под курсором, а запрос посередине")
+    func openFromTheEdge() throws {
+        let only = SurfaceSwitches(icon: false, notch: true, mini: false)
+        let stage = SurfaceStage()
+        let bare = hidden(wide)
+        #expect(stage.arrange(inputs(only), on: bare, isOpen: false, contentHeight: 300) == nil)
+        let pointer = CGPoint(x: 100, y: bare.frame.maxY)
+        let found = try #require(stage.arrange(inputs(only), on: bare, isOpen: true, contentHeight: 300, around: pointer.x))
+        #expect(found.holds(pointer))
+        #expect(try #require(stage.arrange(inputs(requests: 1), on: bare, isOpen: true, contentHeight: 300)).frame.midX == bare.frame.midX)
+    }
+
+    @Test("Выключенная поверхность и экран только с чёлкой не будят приложение ради строк меню")
+    func menuBarWatch() {
+        _ = NSApplication.shared
+        let model = AppModel(settings: AppSettings(defaults: nil), store: nil, live: false)
+        let controller = SurfaceController(model: model, screens: { [wide] _ in [wide] }, readWindows: { [] })
+        #expect(!controller.watchMenuBars(surfaceOn: false))
+        #expect(!controller.isWatchingMenuBars)
+        #expect(controller.watchMenuBars(surfaceOn: true))
+        #expect(controller.isWatchingMenuBars)
+        // Turned off later, it stops again.
+        #expect(!controller.watchMenuBars(surfaceOn: false))
+        #expect(!controller.isWatchingMenuBars)
+
+        let notchOnly = SurfaceController(model: model, screens: { [laptop] _ in [laptop] }, readWindows: { [] })
+        #expect(!notchOnly.watchMenuBars(surfaceOn: true))
+        #expect(!notchOnly.isWatchingMenuBars)
+
+        let both = SurfaceController(model: model, screens: { [laptop, wide] _ in [laptop, wide] }, readWindows: { [] })
+        #expect(both.watchMenuBars(surfaceOn: true))
+        #expect(!both.watchMenuBars(surfaceOn: false))
+    }
+
     @Test("Длинная реплика не помещается и уступает числам")
     func longLine() {
         var screen = wide

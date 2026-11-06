@@ -58,7 +58,8 @@ final class SurfaceStage {
     var sheetInset: CGFloat = 0
 
     /// Fills in the stage and returns where the window belongs. Nil means nothing is on screen.
-    func arrange(_ inputs: SurfaceInputs, on screen: SurfaceScreen, isOpen: Bool, contentHeight: CGFloat) -> SurfacePlacement? {
+    /// - Parameter around: where the pointer reached the top edge of a hidden menu bar, if that is what opened the panel.
+    func arrange(_ inputs: SurfaceInputs, on screen: SurfaceScreen, isOpen: Bool, contentHeight: CGFloat, around: CGFloat? = nil) -> SurfacePlacement? {
         let notch = screen.notch
         self.isOpen = isOpen
         isQuiet = inputs.numbers.waiting == 0 && inputs.numbers.agents == 0
@@ -66,7 +67,7 @@ final class SurfaceStage {
         headerLine = inputs.spoken.map { SurfaceLine(main: $0) } ?? SurfaceWords.closedLine(inputs.numbers, mode: .simple, onNotch: notch != nil)
         openWidth = SurfaceGeometry.openWidth(on: screen)
         maximumHeight = SurfaceGeometry.maximumOpenHeight(on: screen)
-        guard let notch else { return arrangePanel(inputs, on: screen, isOpen: isOpen, contentHeight: contentHeight) }
+        guard let notch else { return arrangePanel(inputs, on: screen, isOpen: isOpen, contentHeight: contentHeight, around: around) }
 
         strip = nil
         line = inputs.spoken.map { SurfaceLine(main: $0) } ?? SurfaceWords.closedLine(inputs.numbers, mode: inputs.mode, onNotch: true)
@@ -79,7 +80,7 @@ final class SurfaceStage {
         return SurfacePlacement(frame: isOpen ? SurfaceGeometry.open(on: screen, contentHeight: contentHeight) : closedNotch.frame)
     }
 
-    private func arrangePanel(_ inputs: SurfaceInputs, on screen: SurfaceScreen, isOpen: Bool, contentHeight: CGFloat) -> SurfacePlacement? {
+    private func arrangePanel(_ inputs: SurfaceInputs, on screen: SurfaceScreen, isOpen: Bool, contentHeight: CGFloat, around: CGFloat?) -> SurfacePlacement? {
         let lines = SurfaceWords.stripLines(inputs.numbers, mode: inputs.mode, spoken: inputs.spoken)
         let height = screen.menuBar > 0 ? screen.menuBar : SurfaceGeometry.hiddenStripHeight
         let placement = SurfaceGeometry.panel(
@@ -89,7 +90,8 @@ final class SurfaceStage {
             contentHeight: contentHeight,
             // In quiet hours a request waits in the counter and the queue: it does not come to the screen, not even small.
             requestWaiting: inputs.requests > 0 && !inputs.quiet,
-            lastWayIn: inputs.lastWayIn
+            lastWayIn: inputs.lastWayIn,
+            around: around
         )
         line = placement.map { lines[$0.choice] } ?? SurfaceLine()
         strip = placement?.strip
@@ -119,6 +121,8 @@ final class SurfaceController {
     private var shownOpen = false
     private var iconShown: Bool?
     private var pointerInside = false
+    /// Where the pointer reached the top edge of a hidden menu bar, while the panel it opened there is open.
+    private var edgeEntry: CGFloat?
     private var pointerTask: Task<Void, Never>?
     private var contentHeight: CGFloat = 240
     private var mouseMonitor: Any?
@@ -160,22 +164,12 @@ final class SurfaceController {
         observers.append(NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.windows = []
-                self?.readMenuBars()
-                self?.arrange(animated: false)
+                self?.menuBarsChanged()
             }
         })
-        // Going full screen is a change of space, and the app's window takes its final place only after the animation.
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.spaceChanged() }
+            MainActor.assumeIsolated { self?.menuBarsChanged() }
         })
-        // An icon that comes or grows announces nothing.
-        menuBarWatch = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.readMenuBars()
-                self?.arrange(animated: true)
-            }
-        }
-        menuBarWatch?.tolerance = 3
         // Mouse events need no permission. This one also catches the pointer leaving when the window moved from under it.
         mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
             MainActor.assumeIsolated { self?.pointerMoved() }
@@ -199,14 +193,38 @@ final class SurfaceController {
         }
     }
 
-    /// Only the panel depends on this, and only a surface that is on. A Mac with nothing but its own notched screen never reads.
+    var isWatchingMenuBars: Bool { menuBarWatch != nil }
+
+    /// Only the panel depends on the menu bars, and only a surface that is on. With the surface off, or on a Mac with nothing but its own notched screen, nothing wakes up for them.
+    /// - Returns: whether they are worth reading.
+    @discardableResult
+    func watchMenuBars(surfaceOn: Bool) -> Bool {
+        let needed = surfaceOn && screens([]).contains { $0.notch == nil }
+        if !needed {
+            menuBarWatch?.invalidate()
+            menuBarWatch = nil
+        } else if menuBarWatch == nil {
+            // An icon that comes or grows announces nothing.
+            let watch = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.readMenuBars()
+                    self?.arrange(animated: true)
+                }
+            }
+            watch.tolerance = 3
+            menuBarWatch = watch
+        }
+        return needed
+    }
+
     private func readMenuBars() {
-        guard inputs?.switches.notch == true, screens([]).contains(where: { $0.notch == nil }) else { return }
+        guard watchMenuBars(surfaceOn: inputs?.switches.notch == true) else { return }
         // The panel itself sits on the icons' layer and must not push itself away.
         windows = readWindows().filter { $0.number != panel.windowNumber }
     }
 
-    private func spaceChanged() {
+    /// A monitor that just came and a window going full screen take their final place only after a moment, so one look now is not enough.
+    private func menuBarsChanged() {
         readMenuBars()
         arrange(animated: false)
         Task { [weak self] in
@@ -253,7 +271,8 @@ final class SurfaceController {
         let moved = screen.id != self.screen?.id
         self.screen = screen
         let isOpen = behavior.isOpen
-        guard let placement = stage.arrange(inputs, on: screen, isOpen: isOpen, contentHeight: contentHeight) else {
+        if !isOpen { edgeEntry = nil }
+        guard let placement = stage.arrange(inputs, on: screen, isOpen: isOpen, contentHeight: contentHeight, around: edgeEntry) else {
             self.placement = nil
             panel.orderOut(nil)
             return
@@ -314,6 +333,8 @@ final class SurfaceController {
             let really = self.isOnSurface(NSEvent.mouseLocation)
             guard really == inside else { return }
             if inside {
+                // With nothing on screen, this can only be the top edge of a hidden menu bar.
+                if self.placement == nil { self.edgeEntry = NSEvent.mouseLocation.x }
                 self.behavior.pointerEntered()
             } else {
                 self.returnKeyboardIfNoField()

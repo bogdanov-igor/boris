@@ -25,6 +25,8 @@ public struct MenuBarReading: Sendable, Equatable {
     public static let iconLayer = 25
     /// Our own invisible anchor for the mini window sits on the icon layer too, and it is no icon.
     private static let narrowestIcon: CGFloat = 8
+    /// Less than this kept free at the top is no menu bar: a strip that thin could not be seen and would only stand in the way of the top edge.
+    private static let thinnestBar: CGFloat = 16
 
     public var height: CGFloat
     public var iconsMinX: CGFloat?
@@ -37,7 +39,7 @@ public struct MenuBarReading: Sendable, Equatable {
         height = 0
         iconsMinX = nil
         let reserved = frame.maxY - visibleFrame.maxY
-        guard reserved > 0 else { return }
+        guard reserved >= Self.thinnestBar else { return }
         guard !windows.isEmpty else {
             height = reserved
             return
@@ -46,9 +48,12 @@ public struct MenuBarReading: Sendable, Equatable {
         let atTop = { (bounds: CGRect) in abs(bounds.minY - area.minY) <= 1 }
         let bar = windows.first { $0.layer == Self.barLayer && atTop($0.bounds) && $0.bounds.intersection(area).width >= area.width / 2 }
         guard let bar else { return }
-        // Only a full-screen app covers a whole screen with an ordinary window: everything else stops below the menu bar.
-        let fullScreen = windows.contains { $0.layer == Self.normalLayer && $0.bounds.insetBy(dx: -1, dy: -1).contains(area) }
-        guard !fullScreen else { return }
+        // Only a full-screen app fills a screen from its very top with ordinary windows, or two of them side by side in Split View with a divider between them.
+        // Everything else stops below the menu bar, or fills only part of the width.
+        let filled = windows
+            .filter { $0.layer == Self.normalLayer && $0.bounds.minY <= area.minY + 1 && $0.bounds.maxY >= area.maxY - 1 }
+            .reduce(0) { $0 + $1.bounds.intersection(area).width }
+        guard filled < area.width * 0.9 else { return }
         height = min(bar.bounds.height, reserved)
         iconsMinX = windows
             .filter { window in

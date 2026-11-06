@@ -47,8 +47,8 @@ private func strip(_ screen: SurfaceScreen, _ widths: [CGFloat] = [200, 34], req
     SurfaceGeometry.closedStrip(on: screen, widths: widths, requestWaiting: request, lastWayIn: lastWayIn)
 }
 
-private func panel(_ screen: SurfaceScreen, open: Bool, height: CGFloat = 320, widths: [CGFloat] = [200, 34], request: Bool = false, lastWayIn: Bool = false) -> SurfacePlacement? {
-    SurfaceGeometry.panel(on: screen, widths: widths, isOpen: open, contentHeight: height, requestWaiting: request, lastWayIn: lastWayIn)
+private func panel(_ screen: SurfaceScreen, open: Bool, height: CGFloat = 320, widths: [CGFloat] = [200, 34], request: Bool = false, lastWayIn: Bool = false, around: CGFloat? = nil) -> SurfacePlacement? {
+    SurfaceGeometry.panel(on: screen, widths: widths, isOpen: open, contentHeight: height, requestWaiting: request, lastWayIn: lastWayIn, around: around)
 }
 
 @Suite("Закрытая панель живёт в строке меню")
@@ -120,6 +120,13 @@ struct SurfaceStripTests {
         #expect(wide.frame.contains(frame))
     }
 
+    @Test("Последняя панель у значков стоит на целой точке")
+    func lastWayInOnWholePoint() throws {
+        let frame = try #require(strip(with(wide, icons: 700.5), [34.2], lastWayIn: true)).frame
+        #expect(frame.minX == frame.minX.rounded())
+        #expect(frame.maxX <= 700.5)
+    }
+
     @Test("Запрос сам по себе панель на заполненную строку не ставит")
     func requestDoesNotCrowd() {
         #expect(strip(with(wide, icons: 700), request: true) == nil)
@@ -178,11 +185,39 @@ struct SurfaceHiddenBarTests {
         #expect(abs(found.frame.midX - screen.frame.midX) <= 0.5)
     }
 
-    @Test("Открытая панель стоит под курсором, который сверху открыл её с края")
-    func opensUnderPointer() throws {
-        let screen = hidden(upright)
-        let found = try #require(panel(screen, open: true, lastWayIn: true))
-        #expect(found.holds(CGPoint(x: screen.frame.midX, y: screen.frame.maxY)))
+    @Test("Панель, открытая с верхнего края, стоит под курсором, где бы он ни подошёл", arguments: [wide, upright])
+    func opensUnderPointer(screen: SurfaceScreen) throws {
+        let bare = hidden(screen)
+        var counted = 0
+        // Along the whole edge, half a point at a time: wherever the edge counts as the surface, the sheet that opens has the pointer on it.
+        for x in stride(from: bare.frame.minX, through: bare.frame.maxX, by: 0.5) {
+            let pointer = CGPoint(x: x, y: bare.frame.maxY)
+            guard SurfaceGeometry.isAtHiddenBarEdge(of: bare, pointer) else { continue }
+            counted += 1
+            let found = try #require(panel(bare, open: true, lastWayIn: true, around: x))
+            #expect(found.holds(pointer))
+            // It stays on screen, and a small move does not take the pointer off it.
+            #expect(bare.frame.contains(found.frame))
+            #expect(found.holds(CGPoint(x: x, y: pointer.y - 40)))
+        }
+        // Nearly all of the edge counts, so the loop above is not empty.
+        #expect(CGFloat(counted) >= (bare.frame.width - 20) * 2)
+    }
+
+    @Test("Углы экрана верхним краем не считаются: там панели не открыться под курсором", arguments: [wide, upright])
+    func cornersAreNotTheEdge(screen: SurfaceScreen) {
+        let bare = hidden(screen)
+        for x in [bare.frame.minX, bare.frame.minX + 1, bare.frame.minX + 7, bare.frame.maxX - 8, bare.frame.maxX - 1] {
+            #expect(!SurfaceGeometry.isAtHiddenBarEdge(of: bare, CGPoint(x: x, y: bare.frame.maxY)))
+        }
+        #expect(SurfaceGeometry.isAtHiddenBarEdge(of: bare, CGPoint(x: bare.frame.minX + 8, y: bare.frame.maxY)))
+        #expect(SurfaceGeometry.isAtHiddenBarEdge(of: bare, CGPoint(x: bare.frame.maxX - 9, y: bare.frame.maxY)))
+    }
+
+    @Test("Запрос открывает панель посередине, где бы ни был курсор")
+    func requestOpensInTheMiddle() throws {
+        let found = try #require(panel(hidden(wide), open: true, request: true))
+        #expect(found.frame.midX == wide.frame.midX)
     }
 
     @Test("Высокое содержимое помещается и здесь")
@@ -393,6 +428,37 @@ struct MenuBarReadingTests {
         let reading = read(wide, [bar, icon(3, x: 1300), app])
         #expect(reading.height == 0)
         #expect(reading.iconsMinX == nil)
+    }
+
+    @Test("Два приложения рядом на весь экран: строки тоже нет")
+    func splitView() {
+        let left = ScreenWindow(number: 9, layer: MenuBarReading.normalLayer, bounds: CGRect(x: 0, y: 0, width: 955, height: 1080))
+        let right = ScreenWindow(number: 10, layer: MenuBarReading.normalLayer, bounds: CGRect(x: 965, y: 0, width: 955, height: 1080))
+        let reading = read(wide, [bar, icon(3, x: 1300), left, right])
+        #expect(reading.height == 0)
+        #expect(reading.iconsMinX == nil)
+    }
+
+    @Test("Окно от самого верха, но не на весь экран, строку не прячет")
+    func partOfTheScreen() {
+        let helper = ScreenWindow(number: 9, layer: MenuBarReading.normalLayer, bounds: CGRect(x: 0, y: 0, width: 100, height: 100))
+        let sidebar = ScreenWindow(number: 10, layer: MenuBarReading.normalLayer, bounds: CGRect(x: 0, y: 0, width: 300, height: 1080))
+        let wideButShort = ScreenWindow(number: 11, layer: MenuBarReading.normalLayer, bounds: CGRect(x: 0, y: 0, width: 1920, height: 400))
+        #expect(read(wide, [bar, helper, sidebar, wideButShort]).height == 30)
+    }
+
+    @Test("Несколько окон поверх друг друга не считаются за один экран, если соседнему экрану они не мешают")
+    func windowsElsewhereDoNotCount() {
+        let there = ScreenWindow(number: 9, layer: MenuBarReading.normalLayer, bounds: CGRect(x: -1080, y: 0, width: 1080, height: 1080))
+        #expect(read(wide, [bar, there]).height == 30)
+    }
+
+    @Test("Щель в пару точек наверху это ещё не строка меню")
+    func sliverIsNoBar() {
+        var screen = wide
+        screen.visibleFrame.size.height = screen.frame.height - 1
+        #expect(read(screen, [bar, icon(3, x: 1300)]).height == 0)
+        #expect(read(screen, []).height == 0)
     }
 
     @Test("Обычное окно до самой строки меню полным экраном не считается")
