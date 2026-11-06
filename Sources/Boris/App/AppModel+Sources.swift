@@ -2,6 +2,7 @@ import AppKit
 import BorisCore
 import BorisData
 import Observation
+import SwiftUI
 
 /// The windows that can hold data of a source.
 enum CaptureSurface: Hashable, CaseIterable {
@@ -127,20 +128,26 @@ final class CaptureKeeper {
     }
 
     private var watches: [Watch] = []
-    private var following = false
+    /// Only the newest look at the model counts. One left from before a new window came in does nothing.
+    private var latestLook = 0
     var hides: (CaptureSurface) -> Bool = { _ in false }
 
     /// Takes effect at once, so call it before the window goes on screen. Can be called again for a window that was created anew, as a popover's may be.
     func watch(_ window: NSWindow, as surface: CaptureSurface) {
+        add(window, surface, replacing: surface)
+    }
+
+    /// A sheet is a window of its own, and the window it hangs from leaving captures does not take it along. It goes by what that window shows.
+    func watchSheet(_ window: NSWindow, on surface: CaptureSurface = .main) {
+        add(window, surface, replacing: nil)
+    }
+
+    private func add(_ window: NSWindow, _ surface: CaptureSurface, replacing: CaptureSurface?) {
         if watches.contains(where: { $0.window === window }) { return }
-        watches.removeAll { $0.window == nil || $0.surface == surface }
+        watches.removeAll { $0.window == nil || $0.surface == replacing }
         watches.append(Watch(window: window, surface: surface))
-        if following {
-            apply()
-        } else {
-            following = true
-            follow()
-        }
+        // A look from before this window read only what the others needed.
+        follow()
     }
 
     /// Whether this window has been taken out of captures, so that only a new one can be seen in them again.
@@ -149,17 +156,54 @@ final class CaptureKeeper {
     }
 
     private func follow() {
+        latestLook += 1
+        let look = latestLook
         withObservationTracking {
             apply()
         } onChange: { [weak self] in
-            Task { @MainActor in self?.follow() }
+            Task { @MainActor in
+                guard let self, self.latestLook == look else { return }
+                self.follow()
+            }
         }
     }
 
     private func apply() {
-        for watch in watches where !watch.hidden && hides(watch.surface) {
+        for watch in watches {
+            // Asked of a hidden window too: a look that reads nothing is the last one, and the next window would go unwatched.
+            guard hides(watch.surface), !watch.hidden else { continue }
             watch.hidden = true
             watch.window?.sharingType = .none
+        }
+    }
+}
+
+/// Put inside a sheet, it tells the keeper about the window that sheet turned out to be in.
+struct CaptureSheetMark: NSViewRepresentable {
+    let keeper: CaptureKeeper
+
+    func makeNSView(context: Context) -> Mark {
+        Mark(keeper: keeper)
+    }
+
+    func updateNSView(_ view: Mark, context: Context) {}
+
+    final class Mark: NSView {
+        private let keeper: CaptureKeeper
+
+        init(keeper: CaptureKeeper) {
+            self.keeper = keeper
+            super.init(frame: .zero)
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) {
+            fatalError("Not made from a file")
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let window { keeper.watchSheet(window) }
         }
     }
 }

@@ -89,6 +89,7 @@ private struct SessionChangesContent: View {
         .readsFeed(store)
         .sheet(item: $shownDiff) { request in
             DiffSheet(title: request.title, entries: request.entries, store: store)
+                .background(CaptureSheetMark(keeper: model.capture))
         }
     }
 }

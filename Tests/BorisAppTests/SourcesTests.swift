@@ -494,6 +494,98 @@ struct CaptureTests {
         #expect(await waitUntil(seconds: 5) { serverSharingState(new) == hidden })
     }
 
+    /// With every window hidden nothing was left to keep an eye on the model, so the next window went unwatched. Only a pause shows it: without one the old look is still pending.
+    @Test("Новое окно следит за запретом, даже если до него все окна были скрыты и всё давно затихло")
+    func newWindowAfterEverythingSettled() async {
+        let model = busyModel()
+        model.settings.sources[.cowork].capture = false
+        let old = offScreenWindow()
+        model.capture.watch(old, as: .main)
+        #expect(await waitUntil(seconds: 5) { serverSharingState(old) == hidden })
+        model.settings.sources[.cowork].capture = true
+        try? await Task.sleep(for: .milliseconds(200))
+
+        let new = offScreenWindow()
+        defer {
+            for window in [old, new] {
+                window.orderOut(nil)
+                window.close()
+            }
+        }
+        model.capture.watch(new, as: .main)
+        try? await Task.sleep(for: .milliseconds(200))
+        #expect(serverSharingState(new) == readOnly)
+        model.settings.sources[.cowork].capture = false
+        #expect(await waitUntil(seconds: 5) { serverSharingState(new) == hidden }, "окно с данными Cowork должно уйти из снимков")
+    }
+
+    @Test("Второе окно следит и за тем, что первому было неважно")
+    func secondSurfaceIsTrackedToo() async {
+        let model = makeModel()
+        model.page = .walrus
+        model.settings.sources[.cowork].capture = false
+        let main = offScreenWindow()
+        let mini = offScreenWindow()
+        defer {
+            for window in [main, mini] {
+                window.orderOut(nil)
+                window.close()
+            }
+        }
+        model.capture.watch(main, as: .main)
+        try? await Task.sleep(for: .milliseconds(100))
+        model.capture.watch(mini, as: .mini)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(serverSharingState(mini) == readOnly)
+        // The walrus page looks at no sessions, but the mini window shows every one of them.
+        DevData.busy.fill(model)
+        #expect(await waitUntil(seconds: 5) { serverSharingState(mini) == hidden })
+        #expect(serverSharingState(main) == readOnly)
+    }
+
+    /// A sheet is a window of its own, and the window it hangs from leaving captures does not take it along.
+    @Test("Лист с правками уходит из снимков, как и окно, на котором он открыт")
+    func sheetFollowsItsWindow() async {
+        let model = busyModel()
+        model.settings.sources[.cowork].capture = false
+        let main = offScreenWindow()
+        let sheet = offScreenWindow()
+        defer {
+            for window in [main, sheet] {
+                window.orderOut(nil)
+                window.close()
+            }
+        }
+        model.capture.watch(main, as: .main)
+        sheet.contentView = NSHostingView(rootView: Color.clear.background(CaptureSheetMark(keeper: model.capture)))
+        sheet.contentView?.layoutSubtreeIfNeeded()
+        #expect(await waitUntil(seconds: 5) { serverSharingState(sheet) == hidden })
+        #expect(serverSharingState(main) == hidden, "лист не отнимает слежку у самого окна")
+        #expect(!sheet.isKeyWindow)
+    }
+
+    @Test("Лист на странице без запрещённых данных остаётся виден, а новые данные его скрывают")
+    func sheetOnAllowedPage() async {
+        let model = busyModel()
+        model.settings.sources[.cowork].capture = false
+        model.openSession(DevProjects.working)
+        let main = offScreenWindow()
+        let sheet = offScreenWindow()
+        defer {
+            for window in [main, sheet] {
+                window.orderOut(nil)
+                window.close()
+            }
+        }
+        model.capture.watch(main, as: .main)
+        sheet.contentView = NSHostingView(rootView: Color.clear.background(CaptureSheetMark(keeper: model.capture)))
+        sheet.contentView?.layoutSubtreeIfNeeded()
+        try? await Task.sleep(for: .milliseconds(200))
+        #expect(serverSharingState(sheet) == readOnly)
+        model.choose(.now)
+        #expect(await waitUntil(seconds: 5) { serverSharingState(sheet) == hidden })
+    }
+
     @Test("То же окно, отданное снова, не считается новым")
     func sameWindowKeepsItsRecord() async {
         let model = busyModel()
