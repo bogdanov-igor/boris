@@ -94,6 +94,8 @@ public struct TokenBook: Sendable {
     public let today: String
     /// The oldest day there are logs for. Nil when there are none.
     public let earliestDay: String?
+    /// How many sessions spent anything today.
+    public let sessionsToday: Int
     private let reports: [UsagePeriod: PeriodReport]
     private let days: [String: TokenUsage]
     /// The whole session: its main agent and everything under it.
@@ -143,9 +145,11 @@ public struct TokenBook: Sendable {
         var agents: [String: TokenUsage] = [:]
         var runs: [String: TokenUsage] = [:]
         var earliest: String?
+        var todaysSessions: Set<String> = []
 
         for record in records where record.usage.total > 0 {
             let usage = record.usage
+            if record.day == today { todaysSessions.insert(record.sessionId) }
             let cost = price(record.model)
             let environment = WorkEnvironment(entrypoint: record.entrypoint ?? entrypoints[record.sessionId], unlisted: false)
             let keys = [
@@ -191,6 +195,7 @@ public struct TokenBook: Sendable {
         self.agents = agents
         self.runs = runs
         earliestDay = earliest
+        sessionsToday = todaysSessions.count
     }
 
     /// A period older than the logs starts where the logs start.

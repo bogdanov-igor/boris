@@ -31,6 +31,17 @@ public struct FeedEntry: Sendable, Equatable, Identifiable {
     }
 }
 
+/// A failure for a feed to open at. It knows the id of the call that failed, when a call failed, and always when.
+public struct FeedTarget: Sendable, Equatable {
+    public var stepId: String
+    public var at: Date
+
+    public init(stepId: String, at: Date) {
+        self.stepId = stepId
+        self.at = at
+    }
+}
+
 /// Which agents a feed shows.
 public enum AgentFilter: Sendable, Hashable {
     case all
@@ -63,6 +74,13 @@ public enum SessionFeed {
             return a.index < b.index
         }
         return dated.suffix(limit).map(\.entry)
+    }
+
+    /// The record to go to for a failure: the failed call when the feed has it, otherwise the last record before that moment.
+    /// Nil means the feed starts later than the failure, so there is nothing to show of it.
+    public static func place(ofFailure target: FeedTarget, in entries: [FeedEntry]) -> String? {
+        if let call = entries.first(where: { $0.step?.id == target.stepId }) { return call.id }
+        return entries.last { ($0.item.at ?? .distantFuture) <= target.at }?.id
     }
 
     /// What a feed shows while the person reads older records. Those the limit has just dropped stay where they were, or what they are reading would move under them.

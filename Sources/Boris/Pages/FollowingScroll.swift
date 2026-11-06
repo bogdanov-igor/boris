@@ -8,6 +8,8 @@ struct FollowingScroll<Content: View>: View {
     var ids: [String]
     /// A short feed sits at the bottom, as a log does.
     var alignsToBottom = false
+    /// A record to go to once, instead of the newest one. The person is then reading, as if they had scrolled there.
+    var target: String?
     var store: FeedStore
     @ViewBuilder var content: () -> Content
 
@@ -52,6 +54,17 @@ struct FollowingScroll<Content: View>: View {
                         }
                         .buttonStyle(.plain)
                         .padding(.bottom, 16)
+                    }
+                }
+                .onChange(of: target, initial: true) { _, target in
+                    guard let target else { return }
+                    following = false
+                    proxy.scrollTo(target, anchor: .center)
+                    // Rows of a lazy list get their real height on the way, so the first go can land a little off, or still be at the end.
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(150))
+                        following = false
+                        proxy.scrollTo(target, anchor: .center)
                     }
                 }
             }

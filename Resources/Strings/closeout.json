@@ -1,0 +1,9 @@
+{
+  "Nobody is waiting for an answer. There was %lld session today.": "Никто не ждёт ответа. Сегодня была %lld сессия.",
+  "Nobody is waiting for an answer. There were %lld sessions today.": {
+    "one": "Никто не ждёт ответа. Сегодня была %lld сессия.",
+    "few": "Никто не ждёт ответа. Сегодня было %lld сессии.",
+    "many": "Никто не ждёт ответа. Сегодня было %lld сессий.",
+    "other": "Никто не ждёт ответа. Сегодня было %lld сессии."
+  }
+}

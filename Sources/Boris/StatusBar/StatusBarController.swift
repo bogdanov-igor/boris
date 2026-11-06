@@ -27,8 +27,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         popover.behavior = .transient
         popover.delegate = self
         popover.animates = false
-        popover.contentViewController = NSHostingController(rootView: MiniWindowView(model: model, openMain: { [weak self] in
+        popover.contentViewController = NSHostingController(rootView: MiniWindowView(model: model, close: { [weak self] in
             self?.closeMiniWindow()
+        }, openMain: { [weak self] in
             self?.onOpenMain?()
         }))
 

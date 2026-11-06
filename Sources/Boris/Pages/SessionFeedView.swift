@@ -18,6 +18,8 @@ private struct SessionFeedContent: View {
     @State private var store: FeedStore
     @State private var agent = AgentFilter.all
     @State private var folding = FeedFolding()
+    /// The record a failure was opened at. It stays marked until the person leaves the page.
+    @State private var marked: String?
 
     init(model: AppModel, session: WorkSession) {
         self.model = model
@@ -30,6 +32,12 @@ private struct SessionFeedContent: View {
 
     private var mode: DisplayMode { model.settings.displayMode }
     private var entries: [FeedEntry] { SessionFeed.visible(store.entries, agent: agent) }
+
+    /// Only once everything is read: the record nearest in time may belong to an agent that has not been read yet.
+    private var targetEntry: String? {
+        guard store.loaded, let target = model.feedTarget else { return nil }
+        return SessionFeed.place(ofFailure: target, in: entries)
+    }
 
     private var thinkers: [FeedStore.Thinker] {
         // The simple view tells about everybody at once, and has no way to choose.
@@ -53,6 +61,13 @@ private struct SessionFeedContent: View {
             case let id?: agent = .one(id)
             }
         }
+        // Going there happens once, and the scroll view holds on to it from here. A feed that starts later than the failure just stays at its end.
+        .task(id: TargetWait(target: model.feedTarget, loaded: store.loaded)) {
+            guard store.loaded, model.feedTarget != nil else { return }
+            if let targetEntry { marked = targetEntry }
+            await Task.yield()
+            model.feedTarget = nil
+        }
     }
 
     // MARK: - Technical
@@ -75,10 +90,13 @@ private struct SessionFeedContent: View {
             if entries.isEmpty, thinkers.isEmpty {
                 empty
             } else {
-                FollowingScroll(ids: entries.map(\.id), store: store) {
+                FollowingScroll(ids: entries.map(\.id), target: targetEntry, store: store) {
                     LazyVStack(alignment: .leading, spacing: 3) {
                         if store.startedPartWay { partWayNote }
-                        ForEach(entries) { row($0) }
+                        ForEach(entries) { entry in
+                            row(entry)
+                                .background(RoundedRectangle(cornerRadius: DesignMetrics.radiusMedium).fill(entry.id == marked ? Palette.redSoft : .clear))
+                        }
                         thinkingRows(named: true)
                     }
                     .padding(EdgeInsets(top: 12, leading: 16, bottom: 20, trailing: 16))
@@ -200,6 +218,11 @@ private struct SessionFeedContent: View {
             }
         }
     }
+}
+
+private struct TargetWait: Equatable {
+    var target: FeedTarget?
+    var loaded: Bool
 }
 
 /// A line of the simple view. A line about files opens into those files.
