@@ -19,7 +19,11 @@ final class NoBanners: BannerPosting {
     /// What would have reached the person, for a test to look at.
     private(set) var posted: [MacBanner] = []
     func refreshPermission() {}
-    func post(_ banner: MacBanner) { posted.append(banner) }
+    func post(_ banner: MacBanner) {
+        posted.append(banner)
+        AppLog.note(.bannerSent, banner.about)
+    }
+
     func remove(ids: [String]) {}
 }
 
@@ -60,7 +64,14 @@ final class BannerChannel: NSObject, BannerPosting, UNUserNotificationCenterDele
         content.body = banner.body
         content.threadIdentifier = "boris"
         content.userInfo = banner.route.userInfo
-        center.add(UNNotificationRequest(identifier: banner.id, content: content, trigger: nil))
+        let about = banner.about
+        center.add(UNNotificationRequest(identifier: banner.id, content: content, trigger: nil)) { error in
+            if let error {
+                AppLog.note(.bannerFailed, about, .failure(error))
+            } else {
+                AppLog.note(.bannerSent, about)
+            }
+        }
     }
 
     func remove(ids: [String]) {

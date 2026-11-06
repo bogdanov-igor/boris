@@ -88,7 +88,7 @@ enum DevSnapshot {
     #if DEBUG
     private enum Screen: String, CaseIterable {
         case now, projects, spend, requests, activity, losses, walrus, mini, load
-        case general, sources, surfaces, notifications, connections, about
+        case general, sources, surfaces, notifications, connections, log, logProblems, logHuge, about
         case license, thirdParty, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
         case connectFailed, spendFolderMissing, generalTaken, generalApproval, connectionsConnected, connectionsBroken, connectionsSilent, connectionsFolderMissing, connectionsFormat, connectionsEntries
         case walrusThemes, walrusPacks, walrusError, walrusLine, walrusSurfaces
@@ -112,6 +112,7 @@ enum DevSnapshot {
             if self == .license || self == .thirdParty { return .about }
             if self == .generalTaken || self == .generalApproval { return .general }
             if rawValue.hasPrefix("connections") { return .connections }
+            if self == .logProblems || self == .logHuge { return .log }
             if self == .surfacesLast || self == .surfacesHotKey || self == .surfacesGone { return .surfaces }
             if rawValue.hasPrefix("notifications"), self != .notificationsPreview { return .notifications }
             return SettingsSection(rawValue: rawValue)
@@ -162,13 +163,14 @@ enum DevSnapshot {
             model.projectFilter.period = .dates(from: Date().addingTimeInterval(-10 * 86400), to: Date())
             view = AnyView(ProjectDatesPicker(model: model).background(Palette.pop))
             canvas = CGSize(width: 240, height: 0)
-        case .general, .sources, .surfaces, .notifications, .connections, .about, .license, .thirdParty, .generalTaken, .generalApproval, .connectionsConnected, .connectionsBroken, .connectionsSilent, .connectionsFolderMissing, .connectionsFormat, .connectionsEntries, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
+        case .general, .sources, .surfaces, .notifications, .connections, .log, .logProblems, .logHuge, .about, .license, .thirdParty, .generalTaken, .generalApproval, .connectionsConnected, .connectionsBroken, .connectionsSilent, .connectionsFolderMissing, .connectionsFormat, .connectionsEntries, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
             if screen == .surfacesLast { settings.surfaces = SurfaceSwitches(icon: false, notch: true, mini: false) }
             if screen == .surfacesHotKey {
                 settings.surfaces = SurfaceSwitches(icon: true, notch: false, mini: true)
                 model.hotKeyTaken = true
             }
             if screen == .surfacesGone { settings.surfaceScreen = .screen(id: "gone", name: "Studio Monitor") }
+            if screen == .log || screen == .logProblems || screen == .logHuge { DevLogData.fill(model, data: data, problems: screen == .logProblems, huge: screen == .logHuge) }
             let actions = SettingsActions()
             switch screen {
             case .generalTaken:

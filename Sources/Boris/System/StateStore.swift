@@ -22,14 +22,22 @@ final class StateStore: Sendable {
 
     init(folder: URL = BorisPaths.support) {
         self.folder = folder
-        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        } catch {
+            AppLog.note(.fileWriteFailed, .word(.ownFolder), .failure(error))
+        }
     }
 
     private var stateURL: URL { folder.appendingPathComponent("state.json") }
 
     /// A broken file means every run counts as already seen, and the app simply goes on.
     func loadState() -> AppState {
-        guard let data = try? Data(contentsOf: stateURL), let state = try? JSONDecoder().decode(AppState.self, from: data) else { return AppState() }
+        guard let data = try? Data(contentsOf: stateURL) else { return AppState() }
+        guard let state = try? JSONDecoder().decode(AppState.self, from: data) else {
+            AppLog.note(.fileBroken, .word(.stateFile))
+            return AppState()
+        }
         return state
     }
 
@@ -40,7 +48,11 @@ final class StateStore: Sendable {
     private func write<T: Encodable & Sendable>(_ value: T, to url: URL) {
         queue.async {
             guard let data = try? JSONEncoder().encode(value) else { return }
-            try? data.write(to: url, options: .atomic)
+            do {
+                try data.write(to: url, options: .atomic)
+            } catch {
+                AppLog.note(.fileWriteFailed, .word(.stateFile), .failure(error))
+            }
         }
     }
 

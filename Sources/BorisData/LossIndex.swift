@@ -656,7 +656,11 @@ public actor LossIndex {
         guard let cacheFile else { return }
         try? FileManager.default.createDirectory(at: cacheFile.deletingLastPathComponent(), withIntermediateDirectories: true)
         if let data = try? JSONEncoder().encode(Cache(version: Self.version, transcripts: transcripts)) {
-            try? data.write(to: cacheFile, options: .atomic)
+            do {
+                try data.write(to: cacheFile, options: .atomic)
+            } catch {
+                AppLog.note(.fileWriteFailed, .word(.lossCache), .failure(error))
+            }
         }
     }
 }

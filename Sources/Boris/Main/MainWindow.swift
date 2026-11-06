@@ -43,6 +43,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             }
             window = created
         }
+        if window?.isVisible != true { AppLog.note(.windowOpened, .word(.mainWindow)) }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
         model.setLookingClosely(true, from: .mainWindow)
@@ -53,6 +54,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        AppLog.note(.windowClosed, .word(.mainWindow))
         model.setLookingClosely(false, from: .mainWindow)
     }
 }
@@ -233,7 +235,7 @@ struct ConnectionNotices: View {
             }
         case .hooksDamaged:
             NoticeBanner(kind: .failed, tone: .problem, title: L("Answers from Boris are not working"), text: L("The hooks in Claude's settings were removed or changed. Data keeps updating.")) {
-                Button(L("Repair")) { connect.repair(model) }.buttonStyle(PlainActionStyle())
+                Button(L("Repair")) { connect.repair(model, asker: .repairInMainWindow) }.buttonStyle(PlainActionStyle())
             }
         case .hooksSilent:
             NoticeBanner(kind: .unknown, title: L("No events from the hooks"), text: L("The hooks are connected and Claude is working, but no events are coming. Start a new Claude session, and if that does not help, copy the diagnostics.")) {

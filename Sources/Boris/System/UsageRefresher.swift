@@ -12,6 +12,7 @@ final class UsageRefresher {
     /// The last attempt did not work out. The old values stay, so this is a remark, not a failure of the work.
     private(set) var failed = false
     @ObservationIgnored private var lastAttempt: Date?
+    @ObservationIgnored private var startedAt = Date()
     @ObservationIgnored var onFinished: (() -> Void)?
 
     init(settings: AppSettings) {
@@ -30,24 +31,29 @@ final class UsageRefresher {
             fetchedAt: fetchedAt,
             lastAttempt: lastAttempt
         ) else { return }
-        refreshNow()
+        refreshNow(why: .onSchedule)
         #endif
     }
 
-    func refreshNow() {
+    func refreshNow(why: LogWord = .byButton) {
         guard !refreshing else { return }
         lastAttempt = Date()
         #if DEBUG
         // Debug builds, tests and snapshots must never start the real Claude Code. The button then shows what a failure looks like.
         failed = true
+        AppLog.note(.limitsRefreshSkipped)
         #else
         refreshing = true
+        startedAt = Date()
+        AppLog.note(.limitsRefreshStarted, .word(why))
         failed = false
         let paths = ClaudePaths.resolve(custom: settings.claudeFolder)
         let configFolder = settings.claudeFolder.isEmpty ? ProcessInfo.processInfo.environment["CLAUDE_CONFIG_DIR"] : settings.claudeFolder
         let owner = Owner(self)
         DispatchQueue.global(qos: .utility).async {
-            let outcome = ClaudeCodeBinary.find().map {
+            let binary = ClaudeCodeBinary.find()
+            if binary == nil { AppLog.note(.limitsRefreshProblem, .word(.noClaudeBinary)) }
+            let outcome = binary.map {
                 UsageProbe(binary: $0, folder: BorisPaths.usageProbeFolder, profile: paths.profile, configFolder: configFolder).run()
             } ?? .failed
             Task { @MainActor in owner.refresher?.finish(outcome) }
@@ -58,6 +64,7 @@ final class UsageRefresher {
     private func finish(_ outcome: UsageProbe.Outcome) {
         refreshing = false
         failed = outcome == .failed
+        AppLog.note(failed ? .limitsRefreshFailed : .limitsRefreshDone, .seconds(Date().timeIntervalSince(startedAt)))
         onFinished?()
     }
 

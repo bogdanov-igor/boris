@@ -1,4 +1,5 @@
 import AppKit
+import BorisCore
 import ServiceManagement
 
 /// The launchd job, apart from the system, so that what is decided about it can be checked without launchd.
@@ -129,6 +130,7 @@ final class LaunchCoordinator {
             kick.waitUntilExit()
             return kick.terminationStatus == 0
         } catch {
+            AppLog.note(.autostartFailed, .failure(error))
             return false
         }
     }
@@ -178,9 +180,11 @@ final class LaunchCoordinator {
             } else {
                 try agent.unregister()
             }
+            AppLog.note(.autostartChanged, .flag(on))
             return true
         } catch {
             noteSettingsToReopen(false)
+            AppLog.note(.autostartFailed, .failure(error))
             return false
         }
     }

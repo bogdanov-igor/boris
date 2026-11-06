@@ -128,6 +128,7 @@ final class SurfaceController {
     private var mouseMonitor: Any?
     private var pointerWatch: Timer?
     private var observers: [NSObjectProtocol] = []
+    private var panelLog = PanelLogTrack()
 
     var onOpenMain: (() -> Void)?
     var onOpenSettings: ((SettingsSection) -> Void)?
@@ -272,6 +273,7 @@ final class SurfaceController {
         self.screen = screen
         let isOpen = behavior.isOpen
         if !isOpen { edgeEntry = nil }
+        panelLog.note(isOpen: isOpen, hovering: pointerInside)
         guard let placement = stage.arrange(inputs, on: screen, isOpen: isOpen, contentHeight: contentHeight, around: edgeEntry) else {
             self.placement = nil
             panel.orderOut(nil)

@@ -26,6 +26,7 @@ final class NotificationHub {
     @ObservationIgnored private let voice = Voice()
     @ObservationIgnored private var telegram: TelegramChannel?
     @ObservationIgnored private var router = NotificationRouter()
+    @ObservationIgnored private var permissionKnown = false
 
     /// - Parameter live: false reaches nothing outside, as in a snapshot.
     init(settings: AppSettings, live: Bool) {
@@ -35,7 +36,11 @@ final class NotificationHub {
         banners = live ? BannerChannel() : NoBanners()
         voice.volume = { [settings] in settings.notifications.volume }
         banners.onClick = { [weak self] route in self?.onOpen?(route) }
-        banners.onPermissionChange = { [weak self] denied in self?.macDenied = denied }
+        banners.onPermissionChange = { [weak self] denied in
+            if self?.permissionKnown != true || self?.macDenied != denied { AppLog.note(denied ? .bannersDenied : .bannersAllowed) }
+            self?.permissionKnown = true
+            self?.macDenied = denied
+        }
         guard live else { return }
         let owner = WeakHub(self)
         telegram = TelegramChannel(

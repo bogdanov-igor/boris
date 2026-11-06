@@ -1,3 +1,4 @@
+import BorisCore
 import Foundation
 import IOKit.pwr_mgt
 
@@ -38,9 +39,11 @@ final class PowerGuard {
     func update(shouldHold: Bool) {
         if shouldHold, held == nil {
             held = blocker.hold(reason: "Boris: Claude is working")
+            AppLog.note(held != nil ? .keepAwakeOn : .keepAwakeFailed)
         } else if !shouldHold, let id = held {
             blocker.release(id)
             held = nil
+            AppLog.note(.keepAwakeOff)
         }
     }
 }

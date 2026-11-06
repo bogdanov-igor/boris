@@ -33,6 +33,10 @@ final class HookController {
     private var sightings: [UUID: Sighting] = [:]
     private var lastTarget: UUID?
     private var settledAt = Date.distantPast
+    @ObservationIgnored private var loggedStatus: HookInstaller.Status?
+    @ObservationIgnored private var heardFromHooks = false
+    /// Which session a request came from, until the log has told how it ended. The history itself does not keep this.
+    @ObservationIgnored private var askedBy: [UUID: String] = [:]
 
     private struct Sighting {
         var request: UUID
@@ -80,6 +84,7 @@ final class HookController {
     func refresh() {
         guard live || checksSettingsWhileOff else { return }
         status = HookInstaller.status(at: settingsFile, plan: plan)
+        noteStatus()
         guard live else { return }
         let shouldListen = status == .installed || status == .outdated || HookServer.movedPath != nil
         if shouldListen { startServer() } else { stopServer() }
@@ -94,19 +99,49 @@ final class HookController {
     }
 
     /// Also puts damaged hooks back: the same entries are written again.
-    func connect() throws {
-        try guardRealSettings()
-        try HookInstaller.install(at: settingsFile, plan: plan)
+    /// - Parameter asker: what the person pressed, for the log.
+    func connect(asker: LogWord = .unknownCaller) throws {
+        let repairing = connection == .damaged
+        try loggingFailure(asker: asker) {
+            try guardRealSettings()
+            try HookInstaller.install(at: settingsFile, plan: plan)
+        }
+        AppLog.note(repairing ? .hooksRepaired : .hooksConnected, .word(asker))
         settings.hooksWanted = true
         since = Date()
         refresh()
     }
 
-    func disconnect() throws {
-        try guardRealSettings()
-        try HookInstaller.uninstall(at: settingsFile)
+    func disconnect(asker: LogWord = .unknownCaller) throws {
+        try loggingFailure(asker: asker) {
+            try guardRealSettings()
+            try HookInstaller.uninstall(at: settingsFile)
+        }
+        AppLog.note(.hooksDisconnected, .word(asker))
         settings.hooksWanted = false
         refresh()
+    }
+
+    private func loggingFailure(asker: LogWord, _ change: () throws -> Void) throws {
+        do {
+            try change()
+        } catch {
+            if !Self.mayChange(settingsFile) {
+                AppLog.note(.hooksChangeRefused, .word(asker))
+            } else {
+                AppLog.note(.hooksChangeFailed, .word(asker), .failure(error))
+            }
+            throw error
+        }
+    }
+
+    /// Only when it changes: the settings are looked at twice a minute.
+    private func noteStatus() {
+        guard status != loggedStatus else { return }
+        let lost = loggedStatus == .installed && settings.hooksWanted && (status == .notInstalled || status == .outdated)
+        loggedStatus = status
+        AppLog.note(.hooksStatus, .word(status.logWord))
+        if lost { AppLog.note(.hooksLost) }
     }
 
     /// A developer's build lives in a folder that goes away, so its path must never land in the person's real Claude settings.
@@ -146,14 +181,22 @@ final class HookController {
         }
         serverRunning = server.start()
         self.server = server
+        heardFromHooks = false
+        AppLog.note(serverRunning ? .hookServerStarted : .hookServerFailed)
     }
 
     /// Every held hook exits without a decision, so whatever is open stays in Claude.
     func stopServer() {
-        server?.stop()
+        if let server {
+            server.stop()
+            AppLog.note(.hookServerStopped)
+        }
         server = nil
         serverRunning = false
-        for request in queue.open { queue.expire(request.id) }
+        for request in queue.open {
+            AppLog.note(.requestTimedOut, .tool(request.tool), .session(request.session))
+            queue.expire(request.id)
+        }
         drafts = [:]
         syncKeys()
     }
@@ -178,8 +221,10 @@ final class HookController {
         if queue.decisions.last?.id != before { settle(savingFrom: before) }
     }
 
-    private func add(_ request: PendingPermission) {
+    func add(_ request: PendingPermission) {
         queue.add(request)
+        askedBy[request.id] = request.session
+        AppLog.note(.requestAsked, .tool(request.tool), .session(request.session))
         settle(savingFrom: queue.decisions.last?.id)
     }
 
@@ -191,6 +236,9 @@ final class HookController {
     }
 
     private func expire(_ id: UUID) {
+        if let request = queue.open.first(where: { $0.id == id }) {
+            AppLog.note(.requestTimedOut, .tool(request.tool), .session(request.session))
+        }
         queue.expire(id)
         drafts[id] = nil
         settle(savingFrom: queue.decisions.last?.id)
@@ -203,6 +251,10 @@ final class HookController {
     }
 
     private func receive(_ signal: HookSignal) {
+        if !heardFromHooks {
+            heardFromHooks = true
+            AppLog.note(.hookFirstEvent)
+        }
         let before = queue.decisions.last?.id
         release(queue.note(signal, now: Date()))
         settle(savingFrom: before)
@@ -217,18 +269,34 @@ final class HookController {
     }
 
     private func settle(savingFrom before: UUID?) {
+        if queue.decisions.last?.id != before { noteEndings(after: before) }
         if queue.decisions.last?.id != before, live { RequestLog.save(queue.decisions) }
         syncKeys()
         onChange?()
     }
 
+    /// However a request ended, whoever answered it: the history got new lines, and here they go to the log.
+    private func noteEndings(after before: UUID?) {
+        let ended = queue.decisions.reversed().prefix { $0.id != before }
+        for decision in ended.reversed() {
+            AppLog.note(.requestEnded, .tool(decision.brief.tool), .word(decision.outcome.logWord), .word(decision.place.logWord), .seconds(decision.waited), .session(askedBy.removeValue(forKey: decision.id) ?? ""))
+        }
+    }
+
     /// The answer goes only to this request. Its text and everything typed into the card leave memory with it.
     func answer(_ id: UUID, _ answer: HookAnswer, via place: RequestPlace, now: Date = Date()) {
-        if case .deny = answer {} else if now.timeIntervalSince(settledAt) < Self.settleTime { return }
+        let tool = queue.open.first { $0.id == id }?.tool ?? ""
+        if case .deny = answer {} else if now.timeIntervalSince(settledAt) < Self.settleTime {
+            AppLog.note(.requestAnswerRefused, .tool(tool), .word(.tooSoon))
+            return
+        }
         let before = queue.decisions.last?.id
         guard let session = queue.open.first(where: { $0.id == id })?.session,
               queue.answered(id, with: answer, place: place, now: now)
-        else { return }
+        else {
+            AppLog.note(.requestAnswerRefused, .tool(tool), .word(.tooLate))
+            return
+        }
         drafts[id] = nil
         server?.answer(id, answer)
         settledAt = now
@@ -309,7 +377,10 @@ final class HookController {
         guard let keys else { return }
         let wanted = keysWanted
         keys.apply(allow: wanted.allow ? settings.allowKey : nil, deny: wanted.deny ? settings.denyKey : nil)
-        if keysTaken != keys.taken { keysTaken = keys.taken }
+        if keysTaken != keys.taken {
+            keysTaken = keys.taken
+            AppLog.note(keys.taken ? .answerKeysTaken : .answerKeysFree)
+        }
     }
 
     /// After the person chooses other keys.

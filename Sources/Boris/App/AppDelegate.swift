@@ -42,8 +42,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             #endif
             exit(2)
         }
+        startLog()
         registerAutostartOnce()
         if managesAutostart, launch.handOverToAgentIfNeeded() {
+            AppLog.note(.handedToAgent)
             NSApp.terminate(nil)
             return
         }
@@ -70,7 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let model else { return }
             // Repairing is one button: the person already agreed to these entries.
             if model.hooks.connection == .damaged {
-                connect.repair(model)
+                connect.repair(model, asker: .repairOnRequestCard)
                 if connect.stage != .closed { main?.show() }
             } else {
                 main?.show()
@@ -96,7 +98,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let center = NSWorkspace.shared.notificationCenter
         observers.append(center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak model] _ in
+            AppLog.note(.macWoke)
             MainActor.assumeIsolated { model?.noteWake() }
+        })
+        observers.append(center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { _ in
+            AppLog.note(.macSleeping)
         })
         launch.listen { [weak statusBar] in statusBar?.toggleMiniWindow() }
         registerHotKey()
@@ -110,12 +116,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         model?.hooks.quit()
         model?.persistNow()
+        SettingsLog.flush()
+        AppLog.note(.appQuit)
+        AppLog.flush()
+    }
+
+    /// Only here, in the app itself: tests, snapshots and tools have no log file.
+    private func startLog() {
+        AppLog.add(AppLogStore())
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? BorisCore.version
+        #if DEBUG
+        AppLog.note(.appStarted, .version(version), .word(.debugBuild))
+        #else
+        AppLog.note(.appStarted, .version(version), .word(.releaseBuild))
+        #endif
     }
 
     private func registerAutostartOnce() {
         let key = "autostartConfigured"
         guard managesAutostart, !UserDefaults.standard.bool(forKey: key) else { return }
-        try? launch.agent.register()
+        do {
+            try launch.agent.register()
+            AppLog.note(.autostartChanged, .flag(true))
+        } catch {
+            AppLog.note(.autostartFailed, .failure(error))
+        }
         UserDefaults.standard.set(true, forKey: key)
     }
 
@@ -141,11 +166,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotKey.unregister()
         model.hotKeyTaken = false
         defer { model.settings.surfaces = model.settings.surfaces.withWayIn(hotKeyWorks: model.hotKeyWorks) }
-        guard model.settings.hotKeyEnabled else { return }
+        guard model.settings.hotKeyEnabled else {
+            AppLog.note(.hotKeyOff)
+            return
+        }
         do {
             try hotKey.register(model.settings.hotKey) { [weak self] in self?.statusBar?.toggleMiniWindow() }
+            AppLog.note(.hotKeyRegistered, .keys(model.settings.hotKey.label))
         } catch {
             model.hotKeyTaken = true
+            AppLog.note(.hotKeyTaken, .keys(model.settings.hotKey.label))
         }
     }
 }
