@@ -32,6 +32,78 @@ struct TokenIndexTests {
         }
     }
 
+    @Test("Названная папка читается сама, а остальная история не трогается")
+    func readsOnlyNamedFolders() async {
+        let folder = TempFolder()
+        let paths = ClaudePaths(root: folder.url)
+        folder.write("projects/p/a.jsonl", line("a", input: 1, output: 0))
+        folder.write("projects/q/b.jsonl", line("b", input: 10, output: 0))
+        folder.write("projects/q/b/subagents/agent-1.jsonl", line("c", input: 100, output: 0))
+        folder.write("projects/q/b/subagents/workflows/wf_1/agent-2.jsonl", line("d", input: 1000, output: 0))
+        let index = TokenIndex(cacheFile: nil, timeZone: utc)
+        let root = paths.projects.path
+
+        #expect(await index.update(folders: ["\(root)/p/"], roots: [paths]))
+        #expect(await total(index) == 1)
+        await index.update(folders: ["\(root)/q/b/subagents/workflows/wf_1"], roots: [paths])
+        #expect(await total(index) == 1001)
+        await index.update(folders: ["\(root)/q/b/subagents"], roots: [paths])
+        #expect(await total(index) == 1101)
+        // These hold no transcripts of their own, and a path from elsewhere is not Claude's.
+        #expect(await !index.update(folders: [root, "\(root)/q/b", "\(root)/q/b/subagents/workflows", folder.url.appendingPathComponent("sessions").path, "/somewhere/else/p"], roots: [paths]))
+        #expect(await total(index) == 1101)
+        await index.update(roots: [paths])
+        #expect(await total(index) == 1111)
+    }
+
+    @Test("Скрытая папка обновления лимитов не читается и по названной папке")
+    func namedFolderSkipsHidden() async {
+        let folder = TempFolder()
+        let paths = ClaudePaths(root: folder.url)
+        folder.write("projects/\(BorisPaths.usageProbeProject)/probe.jsonl", line("a"))
+        let index = TokenIndex(cacheFile: nil, timeZone: utc)
+        #expect(await !index.update(folders: [paths.projects.appendingPathComponent(BorisPaths.usageProbeProject).path], roots: [paths]))
+        #expect(await total(index) == 0)
+    }
+
+    @Test("Кэш переписывается не чаще раза в минуту, а при завершении дописывается")
+    func cacheSavedRarely() async throws {
+        let folder = TempFolder()
+        let paths = ClaudePaths(root: folder.url)
+        let cache = folder.url.appendingPathComponent("support/index.json")
+        folder.write("projects/p/a.jsonl", line("a", input: 1, output: 0))
+        let index = TokenIndex(cacheFile: cache, timeZone: utc)
+        await index.update(roots: [paths])
+        let first = try Data(contentsOf: cache)
+
+        for number in 1...3 {
+            folder.append("projects/p/a.jsonl", line("more\(number)", input: 1, output: 0))
+            await index.update(folders: [paths.projects.appendingPathComponent("p").path], roots: [paths])
+        }
+        #expect(await total(index) == 4)
+        #expect(try Data(contentsOf: cache) == first)
+
+        await index.flush()
+        let again = TokenIndex(cacheFile: cache, timeZone: utc)
+        #expect(await total(again) == 4)
+    }
+
+    @Test("Кэш читается при первом обращении, а не при создании, которое бывает на главном потоке")
+    func cacheLoadedOnFirstUse() async throws {
+        let folder = TempFolder()
+        let paths = ClaudePaths(root: folder.url)
+        let cache = folder.url.appendingPathComponent("index.json")
+        folder.write("projects/p/a.jsonl", line("a", input: 1, output: 0))
+        await TokenIndex(cacheFile: cache, timeZone: utc).update(roots: [paths])
+
+        let late = TokenIndex(cacheFile: cache, timeZone: utc)
+        try FileManager.default.removeItem(at: cache)
+        #expect(await total(late) == 0)
+
+        await TokenIndex(cacheFile: cache, timeZone: utc).update(roots: [paths])
+        #expect(await total(TokenIndex(cacheFile: cache, timeZone: utc)) == 1)
+    }
+
     @Test("Агент с двумя файлами под одним именем считается целиком и без повторов")
     func agentWithTwoFiles() async {
         let folder = TempFolder()

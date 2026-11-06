@@ -67,7 +67,6 @@ public actor RunScanner {
     private var lastDiscovery: Date = .distantPast
     private var usage: UsageSnapshot?
     private var account = ClaudeAccount.unknown
-    /// The main agent's last known context and model. It does not change while a session is idle, so one read is enough then.
     private var usageModified: Date?
     private var usageChecked: Date = .distantPast
     private var focusRuns: Set<String> = []
@@ -205,7 +204,8 @@ public actor RunScanner {
             let sinceCheck = now.timeIntervalSince(cache.lastChecked)
             let due = isDirty || liveOwner || focusRuns.contains(id) || (cache.loaded && unfinished && sinceCheck >= 5) || sinceCheck >= config.finishedRecheckInterval
             if due {
-                refresh(&cache, now: now, recentEnough: liveOwner || isDirty)
+                // One scan can read every run there is, and without a pool here all those buffers stay until it ends: over a gigabyte on real logs.
+                autoreleasepool { refresh(&cache, now: now, recentEnough: liveOwner || isDirty) }
                 runs[id] = cache
             }
             let stillUnfinished = cache.final == nil || isStale(cache)

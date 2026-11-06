@@ -33,12 +33,17 @@ public actor TokenIndex {
     private static let version = 1
     private static let recentLimit = 64
     private static let chunk = 1024 * 1024
+    /// The whole cache is rewritten each time, which costs far more than reading what was added. Losing a minute of it only means reading that minute again.
+    private static let saveInterval: TimeInterval = 60
     private static let usageMarker = Data("\"usage\"".utf8)
     private static let assistantMarker = Data("\"assistant\"".utf8)
 
     private let cacheFile: URL?
     private var entries: [String: Entry] = [:]
     private var seen: Set<String> = []
+    private var loaded = false
+    private var unsaved = false
+    private var lastSaved: Date?
     private let timestamps: ISO8601DateFormatter
     private let dayKeys: DateFormatter
 
@@ -53,13 +58,19 @@ public actor TokenIndex {
         dayKeys.timeZone = timeZone
         dayKeys.dateFormat = "yyyy-MM-dd"
         self.dayKeys = dayKeys
-        if let cacheFile,
-           let data = try? Data(contentsOf: cacheFile),
-           let cache = try? JSONDecoder().decode(Cache.self, from: data),
-           cache.version == Self.version {
-            entries = cache.entries
-            seen = Set(cache.entries.values.flatMap(\.ids))
-        }
+    }
+
+    /// Done on first use rather than when created, which can be on the main thread.
+    private func loadCache() {
+        guard !loaded else { return }
+        loaded = true
+        guard let cacheFile,
+              let data = try? Data(contentsOf: cacheFile),
+              let cache = try? JSONDecoder().decode(Cache.self, from: data),
+              cache.version == Self.version
+        else { return }
+        entries = cache.entries
+        seen = Set(cache.entries.values.flatMap(\.ids))
     }
 
     /// Brings the index up to date. A transcript that Claude has deleted leaves the totals with it.
@@ -67,6 +78,7 @@ public actor TokenIndex {
     /// - Returns: true if anything changed.
     @discardableResult
     public func update(roots: [ClaudePaths], progress: (@Sendable (Int, Int) -> Void)? = nil) async -> Bool {
+        loadCache()
         let files = Self.transcripts(in: roots)
         var changed = false
 
@@ -76,16 +88,40 @@ public actor TokenIndex {
             changed = true
         }
         for (index, file) in files.enumerated() {
-            if read(file) { changed = true }
+            // Without its own pool a long pass keeps every buffer it has read until it ends.
+            if autoreleasepool(invoking: { read(file) }) { changed = true }
             progress?(index + 1, files.count)
             // Other work gets its turn, however many logs there are.
             await Task.yield()
         }
-        if changed { save() }
+        saveWhenDue(changed: changed)
         return changed
     }
 
+    /// Reads only the folders the file system says have changed, so the cost follows what is being written and not how much history there is.
+    /// Something deleted, or a change that was never reported, waits for the next `update(roots:)`.
+    /// - Returns: true if anything changed.
+    @discardableResult
+    public func update(folders: Set<String>, roots: [ClaudePaths]) async -> Bool {
+        loadCache()
+        var changed = false
+        for folder in folders.sorted() {
+            for file in Self.transcripts(inFolder: folder, roots: roots) where autoreleasepool(invoking: { read(file) }) {
+                changed = true
+            }
+            await Task.yield()
+        }
+        saveWhenDue(changed: changed)
+        return changed
+    }
+
+    /// What has not reached the cache yet. For whoever is done with the index.
+    public func flush() {
+        if unsaved { save() }
+    }
+
     public func records() -> [TokenRecord] {
+        loadCache()
         var result: [TokenRecord] = []
         for (path, entry) in entries {
             let owner = Self.owner(ofTranscript: path)
@@ -107,7 +143,8 @@ public actor TokenIndex {
 
     /// The oldest day there is data for.
     public func earliestDay() -> String? {
-        entries.values.flatMap(\.buckets).map(\.day).min()
+        loadCache()
+        return entries.values.flatMap(\.buckets).map(\.day).min()
     }
 
     private func forget(_ path: String) {
@@ -175,7 +212,16 @@ public actor TokenIndex {
         }
     }
 
+    private func saveWhenDue(changed: Bool, now: Date = Date()) {
+        if changed { unsaved = true }
+        guard unsaved else { return }
+        if let lastSaved, now.timeIntervalSince(lastSaved) < Self.saveInterval { return }
+        lastSaved = now
+        save()
+    }
+
     private func save() {
+        unsaved = false
         guard let cacheFile else { return }
         try? FileManager.default.createDirectory(at: cacheFile.deletingLastPathComponent(), withIntermediateDirectories: true)
         if let data = try? JSONEncoder().encode(Cache(version: Self.version, entries: entries)) {
@@ -205,6 +251,32 @@ public actor TokenIndex {
             }
         }
         return files.sorted { $0.path < $1.path }
+    }
+
+    /// The transcripts lying directly in one folder, by the same rules as `transcripts(in:)`. Anything else in Claude's folders holds none.
+    /// The file system reports real paths while the folder may be reached through a link, so they are compared resolved, and what comes back is spelled as a whole pass spells it.
+    static func transcripts(inFolder path: String, roots: [ClaudePaths]) -> [URL] {
+        let inner = URL(fileURLWithPath: path).resolvingSymlinksInPath().pathComponents
+        for root in roots {
+            let outer = root.projects.resolvingSymlinksInPath().pathComponents
+            guard inner.count > outer.count, Array(inner.prefix(outer.count)) == outer else { continue }
+            let parts = Array(inner.dropFirst(outer.count))
+            guard !parts[0].hasPrefix("."), parts[0] != BorisPaths.usageProbeProject else { return [] }
+            let folder = parts.reduce(root.projects) { $0.appendingPathComponent($1) }
+            switch parts.count {
+            case 1:
+                return FileInfo.names(in: folder)
+                    .filter { $0.hasSuffix(".jsonl") && !$0.hasPrefix(".") }
+                    .map { folder.appendingPathComponent($0) }
+            case 3 where parts[2] == "subagents":
+                return agentFiles(in: folder)
+            case 5 where parts[2] == "subagents" && parts[3] == "workflows" && parts[4].hasPrefix("wf_"):
+                return agentFiles(in: folder)
+            default:
+                return []
+            }
+        }
+        return []
     }
 
     private static func agentFiles(in folder: URL) -> [URL] {

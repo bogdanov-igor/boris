@@ -66,6 +66,9 @@ public actor WorkEngine {
     private var tokens: [TokenRecord] = []
     private var tokenProgress: TokenProgress?
     private var tokensChanged = true
+    /// What the file system has named since the logs were last read.
+    private var changedFolders: Set<String> = []
+    private var lastWalked = Date.distantPast
     private var indexing = false
     private var tokenReadPlanned = false
     private var emitPlanned = false
@@ -74,7 +77,7 @@ public actor WorkEngine {
 
     /// How often the logs are looked at again while they are being written.
     private static let indexInterval: TimeInterval = 2
-    /// Files can change without an event reaching us, so the logs are looked at now and then anyway.
+    /// Files can change or go away without an event reaching us, so now and then all the logs are looked at anyway.
     private static let indexFallback: TimeInterval = 60
 
     /// - Parameter tokenCache: nil keeps the token index in memory.
@@ -100,9 +103,10 @@ public actor WorkEngine {
         startTimer()
     }
 
-    public func stop() {
+    public func stop() async {
         timer?.cancel()
         watcher.stop()
+        await index.flush()
     }
 
     /// A stream on a folder that does not exist yet stays silent, so it restarts once Claude creates the folder or starts using a new place.
@@ -173,6 +177,7 @@ public actor WorkEngine {
     /// Marks what changed and asks for a scan.
     public func filesChanged(_ changed: [String]) async {
         tokensChanged = true
+        changedFolders.formUnion(changed)
         var runs: Set<String> = []
         var discovery = false
         for change in FileChangeParser.changes(in: changed) {
@@ -258,19 +263,28 @@ public actor WorkEngine {
             planTokenRead(after: Self.indexInterval - since)
             return
         }
-        guard tokensChanged || since >= Self.indexFallback else { return }
+        // What a cache brought back has to go out too, even when the logs did not change since.
+        let firstPass = tokensVersion == 0
+        let walk = firstPass || now.timeIntervalSince(lastWalked) >= Self.indexFallback
+        guard tokensChanged || walk else { return }
         indexing = true
         tokensChanged = false
         lastIndexed = now
+        if walk { lastWalked = now }
+        let folders = changedFolders
+        changedFolders = []
         let roots = [paths] + others()
         let index = index
         let engine = self
-        // What a cache brought back has to go out too, even when the logs did not change since.
-        let firstPass = tokensVersion == 0
         Task.detached(priority: .utility) {
-            let changed = await index.update(roots: roots) { done, total in
-                guard done == total || done % 50 == 0 else { return }
-                Task { await engine.noteProgress(done: done, total: total) }
+            let changed: Bool
+            if walk {
+                changed = await index.update(roots: roots) { done, total in
+                    guard done == total || done % 50 == 0 else { return }
+                    Task { await engine.noteProgress(done: done, total: total) }
+                }
+            } else {
+                changed = await index.update(folders: folders, roots: roots)
             }
             await engine.tokensRead(changed || firstPass ? await index.records() : nil)
         }

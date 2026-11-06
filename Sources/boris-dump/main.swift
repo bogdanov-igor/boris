@@ -6,6 +6,7 @@ import Foundation
 // `boris-dump` looks at the work, `boris-dump tokens` adds up the logs, `boris-dump losses` adds up what went wrong, using the cache in `BORIS_STATE_DIR` if it is set,
 // `boris-dump load` shows the load on this Mac by group, and with a number takes that many readings 3 seconds apart,
 // and `boris-dump limits` reads the limits. Money is never printed, only percent.
+// `boris-dump cost [seconds]` runs the real engine with no window open and says what that costs once the first pass over the logs is over: CPU, disk and memory.
 // `boris-dump activity [transcript]` says how each action in the logs is typed and what reading them costs. `boris-dump edits <session>` lists the changes of a session with their counts.
 
 // A release build has no `BORIS_STATE_DIR`, so its caches would land in Boris's real folder without a word.
@@ -232,6 +233,48 @@ func edits(_ prefix: String) async {
     }
 }
 
+/// What the engine costs with all windows closed. Nothing here says what the logs hold.
+final class CostBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var outputs = 0
+    private var version = 0
+
+    func note(_ output: WorkEngine.Output) {
+        lock.withLock {
+            outputs += 1
+            version = output.tokensVersion
+        }
+    }
+
+    var seen: (outputs: Int, version: Int) { lock.withLock { (outputs, version) } }
+}
+
+func processCost() -> (cpu: Double, written: UInt64, read: UInt64, memory: Int, peak: Int) {
+    var info = rusage_info_v4()
+    _ = withUnsafeMutablePointer(to: &info) { $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(getpid(), RUSAGE_INFO_V4, $0) } }
+    var usage = rusage()
+    getrusage(RUSAGE_SELF, &usage)
+    let cpu = Double(usage.ru_utime.tv_sec + usage.ru_stime.tv_sec) + Double(usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) / 1_000_000
+    return (cpu, info.ri_diskio_byteswritten, info.ri_diskio_bytesread, Int(info.ri_phys_footprint) / (1024 * 1024), Int(info.ri_lifetime_max_phys_footprint) / (1024 * 1024))
+}
+
+func cost(seconds: Int) async {
+    let box = CostBox()
+    let engine = WorkEngine(paths: paths, tokenCache: BorisPaths.tokenIndex, others: others) { box.note($0) }
+    let began = Date()
+    await engine.start()
+    while box.seen.version == 0, Date().timeIntervalSince(began) < 500 { try? await Task.sleep(for: .milliseconds(200)) }
+    print(String(format: "first pass: %.1f s, memory %d MB, peak %d MB", Date().timeIntervalSince(began), processCost().memory, processCost().peak))
+    try? await Task.sleep(for: .seconds(10))
+    let before = processCost()
+    let outputs = box.seen.outputs
+    try? await Task.sleep(for: .seconds(seconds))
+    let after = processCost()
+    let spent = Double(seconds)
+    print(String(format: "%d s: CPU %.2f%% of one core, written %.1f KB/s, read %.1f KB/s, %d scans, memory %d MB, peak %d MB", seconds, (after.cpu - before.cpu) / spent * 100, Double(after.written - before.written) / 1024 / spent, Double(after.read - before.read) / 1024 / spent, box.seen.outputs - outputs, after.memory, after.peak))
+    await engine.stop()
+}
+
 if arguments.first == "tokens" {
     await tokens()
 } else if arguments.first == "load" {
@@ -240,6 +283,8 @@ if arguments.first == "tokens" {
     await losses()
 } else if arguments.first == "limits" {
     limits()
+} else if arguments.first == "cost" {
+    await cost(seconds: arguments.dropFirst().first.flatMap(Int.init) ?? 60)
 } else if arguments.first == "activity", arguments.count > 1 {
     activity(transcript: URL(fileURLWithPath: arguments[1]))
 } else if arguments.first == "activity" {

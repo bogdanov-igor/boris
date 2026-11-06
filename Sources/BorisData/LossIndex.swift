@@ -72,12 +72,16 @@ public actor LossIndex {
     private static let settledAfter: TimeInterval = 3600
     /// A character of a page or a skill is about a quarter of a token in English, and text in other languages takes more bytes per character.
     private static let bytesPerToken = 4
+    /// The whole cache is rewritten each time. Losing a minute of it only means reading that minute again.
+    private static let saveInterval: TimeInterval = 60
 
     private let cacheFile: URL?
     private let calendar: Calendar
     private let timestamps: ISO8601DateFormatter
     private let dayKeys: DateFormatter
     private var loaded = false
+    private var unsaved = false
+    private var lastSaved: Date?
     private var transcripts: [String: Transcript] = [:]
     private var seen: Set<String> = []
     private var runs: [String: Run] = [:]
@@ -115,12 +119,13 @@ public actor LossIndex {
         }
         for (index, file) in files.enumerated() {
             if Task.isCancelled { break }
-            if read(file) { changed = true }
+            // Without its own pool a long pass keeps every buffer it has read until it ends.
+            if autoreleasepool(invoking: { read(file) }) { changed = true }
             progress?(Progress(done: index + 1, total: files.count))
             // Other work gets its turn, however many logs there are.
             await Task.yield()
         }
-        if changed { save() }
+        saveWhenDue(changed: changed)
         if Task.isCancelled { return changed }
         if readRuns(roots) { changed = true }
         let died = roots.filter(\.processesAreHere).flatMap { SessionReader.read($0).sessions }.filter(Self.diedAtWork)
@@ -657,6 +662,15 @@ public actor LossIndex {
         else { return }
         transcripts = cache.transcripts
         seen = Set(cache.transcripts.values.flatMap(\.ids))
+    }
+
+    private func saveWhenDue(changed: Bool, now: Date = Date()) {
+        if changed { unsaved = true }
+        guard unsaved else { return }
+        if let lastSaved, now.timeIntervalSince(lastSaved) < Self.saveInterval { return }
+        lastSaved = now
+        unsaved = false
+        save()
     }
 
     private func save() {
