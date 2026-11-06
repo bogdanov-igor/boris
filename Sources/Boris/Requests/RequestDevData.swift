@@ -47,7 +47,7 @@ enum RequestDevData {
 
     private static func decisions(now: Date, long: Bool) -> [RequestDecision] {
         func row(_ minutes: TimeInterval, _ project: String, _ environment: String, _ agent: String?, _ brief: RequestBrief, _ outcome: RequestOutcome, _ place: RequestPlace, _ waited: TimeInterval) -> RequestDecision {
-            RequestDecision(id: UUID(), at: now.addingTimeInterval(-minutes * 60), project: project, environment: environment, agentType: agent, isMainAgent: agent == nil, brief: brief, outcome: outcome, place: place, waited: waited)
+            RequestDecision(id: UUID(), at: now.addingTimeInterval(-minutes * 60), session: "r-\(project)", project: project, environment: environment, agentType: agent, isMainAgent: agent == nil, brief: brief, outcome: outcome, place: place, waited: waited)
         }
         let longProject = "a-very-long-project-name-that-nobody-would-ever-want-to-type-by-hand-more-than-once"
         return [

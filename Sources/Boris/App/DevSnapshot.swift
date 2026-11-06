@@ -113,6 +113,8 @@ enum DevSnapshot {
         settings.language = language
         settings.displayMode = mode
         let model = AppModel(settings: settings, store: nil, live: false)
+        // What the previous screen dressed him in stays with that screen.
+        WalrusArt.shared.pack = nil
         let connect = ConnectFlow()
         data.fill(model)
         WalrusDev.dress(model)

@@ -179,6 +179,8 @@ private struct SessionContent: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    // The feed tells of each change as it happened. This is the sum of them, one line for each file, whatever happened to it in between.
+                    card { SessionChangesView(model: model, session: session) }
                     card {
                         Text(L("Failures")).font(.system(size: 13, weight: .semibold))
                         SessionFailuresList(model: model, failures: failures)

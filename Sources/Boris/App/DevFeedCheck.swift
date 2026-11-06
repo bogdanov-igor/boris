@@ -10,7 +10,10 @@ enum DevFeedCheck {
     static func runIfRequested() -> Bool {
         guard let folder = ProcessInfo.processInfo.environment["BORIS_FEED_CHECK"] else { return false }
         Task { @MainActor in
-            exit(await run(folder: URL(fileURLWithPath: folder)) ? 0 : 1)
+            let url = URL(fileURLWithPath: folder)
+            let followed = await run(folder: url)
+            let found = await runTarget(folder: url)
+            exit(followed && found ? 0 : 1)
         }
         return true
     }
@@ -60,6 +63,61 @@ enum DevFeedCheck {
         guard let image = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
         host.cacheDisplay(in: host.bounds, to: image)
         try? image.representation(using: .png, properties: [:])?.write(to: path)
+    }
+
+    /// A failure in the middle of a long session: its row on the Losses page should open the feed there, and not at the end.
+    private static func runTarget(folder: URL) async -> Bool {
+        let file = folder.appendingPathComponent("target-session.jsonl")
+        var text = ""
+        for id in 0..<120 {
+            if id == 40 {
+                text += #"{"type":"assistant","timestamp":"2026-11-05T10:00:40.000Z","message":{"id":"m-bad","content":[{"type":"tool_use","id":"t-bad","name":"Bash","input":{"command":"make"}}]}}"# + "\n"
+                text += #"{"type":"user","timestamp":"2026-11-05T10:00:40.500Z","message":{"content":[{"type":"tool_result","tool_use_id":"t-bad","is_error":true,"content":"Exit code 2"}]}}"# + "\n"
+            }
+            text += step(id)
+        }
+        try? text.write(to: file, atomically: false, encoding: .utf8)
+
+        let settings = AppSettings(defaults: nil)
+        settings.displayMode = .technical
+        let model = AppModel(settings: settings, store: nil, live: false)
+        let session = WorkSession(id: "target-session", environment: .terminal, cwd: "/x/boris", state: .finished, root: WorkNode(id: "target-session", kind: .main, state: .finished))
+        model.showForSnapshot(work: WorkModel(projects: [WorkProject(path: "/x/boris", sessions: [session])]), world: WorldSnapshot(takenAt: Date()), today: TokenUsage(), mood: .working(agents: 1))
+        model.transcriptsForCheck[session.id] = file
+        model.openSession(session.id, target: FeedTarget(stepId: "t-bad", at: Date()))
+
+        let bounds = NSRect(x: 0, y: 0, width: 620, height: 500)
+        let host = NSHostingView(rootView: SessionFeedView(model: model, session: session).background(Palette.window).foregroundStyle(Palette.text1).frame(width: bounds.width, height: bounds.height))
+        host.appearance = settings.theme.appearance
+        let window = NSWindow(contentRect: bounds, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.appearance = host.appearance
+        window.contentView = host
+        host.frame = bounds
+        window.setFrameOrigin(NSPoint(x: -5000, y: -5000))
+        window.orderBack(nil)
+        try? await Task.sleep(for: .seconds(4))
+        host.layoutSubtreeIfNeeded()
+        picture(host, folder.appendingPathComponent("7-target.png"))
+
+        let store = FeedStore.forSession(session, model: model)
+        guard let view = findScrollView(in: host), let document = view.documentView, let index = store.entries.firstIndex(where: { $0.step?.id == "t-bad" }) else {
+            report("the failed step is in the feed", false)
+            return false
+        }
+        let distance = document.frame.height - view.contentView.bounds.maxY
+        report("the feed opens away from its end", distance > 400, "distance \(distance)")
+        report("the failed step is one of the first records", index < store.entries.count / 2, "record \(index) of \(store.entries.count)")
+        report("the feed is scrolled to about that place", view.contentView.bounds.minY < document.frame.height / 2, "offset \(view.contentView.bounds.minY) of \(document.frame.height)")
+        report("going there happens once", model.feedTarget == nil)
+
+        // New records must not pull the reader away from the failure they came to see.
+        let kept = view.contentView.bounds.minY
+        append(step(130), to: file)
+        try? await Task.sleep(for: .seconds(2.2))
+        host.layoutSubtreeIfNeeded()
+        report("new records leave the reader where they are", abs(view.contentView.bounds.minY - kept) < 1, "offset \(kept) -> \(view.contentView.bounds.minY)")
+        window.orderOut(nil)
+        return passed
     }
 
     private static func run(folder: URL) async -> Bool {

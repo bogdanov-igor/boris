@@ -4,6 +4,8 @@ import SwiftUI
 /// The small window under the menu bar icon: who needs you, how the limits stand, what is going on.
 struct MiniWindowView: View {
     @Bindable var model: AppModel
+    /// Takes the window away. Going to the main window starts with this, because a popover does not close by itself when its own app opens a window.
+    var close: () -> Void = {}
     var openMain: () -> Void
 
     private var mode: DisplayMode { model.settings.displayMode }
@@ -100,14 +102,23 @@ struct MiniWindowView: View {
             .fixedSize()
     }
 
+    private var idleLine: String {
+        guard let count = model.usage.book?.sessionsToday, count > 0 else { return L("Nobody is waiting for an answer.") }
+        return count == 1 ? L("Nobody is waiting for an answer. There was %lld session today.", count) : L("Nobody is waiting for an answer. There were %lld sessions today.", count)
+    }
+
     @ViewBuilder private var sessions: some View {
         if model.requestCount == 0, model.activeSessions.isEmpty {
             VStack(spacing: 4) {
                 Text(L("Nothing is going on")).font(.system(size: 13, weight: .semibold))
-                Text(L("Nobody is waiting for an answer.")).font(.system(size: 12)).foregroundStyle(Palette.text2)
+                Text(idleLine)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Palette.text2)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 22)
+            .padding(EdgeInsets(top: 22, leading: 14, bottom: 22, trailing: 14))
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
@@ -128,9 +139,19 @@ struct MiniWindowView: View {
                 .foregroundStyle(color)
                 .padding(.horizontal, 6)
             ForEach(sessions) { session in
-                SessionRow(session: session, mode: mode, trailing: trailing(session), compact: true)
+                RowButton {
+                    open(session)
+                } label: {
+                    SessionRow(session: session, mode: mode, trailing: trailing(session), compact: true)
+                }
+                .accessibilityHint(L("Opens the session"))
             }
         }
+    }
+
+    func open(_ session: WorkSession) {
+        close()
+        model.openSession(session.id)
     }
 
     private func trailing(_ session: WorkSession) -> String {
@@ -145,8 +166,11 @@ struct MiniWindowView: View {
                 .foregroundStyle(Palette.text3)
                 .lineLimit(1)
             Spacer(minLength: 0)
-            Button(L("Open Boris"), action: openMain)
-                .buttonStyle(PlainActionStyle())
+            Button(L("Open Boris")) {
+                close()
+                openMain()
+            }
+            .buttonStyle(PlainActionStyle())
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

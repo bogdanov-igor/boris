@@ -60,6 +60,8 @@ public struct RequestBrief: Codable, Equatable, Sendable {
 public struct RequestDecision: Codable, Identifiable, Equatable, Sendable {
     public var id: UUID
     public var at: Date
+    /// Where to go for what the line does not keep. Lines saved by earlier versions have none.
+    public var session: String?
     public var project: String?
     public var environment: String?
     public var agentType: String?
@@ -69,9 +71,10 @@ public struct RequestDecision: Codable, Identifiable, Equatable, Sendable {
     public var place: RequestPlace
     public var waited: TimeInterval
 
-    public init(id: UUID, at: Date, project: String?, environment: String?, agentType: String?, isMainAgent: Bool, brief: RequestBrief, outcome: RequestOutcome, place: RequestPlace, waited: TimeInterval) {
+    public init(id: UUID, at: Date, session: String? = nil, project: String?, environment: String?, agentType: String?, isMainAgent: Bool, brief: RequestBrief, outcome: RequestOutcome, place: RequestPlace, waited: TimeInterval) {
         self.id = id
         self.at = at
+        self.session = session
         self.project = project
         self.environment = environment
         self.agentType = agentType
@@ -284,6 +287,7 @@ public struct RequestQueue: Sendable, Equatable {
         decisions.append(RequestDecision(
             id: request.id,
             at: now,
+            session: request.session,
             project: request.project ?? session?.displayName,
             environment: session.map { WorkPhrases.environment($0.environment) },
             agentType: request.agentType,
@@ -302,6 +306,7 @@ public struct RequestQueue: Sendable, Equatable {
         decisions.append(RequestDecision(
             id: request.id,
             at: now,
+            session: request.session,
             project: request.project ?? session?.displayName,
             environment: session.map { WorkPhrases.environment($0.environment) },
             agentType: request.agentType,

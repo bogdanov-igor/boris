@@ -336,7 +336,20 @@ private struct RequestHistory: View {
         }
     }
 
-    private func row(_ item: RequestDecision) -> some View {
+    @ViewBuilder private func row(_ item: RequestDecision) -> some View {
+        if let session = item.session {
+            RowButton {
+                model.openSession(session)
+            } label: {
+                line(item)
+            }
+            .accessibilityHint(L("Opens the session"))
+        } else {
+            line(item)
+        }
+    }
+
+    private func line(_ item: RequestDecision) -> some View {
         let shown = mark(item.outcome)
         let what = RequestWords.what(item.brief)
         let action = mode == .technical

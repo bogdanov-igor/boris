@@ -35,6 +35,35 @@ struct RequestQueueTests {
         #expect(queue.open == [newer])
     }
 
+    @Test("История помнит сессию, чтобы к ней можно было перейти, и ни слова из запроса") func historyKeepsTheSession() throws {
+        var queue = RequestQueue()
+        let asked = request("s9")
+        queue.add(asked)
+        _ = queue.answered(asked.id, with: .allow, place: .window, now: t0.addingTimeInterval(5))
+        #expect(queue.decisions.first?.session == "s9")
+
+        var expiring = RequestQueue()
+        let late = request("s8")
+        expiring.add(late)
+        expiring.expire(late.id)
+        expiring.note(work: work(session("s8", .running)), now: t0.addingTimeInterval(200))
+        #expect(expiring.decisions.first?.session == "s8", "и когда ответили уже в самом Claude")
+
+        let text = String(decoding: try JSONEncoder().encode(queue.decisions), as: UTF8.self)
+        #expect(text.contains("s9"))
+        #expect(!text.contains("SECRET-CMD"))
+    }
+
+    @Test("История, записанная прежней версией, читается, только строки в ней никуда не ведут") func oldHistory() throws {
+        let saved = try JSONEncoder().encode([RequestDecision(id: UUID(), at: t0, project: "p", environment: nil, agentType: nil, isMainAgent: true, brief: RequestBrief(tool: "Bash", kind: .command), outcome: .allowed, place: .window, waited: 1)])
+        var object = try #require(try JSONSerialization.jsonObject(with: saved) as? [[String: Any]])
+        object[0]["session"] = nil
+        let old = try JSONSerialization.data(withJSONObject: object)
+        let read = try JSONDecoder().decode([RequestDecision].self, from: old)
+        #expect(read.count == 1)
+        #expect(read[0].session == nil)
+    }
+
     @Test("Ответ на закрытый запрос не проходит") func answerOnce() {
         var queue = RequestQueue()
         let asked = request()

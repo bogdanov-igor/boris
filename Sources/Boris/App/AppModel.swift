@@ -103,6 +103,8 @@ final class AppModel {
     var expandedPhases: Set<String> = []
     /// The agent the session's feed is limited to. Nil shows all of them.
     var feedAgent: String?
+    /// The failure the session's feed should go to as soon as it has been read.
+    var feedTarget: FeedTarget?
     var settingsSection = SettingsSection.general
     var showIconNotice = false
     var hotKeyTaken = false
@@ -123,7 +125,8 @@ final class AppModel {
         hooks = HookController(settings: settings, live: live)
         // Without a store nothing may touch Boris's real folder.
         packShelf = WalrusPackShelf(folder: (store?.folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("boris-memory")).appendingPathComponent("Packs", isDirectory: true))
-        WalrusArt.shared.pack = packShelf.pack(id: settings.wardrobe.pack)
+        // The walrus is one for the whole process, and a model made for a check must not change him under whoever is looking.
+        if live { WalrusArt.shared.pack = packShelf.pack(id: settings.wardrobe.pack) }
         notifications = NotificationHub(settings: settings, live: live)
         usageRefresher = UsageRefresher(settings: settings)
         var loaded = store?.loadState() ?? AppState()
@@ -350,9 +353,11 @@ final class AppModel {
 
     /// Opens a session from any surface.
     /// - Parameter agent: the agent its feed starts on. Nil shows them all.
-    func openSession(_ id: String, agent: String? = nil) {
+    /// - Parameter target: the failure its feed goes to. Nil stays at the newest record.
+    func openSession(_ id: String, agent: String? = nil, target: FeedTarget? = nil) {
         projectsRoute = .session(id)
         feedAgent = agent
+        feedTarget = target
         page = .projects
         refreshPastSessions()
         onShowMainWindow?()

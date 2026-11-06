@@ -88,9 +88,9 @@ struct LossesPage: View {
         LossMenu(label: L("Environment"), allTitle: L("All environments"), options: book.environments.map { ($0, WorkPhrases.environment($0)) }, selection: $store.environment)
     }
 
-    /// Leads to the session, with its feed on the agent that failed when that is known.
+    /// Leads to the session, with its feed on the agent that failed when that is known, and at the moment it failed.
     private func open(_ entry: LossEntry) {
-        model.openSession(entry.sessionId, agent: entry.agentId)
+        model.openSession(entry.sessionId, agent: entry.agentId, target: FeedTarget(stepId: entry.id, at: entry.at))
     }
 }
 
