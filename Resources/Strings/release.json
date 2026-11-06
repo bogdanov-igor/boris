@@ -1,0 +1,13 @@
+{
+  "Updates": "Обновления",
+  "Check automatically": "Проверять автоматически",
+  "Check now": "Проверить",
+  "Checking…": "Проверяю…",
+  "Up to date": "Последняя версия",
+  "Update": "Обновить",
+  "What's new": "Что нового",
+  "Version %@ is available": "Доступна версия %@",
+  "Claude sessions are not affected by the update.": "Сессии Claude обновление не затронет.",
+  "No connection. Boris will try again later.": "Нет связи. Boris попробует позже.",
+  "This copy was built by hand, so it does not check for updates. Only a released version does.": "Эта копия собрана вручную и обновления не проверяет. Их проверяет только выпущенная версия."
+}

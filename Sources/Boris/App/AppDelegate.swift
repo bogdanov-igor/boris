@@ -98,6 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launch.listen { [weak statusBar] in statusBar?.toggleMiniWindow() }
         registerHotKey()
         model.start()
+        model.updates.start()
         if !DevSnapshot.isSmoke { surface.start() }
         startTicking()
         if model.isFirstLaunch, !DevSnapshot.isSmoke { main.show() }

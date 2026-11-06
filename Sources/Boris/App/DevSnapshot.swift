@@ -64,6 +64,8 @@ enum DevSnapshot {
         if WalrusDev.measureIfRequested() { return true }
         guard let folder = environment["BORIS_SNAPSHOT"] else { return false }
         if LoadMeasure.runIfRequested() { return true }
+        if AppMeasure.runIfRequested() { return true }
+        if DevUpdateCheck.runIfRequested() { return true }
         try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
         func list(_ key: String, _ all: [String]) -> [String] {
             environment[key].map { $0.split(separator: ",").map(String.init) } ?? all
@@ -103,7 +105,8 @@ enum DevSnapshot {
     private enum Screen: String, CaseIterable {
         case now, projects, spend, requests, activity, losses, walrus, mini, load
         case general, sources, surfaces, notifications, connections, about
-        case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
+        case license, thirdPartyLicenses, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
+        case updatesCurrent, updatesChecking, updatesAvailable, updatesOffline, updatesNoCheck, updateNotice
         case walrusThemes, walrusPacks, walrusError, walrusLine, walrusSurfaces
         case notchClosed, notchOpen, panelClosed, panelOpen, surfacesLast, surfacesHotKey, surfacesGone
         case lossesReading, lossesFiltered, lossesNothingMatches
@@ -120,7 +123,8 @@ enum DevSnapshot {
         }
 
         var section: SettingsSection? {
-            if self == .license { return .about }
+            if self == .license || self == .thirdPartyLicenses { return .about }
+            if rawValue.hasPrefix("updates") { return .general }
             if self == .surfacesLast || self == .surfacesHotKey || self == .surfacesGone { return .surfaces }
             if rawValue.hasPrefix("notifications"), self != .notificationsPreview { return .notifications }
             return SettingsSection(rawValue: rawValue)
@@ -168,7 +172,11 @@ enum DevSnapshot {
             model.projectFilter.period = .dates(from: Date().addingTimeInterval(-10 * 86400), to: Date())
             view = AnyView(ProjectDatesPicker(model: model).background(Palette.pop))
             canvas = CGSize(width: 240, height: 0)
-        case .general, .sources, .surfaces, .notifications, .connections, .about, .license, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
+        case .license, .thirdPartyLicenses:
+            view = AnyView(AboutSection(model: model, opening: screen == .license ? .own : .thirdParty).background(Palette.window).foregroundStyle(Palette.text1))
+            canvas = size ?? CGSize(width: 570, height: 720)
+        case .general, .sources, .surfaces, .notifications, .connections, .about, .updatesCurrent, .updatesChecking, .updatesAvailable, .updatesOffline, .updatesNoCheck, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
+            model.updates.prepareForSnapshot(screen.rawValue, long: data == .long)
             if screen == .surfacesLast { settings.surfaces = SurfaceSwitches(icon: false, notch: true, mini: false) }
             if screen == .surfacesHotKey {
                 settings.surfaces = SurfaceSwitches(icon: true, notch: false, mini: true)
@@ -204,6 +212,8 @@ enum DevSnapshot {
                 connect.stage = .connected
             case .iconNotice:
                 model.showIconNotice = true
+            case .updateNotice:
+                model.updates.prepareForSnapshot(screen.rawValue, long: data == .long)
             case .repair:
                 settings.hooksWanted = true
                 model.hooks.showForSnapshot(status: .notInstalled)

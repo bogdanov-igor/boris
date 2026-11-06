@@ -7,7 +7,8 @@ struct AboutSection: View {
     @Bindable var model: AppModel
     @State private var license: LicenseText?
 
-    private enum LicenseText {
+    /// Both texts lie inside the app: `scripts/build-app.sh` puts them there, and looking at them never reaches for the network.
+    enum LicenseText {
         case own, thirdParty
 
         var fileName: String {
@@ -16,6 +17,35 @@ struct AboutSection: View {
             case .thirdParty: return "THIRD_PARTY_LICENSES"
             }
         }
+
+        func text(in bundle: Bundle = .main) -> String? {
+            bundle.url(forResource: fileName, withExtension: "txt").flatMap { try? String(contentsOf: $0, encoding: .utf8) }
+        }
+
+        /// License files are wrapped at 80 columns, which breaks again at the edge of any narrower window. So on screen a paragraph flows,
+        /// while short lines, lists and rules stay as they are. «Copy» still gives the file as it is.
+        static func flowing(_ text: String) -> String {
+            var lines: [String] = []
+            for line in text.components(separatedBy: "\n") {
+                let bare = line.trimmingCharacters(in: .whitespaces)
+                if let last = lines.last, last.count >= 60, !bare.isEmpty, !isRule(last), !isRule(bare), bare.firstMatch(of: #/^[0-9]+\. /#) == nil {
+                    lines[lines.count - 1] = last.trimmingCharacters(in: .whitespaces) + " " + bare
+                } else {
+                    lines.append(line)
+                }
+            }
+            return lines.joined(separator: "\n")
+        }
+
+        private static func isRule(_ line: String) -> Bool {
+            line.allSatisfy { $0 == "=" || $0 == "-" }
+        }
+    }
+
+    /// - Parameter opening: the text to start on. Only a snapshot asks for one.
+    init(model: AppModel, opening: LicenseText? = nil) {
+        self.model = model
+        _license = State(initialValue: opening)
     }
 
     private var version: String {
@@ -125,9 +155,8 @@ struct AboutSection: View {
         .buttonStyle(.plain)
     }
 
-    /// The text comes from the app itself: looking at it never reaches for the network.
     private func text(_ license: LicenseText) -> String {
-        Bundle.main.url(forResource: license.fileName, withExtension: "txt").flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? L("The text is missing from this build.")
+        license.text() ?? L("The text is missing from this build.")
     }
 
     private func licenseView(_ shown: LicenseText) -> some View {
@@ -145,7 +174,7 @@ struct AboutSection: View {
             .padding(EdgeInsets(top: 30, leading: 20, bottom: 12, trailing: 20))
             Rectangle().fill(Palette.separator).frame(height: 1)
             ScrollView {
-                Text(text(shown))
+                Text(LicenseText.flowing(text(shown)))
                     .font(.system(size: 11.5, design: .monospaced))
                     .lineSpacing(3)
                     .textSelection(.enabled)

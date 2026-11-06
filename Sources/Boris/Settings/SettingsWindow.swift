@@ -226,6 +226,7 @@ private struct GeneralSettings: View {
                 Toggle("", isOn: keepAwake).toggleStyle(.switch).controlSize(.mini).labelsHidden()
             }
         }
+        UpdateSettings(updates: model.updates)
     }
 }
 

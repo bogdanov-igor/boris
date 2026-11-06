@@ -30,16 +30,19 @@ public struct LiveTokenMeter: Sendable {
         if size > follow.offset, let handle = try? FileHandle(forReadingFrom: url), (try? handle.seek(toOffset: follow.offset)) != nil {
             defer { try? handle.close() }
             var pending = Data()
-            while let data = try? handle.read(upToCount: Self.chunk), !data.isEmpty {
+            // Each chunk and what was parsed from it go before the next one comes.
+            while autoreleasepool(invoking: {
+                guard let data = try? handle.read(upToCount: Self.chunk), !data.isEmpty else { return false }
                 pending.append(data)
-                guard let newline = pending.lastIndex(of: 0x0A) else { continue }
+                guard let newline = pending.lastIndex(of: 0x0A) else { return true }
                 let complete = pending[pending.startIndex..<newline]
                 for line in complete.split(separator: 0x0A) where line.range(of: Self.usageMarker) != nil && line.range(of: Self.assistantMarker) != nil {
                     growth = growth + Self.add(line: line, to: &follow)
                 }
                 follow.offset += UInt64(newline - pending.startIndex + 1)
                 pending = Data(pending[pending.index(after: newline)...])
-            }
+                return true
+            }) {}
         }
         follow.total = follow.total + growth
         files[url.path] = follow

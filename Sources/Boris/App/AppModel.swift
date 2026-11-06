@@ -64,6 +64,7 @@ final class AppModel {
     let load = MacLoadWatch()
     let losses = LossStore()
     let notifications: NotificationHub
+    let updates = Updates.forThisBuild()
     private let store: StateStore?
     /// False reaches nothing of the person's: no other Claude folders, no files of Boris's own.
     private let live: Bool

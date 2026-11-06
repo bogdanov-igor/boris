@@ -218,6 +218,7 @@ struct ConnectionNotices: View {
             ForEach(problems, id: \.self) { problem in
                 notice(problem)
             }
+            UpdateNotice(updates: model.updates)
         }
     }
 
