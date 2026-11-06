@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+# Stands in for ssh in tests. There is no machine and no network: the "remote" command runs here with HOME pointing at a
+# temporary folder, and a forwarded socket is a small relay between two local sockets.
+# It behaves as a real ssh and sshd do where it matters: a socket file left behind makes the forward fail, and the file stays after the connection ends.
+#
+# Files in $FAKE_SSH_CONTROL steer it:
+#   calls   each call's arguments are added here, one line each, separated by \x1f
+#   fail    its text goes to stderr and ssh exits with 255 before anything runs
+#   drop    when this appears, the connection ends as a lost connection does
+
+import os
+import signal
+import socket
+import subprocess
+import sys
+import threading
+import time
+
+control = os.environ["FAKE_SSH_CONTROL"]
+home = os.environ["FAKE_SSH_HOME"]
+
+with open(os.path.join(control, "calls"), "a") as log:
+    log.write("\x1f".join(sys.argv[1:]) + "\n")
+
+WITH_VALUE = ("-o", "-R", "-L", "-D", "-F", "-p", "-i", "-l", "-J")
+arguments = sys.argv[1:]
+forward = None
+index = 0
+while index < len(arguments):
+    argument = arguments[index]
+    if argument == "--":
+        index += 1
+        break
+    if argument in WITH_VALUE:
+        if argument == "-R":
+            forward = arguments[index + 1]
+        index += 2
+        continue
+    if argument.startswith("-"):
+        index += 1
+        continue
+    break
+host = arguments[index]
+command = " ".join(arguments[index + 1:])
+
+try:
+    with open(os.path.join(control, "fail")) as handle:
+        sys.stderr.write(handle.read() + "\n")
+        sys.exit(255)
+except FileNotFoundError:
+    pass
+
+
+def split_forward(spec):
+    parts = [""]
+    escaped = False
+    for character in spec:
+        if escaped:
+            parts[-1] += character
+            escaped = False
+        elif character == "\\":
+            escaped = True
+        elif character == ":":
+            parts.append("")
+        else:
+            parts[-1] += character
+    return parts
+
+
+def pump(source, target):
+    try:
+        while True:
+            data = source.recv(65536)
+            if not data:
+                break
+            target.sendall(data)
+    except OSError:
+        pass
+    for side in (source, target):
+        try:
+            side.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+
+
+def relay(listener, local):
+    while True:
+        try:
+            incoming, _ = listener.accept()
+        except OSError:
+            return
+        outgoing = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            outgoing.connect(local)
+        except OSError:
+            incoming.close()
+            continue
+        threading.Thread(target=pump, args=(incoming, outgoing), daemon=True).start()
+        threading.Thread(target=pump, args=(outgoing, incoming), daemon=True).start()
+
+
+if forward:
+    remote, local = split_forward(forward)
+    if os.path.exists(remote) or "nosocket" in os.listdir(control):
+        sys.stderr.write("Warning: remote port forwarding failed for listen path %s\n" % remote)
+    else:
+        previous = os.umask(0o177)
+        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        listener.bind(remote)
+        os.umask(previous)
+        listener.listen(16)
+        threading.Thread(target=relay, args=(listener, local), daemon=True).start()
+
+environment = dict(os.environ, HOME=home)
+if "FAKE_SSH_REMOTE_PATH" in os.environ:
+    environment["PATH"] = os.environ["FAKE_SSH_REMOTE_PATH"]
+child = subprocess.Popen(["/bin/sh", "-c", command], env=environment, cwd=home)
+
+
+def stop(*_):
+    child.terminate()
+    sys.exit(255)
+
+
+signal.signal(signal.SIGTERM, stop)
+signal.signal(signal.SIGHUP, stop)
+
+drop = os.path.join(control, "drop")
+while True:
+    status = child.poll()
+    if status is not None:
+        sys.exit(status)
+    if os.path.exists(drop):
+        child.kill()
+        sys.stderr.write("Connection to %s closed by remote host.\n" % host)
+        os._exit(255)
+    time.sleep(0.02)

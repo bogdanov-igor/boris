@@ -85,7 +85,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.onPresenceChange = { [weak self, weak statusBar, weak model] in
             statusBar?.update()
             guard let model else { return }
-            self?.power.update(shouldHold: model.settings.keepAwake && model.work.isWorking)
+            // Work on another machine goes on whether this Mac sleeps or not.
+            self?.power.update(shouldHold: model.settings.keepAwake && model.work.sessions.contains { $0.state.isActive && $0.environment?.isRemote != true })
         }
 
         model.notifications.onOpen = { [weak model] route in model?.open(route) }
@@ -105,6 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        model?.remote.quit()
         model?.hooks.quit()
         model?.persistNow()
     }

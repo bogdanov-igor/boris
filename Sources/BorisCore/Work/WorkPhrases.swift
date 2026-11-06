@@ -12,6 +12,7 @@ public enum WorkPhrases {
         case .failed: return simple ? L("Broke") : L("Failed")
         case .stopped: return L("Stopped")
         case .interrupted: return simple ? L("Cut off") : L("Interrupted")
+        case .unreachable: return L("No connection")
         }
     }
 
@@ -83,6 +84,8 @@ public enum WorkPhrases {
             return helpers > 0 ? "\(doing) · \(agents(helpers))" : doing
         case .silent, .finished, .failed, .stopped, .interrupted:
             return state(session.state, mode: mode)
+        case .unreachable:
+            return L("No connection to the remote machine")
         }
     }
 }

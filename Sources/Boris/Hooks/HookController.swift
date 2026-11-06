@@ -26,6 +26,8 @@ final class HookController {
     private let settings: AppSettings
     private let live: Bool
     private var server: HookServer?
+    /// Each remote machine has a socket of its own. Their requests stand in the same queue, and each answer goes only down its own connection.
+    private var remoteServers: [HookServer] = []
     private var keys: RequestHotKeys?
     private var sightings: [UUID: Sighting] = [:]
     private var lastTarget: UUID?
@@ -40,6 +42,8 @@ final class HookController {
     }
 
     var onSignal: ((HookSignal) -> Void)?
+    /// The person answered a remote machine's request here.
+    var onRemoteAnswered: ((String) -> Void)?
     /// Anything that changes what the menu bar shows.
     var onChange: (() -> Void)?
     /// Offers to connect the answers, where the flow can be shown.
@@ -123,11 +127,34 @@ final class HookController {
     private func startServer() {
         guard server == nil else { return }
         let server = HookServer(path: HookServer.defaultPath)
-        server.setAnswerWindow(TimeInterval(settings.permissionWaitSeconds))
         let owner = WeakHooks(self)
-        server.onSignal = { signal in
+        wire(server) { signal in
             Task { @MainActor in owner.value?.receive(signal) }
         }
+        serverRunning = server.start()
+        self.server = server
+    }
+
+    /// Requests from a remote machine's socket join the queue. Its signals go where the caller says: they are not news about the hooks of this Mac.
+    func adopt(_ server: HookServer, signals: @escaping @Sendable (HookSignal) -> Void) {
+        let owner = WeakHooks(self)
+        wire(server) { signal in
+            Task { @MainActor in
+                owner.value?.closeRequests(on: signal)
+                signals(signal)
+            }
+        }
+        remoteServers.append(server)
+    }
+
+    func release(_ server: HookServer) {
+        remoteServers.removeAll { $0 === server }
+    }
+
+    private func wire(_ server: HookServer, signal: @escaping @Sendable (HookSignal) -> Void) {
+        server.setAnswerWindow(TimeInterval(settings.permissionWaitSeconds))
+        let owner = WeakHooks(self)
+        server.onSignal = signal
         server.onPermission = { request in
             Task { @MainActor in owner.value?.add(request) }
         }
@@ -140,8 +167,6 @@ final class HookController {
         server.onToolDone = { session, digest in
             Task { @MainActor in owner.value?.toolDone(session: session, digest: digest) }
         }
-        serverRunning = server.start()
-        self.server = server
     }
 
     /// Every held hook exits without a decision, so whatever is open stays in Claude.
@@ -149,8 +174,11 @@ final class HookController {
         server?.stop()
         server = nil
         serverRunning = false
-        for request in queue.open { queue.expire(request.id) }
-        drafts = [:]
+        // A remote machine's requests are held by its own socket, which has nothing to do with the hooks of this Mac.
+        for request in queue.open where request.host == nil {
+            queue.expire(request.id)
+            drafts[request.id] = nil
+        }
         syncKeys()
     }
 
@@ -163,6 +191,7 @@ final class HookController {
     /// The chosen time applies to the requests that come next.
     func applyWait() {
         server?.setAnswerWindow(TimeInterval(settings.permissionWaitSeconds))
+        for remote in remoteServers { remote.setAnswerWindow(TimeInterval(settings.permissionWaitSeconds)) }
     }
 
     // MARK: - Requests
@@ -199,15 +228,20 @@ final class HookController {
     }
 
     private func receive(_ signal: HookSignal) {
+        closeRequests(on: signal)
+        onSignal?(signal)
+    }
+
+    private func closeRequests(on signal: HookSignal) {
         let before = queue.decisions.last?.id
         release(queue.note(signal, now: Date()))
         settle(savingFrom: before)
-        onSignal?(signal)
     }
 
     private func release(_ ids: [UUID]) {
         for id in ids {
             server?.release(id)
+            for remote in remoteServers { remote.release(id) }
             drafts[id] = nil
         }
     }
@@ -222,15 +256,24 @@ final class HookController {
     func answer(_ id: UUID, _ answer: HookAnswer, via place: RequestPlace, now: Date = Date()) {
         if case .deny = answer {} else if now.timeIntervalSince(settledAt) < Self.settleTime { return }
         let before = queue.decisions.last?.id
-        guard let session = queue.open.first(where: { $0.id == id })?.session,
+        guard let request = queue.open.first(where: { $0.id == id }),
               queue.answered(id, with: answer, place: place, now: now)
         else { return }
+        let session = request.session
         drafts[id] = nil
+        // A server knows only the requests it holds, so an answer can reach no other.
         server?.answer(id, answer)
+        for remote in remoteServers { remote.answer(id, answer) }
         settledAt = now
         // The session goes on waiting for as long as another of its requests does.
         let stillAsks = queue.open.contains { $0.session == session } || queue.expired.contains { $0.session == session }
-        if !stillAsks { onSignal?(.permissionAnswered(session: session)) }
+        if !stillAsks {
+            if request.host == nil {
+                onSignal?(.permissionAnswered(session: session))
+            } else {
+                onRemoteAnswered?(session)
+            }
+        }
         settle(savingFrom: before)
     }
 

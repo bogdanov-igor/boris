@@ -64,6 +64,7 @@ final class AppModel {
     let load = MacLoadWatch()
     let losses = LossStore()
     let notifications: NotificationHub
+    let remote: RemoteHub
     private let store: StateStore?
     /// False reaches nothing of the person's: no other Claude folders, no files of Boris's own.
     private let live: Bool
@@ -121,6 +122,7 @@ final class AppModel {
         self.store = store
         self.live = live
         hooks = HookController(settings: settings, live: live)
+        remote = RemoteHub(hooks: hooks, store: live ? store.map { RemoteStore(folder: $0.folder) } : nil, tool: live ? .system() : nil)
         // Without a store nothing may touch Boris's real folder.
         packShelf = WalrusPackShelf(folder: (store?.folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("boris-memory")).appendingPathComponent("Packs", isDirectory: true))
         WalrusArt.shared.pack = packShelf.pack(id: settings.wardrobe.pack)
@@ -137,6 +139,7 @@ final class AppModel {
             settings.wardrobe.firstLaunch = loaded.firstLaunch
         }
         hooks.onSignal = { [weak self] signal in self?.receive(signal) }
+        connectRemote()
         load.sessions = { [weak self] in self?.sessionProcesses ?? [:] }
         usage.onBuilt = { [weak self] in self?.tokensAddedUp() }
         usageRefresher.onFinished = { [weak self] in
@@ -161,6 +164,9 @@ final class AppModel {
             Task { @MainActor in owner.model?.apply(output) }
         }
         self.engine = engine
+        remote.start()
+        let remoteNow = remote.world
+        Task { await engine.setRemote(remoteNow) }
         let sampler = MacLoadSampler(logRoots: { ([paths] + others()).map(\.projects) })
         load.reader = { await sampler.read($0) }
         Task { await engine.start() }
@@ -192,6 +198,21 @@ final class AppModel {
 
     func noteWake() {
         Task { await engine?.noteWake(at: Date()) }
+        remote.retryAll()
+    }
+
+    /// Remote machines reach the rest of Boris the same way a Mac's own files do: through the engine and the sums.
+    private func connectRemote() {
+        remote.onWorld = { [weak self] world in
+            guard let engine = self?.engine else { return }
+            Task { await engine.setRemote(world) }
+        }
+        remote.onSignal = { [weak self] signal in
+            guard let engine = self?.engine else { return }
+            Task { await engine.receive(signal, fromThisMac: false) }
+        }
+        remote.onRecords = { [weak self] records in self?.usage.readRemote(records) }
+        remote.loadNumbers()
     }
 
     /// Where a session's transcript is, for a feed that is on screen.
@@ -247,7 +268,7 @@ final class AppModel {
         if page == .projects, surfacesOpen.contains(.mainWindow) { refreshPastSessions() }
         usage.noteTime(output.at)
         today = usage.spentToday(output.at)
-        usageRefresher.refreshIfDue(now: output.at, liveSessions: output.world.sessions.count, account: output.world.account, fetchedAt: output.world.usage?.fetchedAt)
+        usageRefresher.refreshIfDue(now: output.at, liveSessions: output.world.sessions.filter { $0.host == nil }.count, account: output.world.account, fetchedAt: output.world.usage?.fetchedAt)
 
         var changed = state.runs != output.runMemory || state.detector != output.detectorMemory
         state.runs = output.runMemory
@@ -392,7 +413,7 @@ final class AppModel {
 
     /// Every session there is: what works from the live scan, the rest from the logs.
     var allSessions: [WorkSession] {
-        ProjectBook.sessions(work: work, past: pastSessions, logsReadAt: pastLoaded ? pastRead : nil)
+        ProjectBook.sessions(work: work, past: pastSessions + remote.pastSessions, logsReadAt: pastLoaded ? pastRead : nil)
     }
 
     func session(_ id: String) -> WorkSession? {
@@ -416,7 +437,9 @@ final class AppModel {
     }
 
     var connectionStatus: ConnectionStatus {
-        ConnectionStatus(world: world, hooks: hooks.connection, hookState: hookState, hooksSince: hooks.since, now: now)
+        var status = ConnectionStatus(world: world, hooks: hooks.connection, hookState: hookState, hooksSince: hooks.since, now: now)
+        status.remote = remote.summary
+        return status
     }
 
     var offerConnecting: Bool {

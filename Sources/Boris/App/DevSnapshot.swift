@@ -113,14 +113,19 @@ enum DevSnapshot {
         case project, projectDates, datesPicker, session, sessionTrouble, sessionPast, sessionGone, bigRun
         case feed, feedWaiting, feedChanges, feedDiff, activityCommands
         case requestCards, requestsNoHooks, nowRequests, miniRequests
+        case connectionsRemote, connectionsRemotePreview, nowRemote, projectsRemote, sessionRemote, spendRemote
 
         var page: AppPage? {
             if self == .requestsNoHooks { return .requests }
+            if self == .nowRemote { return .now }
+            if self == .projectsRemote { return .projects }
+            if self == .spendRemote { return .spend }
             return DevUsageData.Scenario(rawValue: rawValue) != nil ? .spend : AppPage(rawValue: rawValue)
         }
 
         var section: SettingsSection? {
             if self == .license { return .about }
+            if self == .connectionsRemote || self == .connectionsRemotePreview { return .connections }
             if self == .surfacesLast || self == .surfacesHotKey || self == .surfacesGone { return .surfaces }
             if rawValue.hasPrefix("notifications"), self != .notificationsPreview { return .notifications }
             return SettingsSection(rawValue: rawValue)
@@ -168,7 +173,8 @@ enum DevSnapshot {
             model.projectFilter.period = .dates(from: Date().addingTimeInterval(-10 * 86400), to: Date())
             view = AnyView(ProjectDatesPicker(model: model).background(Palette.pop))
             canvas = CGSize(width: 240, height: 0)
-        case .general, .sources, .surfaces, .notifications, .connections, .about, .license, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
+        case .general, .sources, .surfaces, .notifications, .connections, .about, .license, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect, .connectionsRemote, .connectionsRemotePreview:
+            if screen == .connectionsRemote || screen == .connectionsRemotePreview { RemoteDevData.fillSettings(model, data: data, preview: screen == .connectionsRemotePreview) }
             if screen == .surfacesLast { settings.surfaces = SurfaceSwitches(icon: false, notch: true, mini: false) }
             if screen == .surfacesHotKey {
                 settings.surfaces = SurfaceSwitches(icon: true, notch: false, mini: true)
@@ -242,6 +248,10 @@ enum DevSnapshot {
                 model.openSession(DevProjects.pastBroken)
             case .sessionGone:
                 model.openSession("no-such-session")
+            case .nowRemote, .projectsRemote, .sessionRemote, .spendRemote:
+                RemoteDevData.fillWork(model, data: data)
+                if screen == .sessionRemote { model.openSession(RemoteDevData.lostSession) }
+                if screen == .spendRemote { model.usage.breakdown = .environments }
             case .bigRun:
                 DevData.big.fill(model)
                 model.openSession(DevProjects.big)

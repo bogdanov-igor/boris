@@ -111,7 +111,7 @@ extension WorkPhrases {
         switch node.state {
         case .running: return step(node.step, mode: mode) ?? L("Thinking…")
         case .failed: return capitalized(cause(node.failure?.failureClass, resets: node.failure?.resets, mode: mode))
-        case .waiting, .silent, .finished, .stopped, .interrupted: return state(node.state, mode: mode)
+        case .waiting, .silent, .finished, .stopped, .interrupted, .unreachable: return state(node.state, mode: mode)
         }
     }
 
@@ -123,7 +123,7 @@ extension WorkPhrases {
         case .failed: return L("Session broke")
         case .stopped: return L("Stopped by you")
         case .interrupted: return L("Session interrupted")
-        case .running, .silent, .waiting: return self.state(state, mode: mode)
+        case .running, .silent, .waiting, .unreachable: return self.state(state, mode: mode)
         }
     }
 
@@ -137,7 +137,7 @@ extension WorkPhrases {
         switch session.state {
         case .waiting: return waiting(session.waitingFor, mode: mode)
         case .running: return step(session.root.step, mode: mode) ?? state(.running, mode: mode)
-        case .silent, .finished, .failed, .stopped, .interrupted: return outcome(session.state, mode: mode)
+        case .silent, .finished, .failed, .stopped, .interrupted, .unreachable: return outcome(session.state, mode: mode)
         }
     }
 

@@ -147,7 +147,7 @@ public struct TokenBook: Sendable {
         for record in records where record.usage.total > 0 {
             let usage = record.usage
             let cost = price(record.model)
-            let environment = WorkEnvironment(entrypoint: record.entrypoint ?? entrypoints[record.sessionId], unlisted: false)
+            let environment = record.host.map { WorkEnvironment.remote(host: $0) } ?? WorkEnvironment(entrypoint: record.entrypoint ?? entrypoints[record.sessionId], unlisted: false)
             let keys = [
                 (TokenBreakdown.days, TokenLine.Key.day(record.day)),
                 (.environments, .environment(environment)),

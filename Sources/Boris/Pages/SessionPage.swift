@@ -101,8 +101,17 @@ private struct SessionContent: View {
             HStack(spacing: 0) {
                 aside.frame(width: frame.size.width < 800 ? 300 : 380)
                 Rectangle().fill(Palette.separator).frame(width: 1)
-                SessionFeedView(model: model, session: session).frame(maxWidth: .infinity, maxHeight: .infinity)
+                feed.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+        }
+    }
+
+    /// The log of a session on a remote machine stays there, so there is only what its events said.
+    @ViewBuilder private var feed: some View {
+        if session.environment?.isRemote == true {
+            RemoteSessionFeed(model: model, session: session)
+        } else {
+            SessionFeedView(model: model, session: session)
         }
     }
 
@@ -134,9 +143,11 @@ private struct SessionContent: View {
                 ForEach(AgentTree.rows(root: session.root, expanded: model.expandedPhases)) { row in
                     AgentTreeLine(model: model, row: row, waitingFor: session.waitingFor)
                 }
-                SessionChangesView(model: model, session: session)
-                    .padding(.leading, 6)
-                    .padding(.top, 14)
+                if session.environment?.isRemote != true {
+                    SessionChangesView(model: model, session: session)
+                        .padding(.leading, 6)
+                        .padding(.top, 14)
+                }
                 heading(L("Failures · %lld", failures.count)).padding(.top, 14)
                 SessionFailuresList(model: model, failures: failures).padding(.horizontal, 8)
                 SessionTokensCard(model: model, session: session)
@@ -174,7 +185,7 @@ private struct SessionContent: View {
                     }
                 }
                 ForEach(workflowCards) { WorkflowProgressCard(node: $0) }
-                SessionFeedView(model: model, session: session).frame(maxWidth: .infinity, maxHeight: .infinity)
+                feed.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             ScrollView {

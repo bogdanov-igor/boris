@@ -28,6 +28,19 @@ public enum HookConnection: Sendable, Equatable {
     }
 }
 
+/// How many remote machines there are and what is wrong with those that cannot be reached.
+public struct RemoteSummary: Sendable, Equatable {
+    public var machines = 0
+    public var connected = 0
+    public var failures: [RemoteFailure] = []
+
+    public init(machines: Int = 0, connected: Int = 0, failures: [RemoteFailure] = []) {
+        self.machines = machines
+        self.connected = connected
+        self.failures = failures
+    }
+}
+
 /// The state of every part of the connection, for the diagnostics section and the report.
 public struct ConnectionStatus: Sendable, Equatable {
     public enum Limits: Sendable, Equatable {
@@ -57,6 +70,8 @@ public struct ConnectionStatus: Sendable, Equatable {
     public var lastHookEvent: Date?
     public var hooksSilent: Bool
     public var limits: Limits
+    /// How remote machines stand. Their names stay out of it, because a report gets pasted into a bug.
+    public var remote = RemoteSummary()
 
     /// - Parameter hooksSince: when the hooks could have started talking: the moment they were connected or this app started.
     public init(world: WorldSnapshot, hooks: HookConnection, hookState: HookState, hooksSince: Date, now: Date) {

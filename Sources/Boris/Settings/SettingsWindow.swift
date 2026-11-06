@@ -293,6 +293,7 @@ private struct ConnectionSettings: View {
             Text(problem).font(.system(size: 11.5)).foregroundStyle(Palette.redText)
         }
         UsageRefreshSettings(model: model)
+        RemoteMachinesSettings(model: model)
         SettingsGroup(title: L("Diagnostics")) {
             checkRow(L("Claude's folder"), ok: status.claudeFolderFound, text: status.claudeFolderFound ? L("in order") : L("not found"))
             checkRow(L("File reading"), ok: !status.problems.contains(.filesUnreadable), text: status.problems.contains(.filesUnreadable) ? L("cannot read") : WorkFormat.ago(model.now.timeIntervalSince(status.lastRead)))
@@ -300,6 +301,9 @@ private struct ConnectionSettings: View {
             checkRow(L("Hooks"), ok: hooksOK, text: hooksWord, neutral: status.hooks == .notConnected)
             checkRow(L("Last event"), ok: !status.hooksSilent, text: status.lastHookEvent.map { WorkFormat.ago(model.now.timeIntervalSince($0)) } ?? L("none yet"), neutral: status.lastHookEvent == nil && !status.hooksSilent)
             checkRow(L("Limits data"), ok: true, text: limitsWord, neutral: status.limits == .noData)
+            if status.remote.machines > 0 {
+                checkRow(L("Remote machines"), ok: true, text: L("%lld of %lld connected", status.remote.connected, status.remote.machines), neutral: status.remote.connected < status.remote.machines)
+            }
             SettingsRow(title: "") {
                 if status.hooks == .damaged {
                     Button(L("Repair")) { connect.repair(model) }.buttonStyle(PlainActionStyle(height: 22))

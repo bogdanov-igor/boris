@@ -19,6 +19,9 @@ public enum Diagnostics {
             lines.append("Last hook event: \(connection.lastHookEvent.map { "\(Int(now.timeIntervalSince($0))) s ago" } ?? "none")")
             lines.append("Limits: \(describe(connection.limits))")
             lines.append("Problems: \(connection.problems.isEmpty ? "none" : connection.problems.map { "\($0)" }.joined(separator: ", "))")
+            if connection.remote.machines > 0 {
+                lines.append("Remote machines: \(connection.remote.machines), connected: \(connection.remote.connected), problems: \(connection.remote.failures.isEmpty ? "none" : connection.remote.failures.map { "\($0)" }.joined(separator: ", "))")
+            }
         }
         return lines.joined(separator: "\n")
     }
