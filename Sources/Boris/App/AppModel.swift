@@ -65,6 +65,8 @@ final class AppModel {
     let losses = LossStore()
     let notifications: NotificationHub
     private let store: StateStore?
+    /// Nothing has been saved yet, so this is the very first launch.
+    let isFirstLaunch: Bool
     /// False reaches nothing of the person's: no other Claude folders, no files of Boris's own.
     private let live: Bool
     private var state: AppState
@@ -130,6 +132,7 @@ final class AppModel {
         notifications = NotificationHub(settings: settings, live: live)
         usageRefresher = UsageRefresher(settings: settings)
         var loaded = store?.loadState() ?? AppState()
+        isFirstLaunch = loaded.firstLaunch == nil
         if loaded.firstLaunch == nil {
             loaded.firstLaunch = Date()
             store?.save(loaded)
@@ -440,14 +443,17 @@ final class AppModel {
     }
 
     /// Asked once per life of the settings: the notice should not come back every day.
-    func noteIconHidden() {
-        guard !state.iconNoticeSeen else { return }
+    /// - Returns: true when the notice has just appeared.
+    @discardableResult
+    func noteIconHidden() -> Bool {
+        guard !state.iconNoticeSeen, !showIconNotice else { return false }
         showIconNotice = true
+        return true
     }
 
-    var isFirstLaunch: Bool {
-        guard let first = state.firstLaunch else { return true }
-        return Date().timeIntervalSince(first) < 5
+    /// Only while Claude is at work, and only if the person asked for it.
+    var shouldKeepAwake: Bool {
+        settings.keepAwake && work.isWorking
     }
 
     func chooseClaudeFolder(_ url: URL) {

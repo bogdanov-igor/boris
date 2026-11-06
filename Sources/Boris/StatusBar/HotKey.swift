@@ -79,6 +79,7 @@ final class HotKeyController {
 
     func register(_ combo: HotKeyCombo, action: @escaping @MainActor () -> Void) throws {
         unregister()
+        guard !Self.isTaken(combo) else { throw Failure.taken }
         self.action = action
         var reference: EventHotKeyRef?
         let status = RegisterEventHotKey(combo.keyCode, combo.carbonModifiers, EventHotKeyID(signature: hotKeySignature, id: id), GetApplicationEventTarget(), 0, &reference)
@@ -97,6 +98,33 @@ final class HotKeyController {
             MainActor.assumeIsolated { controller.action?() }
             return noErr
         }, 1, &spec, me, &handler)
+    }
+
+    /// Whether this key would never reach Boris. A plain registration succeeds anyway, so the question has to be asked apart from it.
+    /// Another app's plain registration cannot be seen, and it does no harm: both apps hear the key.
+    static func isTaken(_ combo: HotKeyCombo) -> Bool {
+        if isSystemShortcut(combo) { return true }
+        // This fails for a key held exclusively by another app or by this one. It is let go at once: holding on would silence other apps.
+        var probe: EventHotKeyRef?
+        let status = RegisterEventHotKey(combo.keyCode, combo.carbonModifiers, EventHotKeyID(signature: hotKeySignature, id: 0), GetApplicationEventTarget(), OptionBits(kEventHotKeyExclusive), &probe)
+        if let probe { UnregisterEventHotKey(probe) }
+        return status != noErr
+    }
+
+    /// The shortcuts in System Settings, such as ⌘Space, come before any app's. Reading them needs no permission.
+    private static func isSystemShortcut(_ combo: HotKeyCombo) -> Bool {
+        var list: Unmanaged<CFArray>?
+        guard CopySymbolicHotKeys(&list) == noErr, let shortcuts = list?.takeRetainedValue() as? [[String: Any]] else { return false }
+        return matches(combo, shortcuts: shortcuts)
+    }
+
+    static func matches(_ combo: HotKeyCombo, shortcuts: [[String: Any]]) -> Bool {
+        let modifiers = UInt32(cmdKey | optionKey | controlKey | shiftKey)
+        return shortcuts.contains { shortcut in
+            shortcut[kHISymbolicHotKeyEnabled as String] as? Bool == true
+                && shortcut[kHISymbolicHotKeyCode as String] as? Int == Int(combo.keyCode)
+                && (shortcut[kHISymbolicHotKeyModifiers as String] as? Int).map { UInt32(truncatingIfNeeded: $0) & modifiers } == combo.carbonModifiers & modifiers
+        }
     }
 
     func unregister() {

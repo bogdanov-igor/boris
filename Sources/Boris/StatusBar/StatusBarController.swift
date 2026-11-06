@@ -55,7 +55,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         icon?.use(WalrusArt.shared.pack)
         icon?.show(model.mood, outfit: model.outfit)
         let count = model.requestCount
-        button.title = count > 0 ? " \(count)" : ""
+        button.title = Self.counter(count)
         alarmDot.isHidden = !model.hasAlarm
         icon?.layout()
         placeAlarmDot(on: button)
@@ -108,14 +108,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         }
     }
 
-    /// Behind the notch there is nothing to hang the mini window on, so the main window opens instead. The same goes when the person turned it off.
     func toggleMiniWindow() {
         let surfaces = model.settings.surfaces
-        guard surfaces.mini, isIconVisible || !surfaces.icon || popover.isShown else {
-            onOpenMain?()
-            return
+        switch MiniWindowChoice(miniOn: surfaces.mini, iconOn: surfaces.icon, iconVisible: isIconVisible, isShown: popover.isShown) {
+        case .open: openMiniWindow()
+        case .close: closeMiniWindow()
+        case .main: onOpenMain?()
         }
-        popover.isShown ? closeMiniWindow() : openMiniWindow()
     }
 
     func openMiniWindow() {
@@ -143,48 +142,64 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     private func showContextMenu() {
         let menu = NSMenu()
-        add(L("Open Boris"), #selector(openMain), to: menu)
-        let now = Date()
-        if model.quiet.isOn(now: now), let until = model.quiet.until {
-            let title = until.timeIntervalSince(now) > Self.indefinitely / 2 ? L("Do not disturb is on") : L("Do not disturb until %@", WorkFormat.time(until))
-            menu.addItem(withTitle: title, action: nil, keyEquivalent: "").state = .on
-            add(L("Turn off Do not disturb"), #selector(stopQuiet), to: menu)
-        } else {
-            let quiet = NSMenuItem(title: L("Do not disturb"), action: nil, keyEquivalent: "")
-            let choices = NSMenu()
-            add(L("For an hour"), #selector(quietHour), to: choices)
-            add(L("For 4 hours"), #selector(quietFourHours), to: choices)
-            add(L("Until turned off"), #selector(quietUntilOff), to: choices)
-            quiet.submenu = choices
-            menu.addItem(quiet)
-        }
-        menu.addItem(.separator())
-        add(L("Settings…"), #selector(openSettings), key: ",", to: menu)
-        add(L("About Boris"), #selector(openAbout), to: menu)
-        menu.addItem(.separator())
-        add(L("Quit"), #selector(quit), key: "q", to: menu)
+        fill(menu, with: TrayMenu.entries(quiet: model.quiet, now: Date()))
         item.menu = menu
         item.button?.performClick(nil)
         item.menu = nil
+    }
+
+    private func fill(_ menu: NSMenu, with entries: [TrayMenu.Entry]) {
+        for entry in entries {
+            switch entry {
+            case .separator:
+                menu.addItem(.separator())
+            case .state(let title):
+                menu.addItem(withTitle: title, action: nil, keyEquivalent: "").state = .on
+            case .choices(let title, let choices):
+                let parent = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+                let submenu = NSMenu()
+                fill(submenu, with: choices)
+                parent.submenu = submenu
+                menu.addItem(parent)
+            case .action(let title, let key, let action):
+                add(title, Self.selector(action), key: key, to: menu)
+            }
+        }
+    }
+
+    private static func selector(_ action: TrayMenu.Action) -> Selector {
+        switch action {
+        case .openMain: return #selector(openMain)
+        case .quietHour: return #selector(quietHour)
+        case .quietFourHours: return #selector(quietFourHours)
+        case .quietUntilOff: return #selector(quietUntilOff)
+        case .stopQuiet: return #selector(stopQuiet)
+        case .settings: return #selector(openSettings)
+        case .about: return #selector(openAbout)
+        case .quit: return #selector(quit)
+        }
     }
 
     private func add(_ title: String, _ action: Selector, key: String = "", to menu: NSMenu) {
         menu.addItem(withTitle: title, action: action, keyEquivalent: key).target = self
     }
 
-    private static let indefinitely = QuietMode.indefinitely
-
     @objc private func openMain() { onOpenMain?() }
     @objc private func quietHour() { model.startQuiet(for: 3600) }
     @objc private func quietFourHours() { model.startQuiet(for: 4 * 3600) }
-    @objc private func quietUntilOff() { model.startQuiet(for: Self.indefinitely) }
+    @objc private func quietUntilOff() { model.startQuiet(for: QuietMode.indefinitely) }
     @objc private func stopQuiet() { model.stopQuiet() }
     @objc private func openSettings() { onOpenSettings?(.general) }
     @objc private func openAbout() { onOpenSettings?(.about) }
     @objc private func quit() { NSApp.terminate(nil) }
 
+    /// The number next to the walrus: the requests waiting.
+    static func counter(_ count: Int) -> String {
+        count > 0 ? " \(count)" : ""
+    }
+
     /// What the icon means, for VoiceOver.
-    private static func description(mood: Mood, waiting: Int) -> String {
+    static func description(mood: Mood, waiting: Int) -> String {
         let word: String
         switch mood {
         case .alarm: word = L("Something broke")
@@ -198,5 +213,71 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         case .sleeping: word = L("Nothing is happening")
         }
         return "Boris: \(word). " + L("Waiting for you: %lld", waiting)
+    }
+}
+
+/// What the right-click menu holds, apart from the menu itself.
+enum TrayMenu {
+    enum Action {
+        case openMain, quietHour, quietFourHours, quietUntilOff, stopQuiet, settings, about, quit
+    }
+
+    enum Entry: Equatable {
+        case action(String, key: String = "", Action)
+        /// A checked line that does nothing, and says what is on.
+        case state(String)
+        case choices(String, [Entry])
+        case separator
+    }
+
+    static func entries(quiet: QuietMode, now: Date) -> [Entry] {
+        var entries: [Entry] = [.action(L("Open Boris"), .openMain)]
+        if quiet.isOn(now: now), let until = quiet.until {
+            let title = until.timeIntervalSince(now) > QuietMode.indefinitely / 2 ? L("Do not disturb is on") : L("Do not disturb until %@", WorkFormat.time(until))
+            entries += [.state(title), .action(L("Turn off Do not disturb"), .stopQuiet)]
+        } else {
+            entries.append(.choices(L("Do not disturb"), [
+                .action(L("For an hour"), .quietHour),
+                .action(L("For 4 hours"), .quietFourHours),
+                .action(L("Until turned off"), .quietUntilOff),
+            ]))
+        }
+        entries += [
+            .separator,
+            .action(L("Settings…"), key: ",", .settings),
+            .action(L("About Boris"), .about),
+            .separator,
+            .action(L("Quit"), key: "q", .quit),
+        ]
+        return entries
+    }
+}
+
+/// What a click on the icon or the global key does.
+enum MiniWindowChoice: Equatable {
+    case open, close
+    /// Behind the notch there is nothing to hang the mini window on, so the main window opens instead. The same goes when the person turned it off.
+    case main
+
+    init(miniOn: Bool, iconOn: Bool, iconVisible: Bool, isShown: Bool) {
+        guard miniOn, iconVisible || !iconOn || isShown else {
+            self = .main
+            return
+        }
+        self = isShown ? .close : .open
+    }
+}
+
+/// Notices an icon that stays out of sight. A moment out of sight is nothing: the menu bar rearranges itself when apps come and go.
+struct IconWatch {
+    static let patience: TimeInterval = 60
+
+    private var hiddenFor: TimeInterval = 0
+
+    /// - Parameter wanted: an icon the person turned off is not missing.
+    /// - Returns: true once it has been gone for long enough, and for as long as it stays gone.
+    mutating func note(visible: Bool, wanted: Bool, seconds: TimeInterval) -> Bool {
+        hiddenFor = visible || !wanted ? 0 : hiddenFor + seconds
+        return hiddenFor >= Self.patience
     }
 }

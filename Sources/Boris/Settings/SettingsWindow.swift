@@ -45,8 +45,10 @@ final class SettingsWindowController {
 final class SettingsActions {
     var applyHotKey: () -> Void = {}
     var isAutostartAvailable: () -> Bool = { false }
-    var isAutostartOn: () -> Bool = { false }
-    var setAutostart: (Bool) -> Void = { _ in }
+    var autostartState: () -> AutostartState = { .off }
+    /// Returns false when macOS refused.
+    var setAutostart: (Bool) -> Bool = { _ in true }
+    var openLoginItems: () -> Void = {}
 }
 
 struct SettingsView: View {
@@ -185,12 +187,23 @@ private struct GeneralSettings: View {
 
     private var settings: AppSettings { model.settings }
 
+    private var autostartWarning: String {
+        if actions.autostartState() == .needsApproval { return L("Boris is turned off in System Settings, under Login Items. Only you can turn it on there.") }
+        return autostartRefused ? L("macOS did not allow this. Try again, or check Login Items in System Settings.") : ""
+    }
+
+    @State private var autostartRefused = false
+
     private var autostart: Binding<Bool> {
-        Binding { actions.isAutostartOn() } set: { actions.setAutostart($0) }
+        Binding { actions.autostartState() == .on } set: { autostartRefused = !actions.setAutostart($0) }
     }
 
     private var keepAwake: Binding<Bool> {
-        Binding { settings.keepAwake } set: { settings.keepAwake = $0 }
+        Binding { settings.keepAwake } set: {
+            settings.keepAwake = $0
+            // The next look at the work may be a minute away, and the switch should mean something now.
+            model.refreshPresence()
+        }
     }
 
     private var mode: Binding<DisplayMode> { Binding { settings.displayMode } set: { settings.displayMode = $0 } }
@@ -210,7 +223,14 @@ private struct GeneralSettings: View {
             }
         }
         SettingsGroup {
-            SettingsRow(title: L("Open at login"), detail: actions.isAutostartAvailable() ? "" : L("Available in the installed app.")) {
+            SettingsRow(
+                title: L("Open at login"),
+                detail: actions.isAutostartAvailable() ? "" : L("Available in the installed app."),
+                warning: autostartWarning
+            ) {
+                if actions.autostartState() == .needsApproval {
+                    Button(L("Open System Settings")) { actions.openLoginItems() }.buttonStyle(PlainActionStyle(height: 22))
+                }
                 Toggle("", isOn: autostart).toggleStyle(.switch).controlSize(.mini).labelsHidden().disabled(!actions.isAutostartAvailable())
             }
             SettingsRow(

@@ -5,5 +5,7 @@
     "few": "Никто не ждёт ответа. Сегодня было %lld сессии.",
     "many": "Никто не ждёт ответа. Сегодня было %lld сессий.",
     "other": "Никто не ждёт ответа. Сегодня было %lld сессии."
-  }
+  },
+  "Boris is turned off in System Settings, under Login Items. Only you can turn it on there.": "Boris выключен в Системных настройках, в разделе «Объекты входа». Включить его там можете только вы.",
+  "macOS did not allow this. Try again, or check Login Items in System Settings.": "macOS этого не разрешила. Попробуйте ещё раз или загляните в «Объекты входа» в Системных настройках."
 }

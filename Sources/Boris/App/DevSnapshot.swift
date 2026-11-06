@@ -25,6 +25,9 @@ enum DevSnapshot {
         #endif
     }
 
+    /// Whether this process may go on at all: for a check it knows, or as the real app.
+    static var mayRun: Bool { isRequested || mayStartForReal }
+
     /// Snapshots of other debug builds come and go under the same bundle id, and they are not another Boris to give way to.
     static var ignoresOtherCopies: Bool {
         #if DEBUG
