@@ -47,6 +47,8 @@ final class AppSettings {
     /// Fresh limits come from starting Claude Code for a moment, so this can be turned off.
     var usageRefreshEnabled: Bool { didSet { defaults?.set(usageRefreshEnabled, forKey: "usageRefreshEnabled") } }
     var usageRefreshMinutes: Int { didSet { defaults?.set(usageRefreshMinutes, forKey: "usageRefreshMinutes") } }
+    /// The person agreed in «Sources» that Boris may look into Claude Desktop's window. Until then it does not.
+    var chatConsent: Bool { didSet { defaults?.set(chatConsent, forKey: "chatConsent") } }
 
     init(defaults: UserDefaults? = .standard) {
         self.defaults = defaults
@@ -72,6 +74,7 @@ final class AppSettings {
         notifications = Self.load(defaults, "notifications") ?? NotificationPreferences()
         usageRefreshEnabled = defaults?.object(forKey: "usageRefreshEnabled") as? Bool ?? true
         usageRefreshMinutes = defaults?.object(forKey: "usageRefreshMinutes") as? Int ?? 15
+        chatConsent = defaults?.bool(forKey: "chatConsent") ?? false
         Localizer.use(language)
         NSApp?.appearance = theme.appearance
     }

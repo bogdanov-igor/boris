@@ -6,5 +6,6 @@ struct SourcesSettings: View {
 
     var body: some View {
         SettingsStub(text: L("Which Claude products and environments Boris reads, notifies about and may answer will be set here."))
+        ChatSourceBlock(model: model)
     }
 }

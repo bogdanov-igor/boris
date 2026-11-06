@@ -113,7 +113,7 @@ enum DevSnapshot {
         case project, projectDates, datesPicker, session, sessionTrouble, sessionPast, sessionGone, bigRun
         case feed, feedWaiting, feedChanges, feedDiff, activityCommands
         case requestCards, requestsNoHooks, nowRequests, miniRequests
-        case sessionCowork, coworkWaiting, sessionCoworkWaiting
+        case sessionCowork, coworkWaiting, sessionCoworkWaiting, sourcesChatAsk, sourcesChatPermission, sourcesChatOn, sourcesChatClosed, sourcesChatBlind, chatAnswering, chatReady, sessionChat
 
         var page: AppPage? {
             if self == .requestsNoHooks || self == .coworkWaiting { return .requests }
@@ -122,6 +122,7 @@ enum DevSnapshot {
 
         var section: SettingsSection? {
             if self == .license { return .about }
+            if rawValue.hasPrefix("sourcesChat") { return .sources }
             if self == .surfacesLast || self == .surfacesHotKey || self == .surfacesGone { return .surfaces }
             if rawValue.hasPrefix("notifications"), self != .notificationsPreview { return .notifications }
             return SettingsSection(rawValue: rawValue)
@@ -169,7 +170,18 @@ enum DevSnapshot {
             model.projectFilter.period = .dates(from: Date().addingTimeInterval(-10 * 86400), to: Date())
             view = AnyView(ProjectDatesPicker(model: model).background(Palette.pop))
             canvas = CGSize(width: 240, height: 0)
-        case .general, .sources, .surfaces, .notifications, .connections, .about, .license, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect:
+        case .sourcesChatAsk:
+            view = AnyView(ScrollView { ChatSourceBlock(model: model, explaining: true).padding(22) }.background(Palette.window).foregroundStyle(Palette.text1))
+            canvas = size ?? CGSize(width: 760, height: 320)
+        case .general, .sources, .surfaces, .notifications, .connections, .about, .license, .surfacesLast, .surfacesHotKey, .surfacesGone, .notificationsQuiet, .notificationsBot, .notificationsOffline, .notificationsConnect, .sourcesChatPermission, .sourcesChatOn, .sourcesChatClosed, .sourcesChatBlind:
+            switch screen {
+            case .sourcesChatPermission: model.chat.showForSnapshot([.noPermission])
+            case .sourcesChatOn: model.chat.showForSnapshot([.notAnswering])
+            case .sourcesChatClosed: model.chat.showForSnapshot([.appClosed])
+            case .sourcesChatBlind: model.chat.showForSnapshot([.cannotSee])
+            default: break
+            }
+            if screen.rawValue.hasPrefix("sourcesChat") { settings.chatConsent = true }
             if screen == .surfacesLast { settings.surfaces = SurfaceSwitches(icon: false, notch: true, mini: false) }
             if screen == .surfacesHotKey {
                 settings.surfaces = SurfaceSwitches(icon: true, notch: false, mini: true)
@@ -250,6 +262,13 @@ enum DevSnapshot {
             case .sessionCoworkWaiting:
                 DevCowork.showWaiting(model, long: data == .long)
                 model.openSession(DevCowork.session)
+            case .chatAnswering:
+                DevCowork.showChat(model, ready: false)
+            case .chatReady:
+                DevCowork.showChat(model, ready: true)
+            case .sessionChat:
+                DevCowork.showChat(model, ready: true)
+                model.openSession(ChatTracker.sessionId)
             case .bigRun:
                 DevData.big.fill(model)
                 model.openSession(DevProjects.big)

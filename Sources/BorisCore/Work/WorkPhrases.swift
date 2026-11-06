@@ -74,6 +74,8 @@ public enum WorkPhrases {
 
     /// The line under a session's name.
     public static func line(_ session: WorkSession, mode: DisplayMode) -> String {
+        // All that is known about a chat is said in its own words, and it has no steps or agents.
+        if session.environment == .chat { return session.state == .running ? L("Writing an answer") : L("The answer is ready") }
         switch session.state {
         case .waiting:
             return waiting(session.waitingFor, mode: mode)
@@ -92,7 +94,11 @@ extension WorkSession {
     public var displayName: String {
         if let title, !title.isEmpty { return title }
         if let workingFolder, !workingFolder.isEmpty { return URL(fileURLWithPath: workingFolder).lastPathComponent }
-        return environment == .cowork ? L("Cowork task") : String(id.prefix(8))
+        switch environment {
+        case .cowork: return L("Cowork task")
+        case .chat: return L("Answer in chat")
+        default: return String(id.prefix(8))
+        }
     }
 
     /// A folder is set in a monospaced font, a person's words are not.

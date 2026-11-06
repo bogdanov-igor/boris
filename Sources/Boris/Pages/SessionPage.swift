@@ -8,7 +8,9 @@ struct SessionPage: View {
     var id: String
 
     var body: some View {
-        if let session = model.session(id) {
+        if id == ChatTracker.sessionId {
+            ChatSessionView(model: model, session: model.session(id) ?? ChatTracker.seenSession)
+        } else if let session = model.session(id) {
             SessionContent(model: model, session: session)
         } else {
             VStack(alignment: .leading, spacing: 0) {

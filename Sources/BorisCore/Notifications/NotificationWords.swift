@@ -95,7 +95,7 @@ public enum NotificationWords {
             case .question: return L("asks a question")
             default: return L("waiting for permission")
             }
-        case .completed, .sessionFinished: return L("work done")
+        case .completed, .sessionFinished: return event.environment == .chat ? L("answer is ready") : L("work done")
         case .completedWithErrors: return L("work done with errors")
         case .allAgentsFailed: return L("all agents failed")
         case .failed: return L("work failed")

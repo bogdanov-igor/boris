@@ -136,6 +136,8 @@ public actor RunScanner {
     }
 
     public func sessionTranscript(_ sessionId: String) -> URL? {
+        // A chat has no log, so there is no point in going through every folder to find that out.
+        guard sessionId != ChatTracker.sessionId else { return nil }
         if let known = sessionFiles[sessionId] { return known }
         for root in roots {
             for project in FileInfo.names(in: root.projects) where !project.hasPrefix(".") {
