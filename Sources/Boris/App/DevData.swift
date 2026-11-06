@@ -8,10 +8,11 @@ import Foundation
 enum DevData: String {
     case busy, empty, long, big
 
-    func fill(_ model: AppModel, offer: Bool = false, issues: Set<FormatIssue> = [], folderFound: Bool = true) {
+    func fill(_ model: AppModel, offer: Bool = false, issues: Set<FormatIssue> = [], folderFound: Bool = true, sessions: [SessionInfo] = []) {
         let now = Date()
         var world = WorldSnapshot(
             takenAt: now,
+            sessions: sessions,
             usage: self == .empty ? nil : UsageSnapshot(fetchedAt: now.addingTimeInterval(-720), windows: [
                 UsageWindow(id: "five_hour", kind: .fiveHour, percent: 62, resetsAt: now.addingTimeInterval(8000)),
                 UsageWindow(id: "seven_day", kind: .week, percent: 34, resetsAt: now.addingTimeInterval(4 * 86400)),

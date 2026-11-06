@@ -78,7 +78,7 @@ final class AppModel {
     private var pastRead = Date.distantPast
     private var pastReading = false
     /// Grows when the engine changes, so that a read from the old folder is not taken for a read from the new one.
-    private var pastGeneration = 0
+    private(set) var pastGeneration = 0
 
     let usage = UsageModel()
     let usageRefresher: UsageRefresher
@@ -154,6 +154,7 @@ final class AppModel {
     func start() {
         let paths = ClaudePaths.resolve(custom: settings.claudeFolder)
         let owner = WeakModel(self)
+        let generation = pastGeneration
         let others: @Sendable () -> [ClaudePaths] = { [live] in live ? ClaudeFolders.others(besides: paths) : [] }
         let engine = WorkEngine(
             paths: paths,
@@ -164,7 +165,7 @@ final class AppModel {
             tokenCache: live ? BorisPaths.tokenIndex : nil,
             others: others
         ) { output in
-            Task { @MainActor in owner.model?.apply(output) }
+            Task { @MainActor in owner.model?.received(output, generation: generation) }
         }
         self.engine = engine
         let sampler = MacLoadSampler(logRoots: { ([paths] + others()).map(\.projects) })
@@ -233,6 +234,12 @@ final class AppModel {
 
     private func receive(_ signal: HookSignal) {
         Task { await engine?.receive(signal) }
+    }
+
+    /// What the engine of another folder had on its way when the folder changed is dropped: its numbers would come back, and its version would hide the new ones.
+    func received(_ output: WorkEngine.Output, generation: Int) {
+        guard generation == pastGeneration else { return }
+        apply(output)
     }
 
     func apply(_ output: WorkEngine.Output) {
@@ -461,14 +468,16 @@ final class AppModel {
         restartEngine()
     }
 
-    func copyDiagnostics() {
+    /// Versions, field names and counters: no content and no project paths.
+    func diagnosticsReport() async -> String? {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? BorisCore.version
-        let connection = connectionStatus
-        Task {
-            let report = await engine?.diagnostics(appVersion: version, connection: connection) ?? ""
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(report, forType: .string)
-        }
+        return await engine?.diagnostics(appVersion: version, connection: connectionStatus)
+    }
+
+    func copyDiagnostics() async {
+        guard let report = await diagnosticsReport() else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(report, forType: .string)
     }
 
     func persistNow() {

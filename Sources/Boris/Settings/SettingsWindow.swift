@@ -85,6 +85,7 @@ struct SettingsView: View {
             Rectangle().fill(Palette.separator).frame(width: 1)
             content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        .overlay { ConnectSheet(model: model, connect: connect, place: .settings) }
         // A text whose values stay the same would otherwise keep the old language while the window is open.
         .id(model.settings.language)
         .background(Palette.window)
@@ -301,7 +302,6 @@ private struct HotKeyField: View {
 private struct ConnectionSettings: View {
     @Bindable var model: AppModel
     var connect: ConnectFlow
-    @State private var removalLines: [String]?
     @State private var problem: String?
 
     private var status: ConnectionStatus { model.connectionStatus }
@@ -316,17 +316,36 @@ private struct ConnectionSettings: View {
         }
         UsageRefreshSettings(model: model)
         SettingsGroup(title: L("Diagnostics")) {
-            checkRow(L("Claude's folder"), ok: status.claudeFolderFound, text: status.claudeFolderFound ? L("in order") : L("not found"))
+            folderRow
             checkRow(L("File reading"), ok: !status.problems.contains(.filesUnreadable), text: status.problems.contains(.filesUnreadable) ? L("cannot read") : WorkFormat.ago(model.now.timeIntervalSince(status.lastRead)))
-            checkRow(L("Data format"), ok: !status.problems.contains(.formatChanged), text: status.problems.contains(.formatChanged) ? L("changed") : L("in order"))
+            checkRow(L("Data format"), ok: !status.problems.contains(.formatChanged), text: status.problems.contains(.formatChanged) ? L("changed") : L("in order"), warning: status.problems.contains(.formatChanged) ? L("Some data may not show. Copy the diagnostics so that Boris can be updated.") : "")
             checkRow(L("Hooks"), ok: hooksOK, text: hooksWord, neutral: status.hooks == .notConnected)
-            checkRow(L("Last event"), ok: !status.hooksSilent, text: status.lastHookEvent.map { WorkFormat.ago(model.now.timeIntervalSince($0)) } ?? L("none yet"), neutral: status.lastHookEvent == nil && !status.hooksSilent)
+            checkRow(
+                L("Last event"),
+                ok: !status.hooksSilent,
+                text: status.lastHookEvent.map { WorkFormat.ago(model.now.timeIntervalSince($0)) } ?? L("none yet"),
+                neutral: status.lastHookEvent == nil && !status.hooksSilent,
+                warning: status.hooksSilent ? L("The hooks are connected and Claude is working, but no events are coming. Start a new Claude session, and if that does not help, copy the diagnostics.") : ""
+            )
             checkRow(L("Limits data"), ok: true, text: limitsWord, neutral: status.limits == .noData)
             SettingsRow(title: "") {
                 if status.hooks == .damaged {
-                    Button(L("Repair")) { connect.repair(model) }.buttonStyle(PlainActionStyle(height: 22))
+                    Button(L("Repair")) { connect.repair(model, in: .settings) }.buttonStyle(PlainActionStyle(height: 22))
                 }
-                Button(L("Copy diagnostics")) { model.copyDiagnostics() }.buttonStyle(PlainActionStyle(height: 22))
+                CopyDiagnosticsButton(model: model, height: 22)
+            }
+        }
+    }
+
+    /// A missing folder is the one problem here whose way out is a choice of the person's.
+    private var folderRow: some View {
+        SettingsRow(title: L("Claude's folder"), warning: status.claudeFolderFound ? "" : FolderMissing.explanation(model)) {
+            Text(status.claudeFolderFound ? L("in order") : L("not found"))
+                .font(.system(size: 12))
+                .foregroundStyle(status.claudeFolderFound ? Palette.text2 : Palette.redText)
+            StatusGlyph(kind: status.claudeFolderFound ? .done : .failed, size: 14)
+            if !status.claudeFolderFound {
+                Button(L("Choose folder…")) { FolderMissing.choose(model) }.buttonStyle(PlainActionStyle(height: 22))
             }
         }
     }
@@ -346,16 +365,17 @@ private struct ConnectionSettings: View {
         }
     }
 
+    /// Their age, also when they are fresh: that is what the person came here to see.
     private var limitsWord: String {
         switch status.limits {
         case .noData: return L("no data")
-        case .fresh: return L("fresh")
+        case .fresh: return model.world.usage?.fetchedAt.map { WorkFormat.ago(model.now.timeIntervalSince($0)) } ?? L("fresh")
         case .stale(let age): return WorkFormat.ago(age)
         }
     }
 
-    private func checkRow(_ title: String, ok: Bool, text: String, neutral: Bool = false) -> some View {
-        SettingsRow(title: title) {
+    private func checkRow(_ title: String, ok: Bool, text: String, neutral: Bool = false, warning: String = "") -> some View {
+        SettingsRow(title: title, warning: warning) {
             Text(text).font(.system(size: 12).monospacedDigit()).foregroundStyle(ok ? Palette.text2 : Palette.redText)
             StatusGlyph(kind: neutral ? .idle : (ok ? .done : .failed), size: 14)
         }
@@ -365,19 +385,20 @@ private struct ConnectionSettings: View {
         switch status.hooks {
         case .notConnected:
             SettingsRow(title: L("Hooks"), detail: L("Boris sees everything without them. With them, events arrive instantly and you can answer from here.")) {
-                Button(L("Connect answers")) { connect.begin(model) }.buttonStyle(PlainActionStyle(primary: true, height: 22))
+                Button(L("Connect answers")) { connect.begin(model, in: .settings) }.buttonStyle(PlainActionStyle(primary: true, height: 22))
             }
         case .connected:
             SettingsRow(title: L("Hooks")) {
                 Text(L("connected")).font(.system(size: 12)).foregroundStyle(Palette.done)
                 StatusGlyph(kind: .done, size: 14)
+                Button(L("Settings changes")) { connect.showEntries(model, in: .settings) }.buttonStyle(PlainActionStyle(height: 22))
                 Button(L("Disconnect")) { disconnect() }.buttonStyle(PlainActionStyle(height: 22))
             }
         case .damaged:
             SettingsRow(title: L("Hooks"), warning: L("Data keeps updating, but you cannot answer from Boris right now.")) {
                 Text(L("damaged")).font(.system(size: 12)).foregroundStyle(Palette.redText)
                 StatusGlyph(kind: .failed, size: 14)
-                Button(L("Repair")) { connect.repair(model) }.buttonStyle(PlainActionStyle(primary: true, height: 22))
+                Button(L("Repair")) { connect.repair(model, in: .settings) }.buttonStyle(PlainActionStyle(primary: true, height: 22))
             }
         case .settingsUnreadable:
             SettingsRow(title: L("Hooks"), warning: L("Boris will not write to a file it cannot read reliably. Everything else keeps working.")) {

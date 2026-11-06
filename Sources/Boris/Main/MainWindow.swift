@@ -194,28 +194,26 @@ private struct PageContent: View {
     }
 }
 
-/// A page that is not built yet says so, rather than pretending there is no data.
-struct PageStub: View {
-    var text: String
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Text(L("This page is still being built")).font(.system(size: 15, weight: .semibold))
-            Text(text).font(.system(size: 13)).foregroundStyle(Palette.text2).multilineTextAlignment(.center)
-        }
-        .padding(24)
-    }
-}
-
 /// What the person should know about the connection, above every page.
 struct ConnectionNotices: View {
     @Bindable var model: AppModel
     var connect: ConnectFlow
 
+    /// One banner for each thing to say. Files that cannot be read always come with a changed format, and the two would say the same words.
+    /// The pages of current work are themselves the message about a missing folder, with the way out in the middle of them.
+    static func shown(_ problems: [ConnectionStatus.Problem], page: AppPage) -> [ConnectionStatus.Problem] {
+        problems.filter { problem in
+            switch problem {
+            case .filesUnreadable: return false
+            case .claudeFolderMissing: return page != .now && page != .projects
+            default: return true
+            }
+        }
+    }
+
     var body: some View {
-        let problems = model.connectionStatus.problems
         VStack(spacing: 0) {
-            ForEach(problems, id: \.self) { problem in
+            ForEach(Self.shown(model.connectionStatus.problems, page: model.page), id: \.self) { problem in
                 notice(problem)
             }
         }
@@ -224,10 +222,13 @@ struct ConnectionNotices: View {
     @ViewBuilder private func notice(_ problem: ConnectionStatus.Problem) -> some View {
         switch problem {
         case .claudeFolderMissing:
-            EmptyView()
+            NoticeBanner(kind: .failed, tone: .problem, title: L("Cannot find Claude's folder"), text: FolderMissing.explanation(model)) {
+                CopyDiagnosticsButton(model: model)
+                Button(L("Choose folder…")) { FolderMissing.choose(model) }.buttonStyle(PlainActionStyle())
+            }
         case .filesUnreadable, .formatChanged:
             NoticeBanner(kind: .doneWithErrors, title: L("Claude changed its data format"), text: L("Some data may not show. Copy the diagnostics so that Boris can be updated.")) {
-                Button(L("Copy diagnostics")) { model.copyDiagnostics() }.buttonStyle(PlainActionStyle())
+                CopyDiagnosticsButton(model: model)
             }
         case .settingsUnreadable:
             NoticeBanner(kind: .failed, tone: .problem, title: L("Claude's settings file looks damaged"), text: L("Boris will not write to a file it cannot read reliably. Everything else keeps working.")) {
@@ -239,7 +240,7 @@ struct ConnectionNotices: View {
             }
         case .hooksSilent:
             NoticeBanner(kind: .unknown, title: L("No events from the hooks"), text: L("The hooks are connected and Claude is working, but no events are coming. Start a new Claude session, and if that does not help, copy the diagnostics.")) {
-                Button(L("Copy diagnostics")) { model.copyDiagnostics() }.buttonStyle(PlainActionStyle())
+                CopyDiagnosticsButton(model: model)
             }
         case .hooksDisabledInSettings:
             NoticeBanner(kind: .stopped, title: L("Hooks are turned off in Claude's settings"), text: L("No instant updates or answers from Boris while `disableAllHooks` is on. Everything else works.")) {
