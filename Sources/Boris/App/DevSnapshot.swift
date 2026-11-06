@@ -253,6 +253,11 @@ enum DevSnapshot {
             settings.language = language == .ru ? .en : .ru
             try? await Task.sleep(for: .seconds(0.25))
         }
+        // `BORIS_SWITCH_MODE=1` changes the display mode with the window open, as the sidebar does.
+        if ProcessInfo.processInfo.environment["BORIS_SWITCH_MODE"] != nil {
+            model.setDisplayMode(mode == .simple ? .technical : .simple)
+            try? await Task.sleep(for: .seconds(0.25))
+        }
         host.layoutSubtreeIfNeeded()
         if let picture = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
             host.cacheDisplay(in: host.bounds, to: picture)

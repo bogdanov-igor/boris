@@ -273,57 +273,21 @@ public enum FeedSummary {
     private static func text(_ steps: [ActivityStep], first: ActivityStep) -> String {
         switch first.state {
         case .running: return running(steps, first: first)
-        case .failed: return failed(first)
-        case .unfinished: return L("This step did not finish")
-        case .done: return done(steps, first: first)
+        case .failed: return PhraseBook.failed(first.kind)
+        case .unfinished: return PhraseBook.unfinished(steps: steps.count)
+        case .done: return PhraseBook.done(first.kind, steps: steps.count, files: distinctTargets(steps), isSkill: first.tool == "Skill", note: first.input.note)
         }
     }
 
     private static func running(_ steps: [ActivityStep], first: ActivityStep) -> String {
         if steps.count == 1, first.kind == .shell, let note = first.input.note { return note }
-        if steps.count == 1, first.kind == .helper, first.tool != "Skill", let note = first.input.note { return L("A helper is working on: %@", note) }
+        if steps.count == 1, first.kind == .helper, first.tool != "Skill", let note = first.input.note { return PhraseBook.helperWorking(on: note) }
         // A row in a list says only that files are being read, and the feed is where the step is told in full.
-        if first.kind == .read, distinctTargets(steps) == 1, let file = first.brief.fileName { return L("Reading %@", file) }
+        if first.kind == .read, distinctTargets(steps) == 1, let file = first.brief.fileName { return PhraseBook.readingFile(file) }
         if steps.count > 1, distinctTargets(steps) > 1 {
             // Several at once are told without a name, as there is no one file to name.
-            return WorkPhrases.step(StepBrief(kind: first.kind, tool: first.tool), mode: .simple) ?? L("Working")
+            return PhraseBook.doing(StepBrief(kind: first.kind, tool: first.tool))
         }
-        return WorkPhrases.step(first.brief, mode: .simple) ?? L("Working")
-    }
-
-    private static func failed(_ step: ActivityStep) -> String {
-        switch step.kind {
-        case .read: return L("Could not read a file")
-        case .edit, .write: return L("Could not change a file")
-        case .shell: return L("A command failed")
-        case .search: return L("The search in the files failed")
-        case .web: return L("Could not get it from the internet")
-        case .helper: return L("A helper failed")
-        case .answer, .other: return L("A step failed")
-        }
-    }
-
-    private static func done(_ steps: [ActivityStep], first: ActivityStep) -> String {
-        let count = steps.count
-        switch first.kind {
-        case .read:
-            let files = distinctTargets(steps)
-            return files == 1 ? L("Read %lld file", files) : L("Read %lld files", files)
-        case .edit, .write:
-            let files = distinctTargets(steps)
-            return files == 1 ? L("Changed %lld file", files) : L("Changed %lld files", files)
-        case .shell:
-            if count == 1 { return first.input.note ?? L("Ran %lld command", count) }
-            return L("Ran %lld commands", count)
-        case .search:
-            return count == 1 ? L("Searched the files") : L("Searched the files %lld times", count)
-        case .web:
-            return count == 1 ? L("Looked on the internet") : L("Looked on the internet %lld times", count)
-        case .helper:
-            if first.tool == "Skill" { return L("Used a skill") }
-            return first.input.note.map { L("Asked a helper: %@", $0) } ?? L("Called in a helper")
-        case .answer, .other:
-            return L("Working")
-        }
+        return PhraseBook.doing(first.brief)
     }
 }

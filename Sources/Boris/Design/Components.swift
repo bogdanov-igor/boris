@@ -241,6 +241,8 @@ struct SessionRow: View {
     var trailing: String
     var note: String = ""
     var compact = false
+    /// A number that follows the line and must not be cut with it.
+    var lineEnd: String = ""
 
     var body: some View {
         let waiting = session.state == .waiting
@@ -248,7 +250,7 @@ struct SessionRow: View {
             StatusGlyph(kind: StatusGlyph.Kind(session.state), size: compact ? 14 : 16)
             VStack(alignment: .leading, spacing: 1) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(session.displayName)
+                    Text(session.name(in: mode))
                         .font(.system(size: compact ? 12.5 : 13, weight: .semibold, design: session.nameIsFolder ? .monospaced : .default))
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -260,11 +262,16 @@ struct SessionRow: View {
                         .fixedSize()
                     if let place = session.place, place.isSeparateCopy { CopyBadge(place: place, mode: mode) }
                 }
-                Text(WorkPhrases.line(session, mode: mode))
-                    .font(.system(size: compact ? 11.5 : 12))
-                    .foregroundStyle(waiting ? Palette.waiting : Palette.text2)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                HStack(spacing: 0) {
+                    Text(WorkPhrases.line(session, mode: mode))
+                        .foregroundStyle(waiting ? Palette.waiting : Palette.text2)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    if !lineEnd.isEmpty {
+                        Text(verbatim: " · \(lineEnd)").foregroundStyle(Palette.text2).lineLimit(1).fixedSize()
+                    }
+                }
+                .font(.system(size: compact ? 11.5 : 12))
             }
             Spacer(minLength: 4)
             if !trailing.isEmpty {

@@ -127,8 +127,20 @@ struct NowPage: View {
                 }
                 .font(.system(size: 12.5))
                 Spacer(minLength: 4)
-                if let at = failure.at {
-                    Text(WorkFormat.time(at)).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Palette.text2)
+                VStack(alignment: .trailing, spacing: 4) {
+                    if let at = failure.at {
+                        Text(WorkFormat.time(at)).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Palette.text2)
+                    }
+                    // The whole row opens it. In plain words a row does not say so by itself.
+                    if mode == .simple {
+                        Text(L("Open session"))
+                            .font(.system(size: 11.5))
+                            .lineLimit(1)
+                            .fixedSize()
+                            .padding(.horizontal, 8)
+                            .frame(height: 22)
+                            .background(RoundedRectangle(cornerRadius: DesignMetrics.radiusMedium).fill(Palette.fill2))
+                    }
                 }
             }
             .padding(.horizontal, 10)
@@ -185,7 +197,7 @@ struct NowPage: View {
         } label: {
             HStack(spacing: 8) {
                 StatusGlyph(kind: .done, size: 14)
-                Text(session.displayName)
+                Text(session.name(in: mode))
                     .font(.system(size: 12.5, weight: .semibold, design: session.nameIsFolder ? .monospaced : .default))
                     .lineLimit(1)
                     .truncationMode(.middle)

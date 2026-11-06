@@ -136,9 +136,9 @@ private struct QueueRow: View {
 
     private var project: String {
         switch row {
-        case .open(let request): return request.project ?? session?.displayName ?? String(row.session.prefix(8))
-        case .expired(let request): return request.project ?? session?.displayName ?? String(row.session.prefix(8))
-        case .waiting(let session): return session.displayName
+        case .open(let request): return RequestWords.project(request.project, session: session, id: row.session, mode: mode)
+        case .expired(let request): return RequestWords.project(request.project, session: session, id: row.session, mode: mode)
+        case .waiting(let session): return session.name(in: mode)
         }
     }
 

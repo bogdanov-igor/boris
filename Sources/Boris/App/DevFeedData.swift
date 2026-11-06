@@ -10,6 +10,7 @@ struct DevFeed {
     var names: [String: String] = [:]
     /// Steps shown open, as if the person had clicked on them.
     var opened: Set<String> = []
+    var permissionMode: String?
 }
 
 extension DevData {
@@ -30,7 +31,7 @@ extension DevData {
         for index in 0..<12 {
             use(&main, "r\(index)", "Read", ToolInput(target: "/x/boris/src/part\(index).swift"), ago: 290 - Double(index), took: 0.4)
         }
-        use(&main, "g1", "Grep", ToolInput(target: "isExpired", note: "/x/boris/src"), ago: 270, took: 0.4)
+        use(&main, "g1", "Grep", ToolInput(target: "isExpired", note: "/x/boris/src", parameters: [ToolParameter(name: "output_mode", value: "content"), ToolParameter(name: "path", value: "/x/boris/src"), ToolParameter(name: "pattern", value: "isExpired")]), ago: 270, took: 0.4)
         main.apply(.text(long ? String(repeating: "Срок токена проверяется после разбора подписи. ", count: 20) : "Срок токена проверяется после разбора подписи. Переставлю проверку в начало и добавлю тест на **просроченный** токен.", at: at(250)))
         use(&main, "t1", "Task", ToolInput(note: "Проверка кода", command: "Проверь правку авторизации."), ago: 240, took: nil)
         use(&main, "e1", "Edit", ToolInput(target: auth, oldText: "old", newText: "new"), ago: 200, took: 2)
@@ -43,7 +44,7 @@ extension DevData {
         ] + (0..<14).map { "+        log(\"шаг \($0)\")" } + ["     }"])]))
         // A change that failed, in the long data set: it says why, and it has no counts.
         if long { use(&main, "e2", "Edit", ToolInput(target: auth, oldText: "guard token.isValid\nelse", newText: "guard token.isFresh"), ago: 170, took: 0.1, error: true, output: "String to replace not found in file.") }
-        use(&main, "b0", "Bash", ToolInput(note: "Сборка", command: "swift build --product Boris"), ago: 150, took: 3, error: true, output: "error: cannot find 'verifySignature' in scope\nerror: fatal error encountered during compilation")
+        use(&main, "b0", "Bash", ToolInput(note: "Сборка", command: "swift build --product Boris", parameters: [ToolParameter(name: "description", value: "Сборка"), ToolParameter(name: "timeout", value: "120000")]), ago: 150, took: 3, error: true, output: "Exit code 1\nerror: cannot find 'verifySignature' in scope\nerror: fatal error encountered during compilation")
         use(&main, "b1", "Bash", ToolInput(note: "Запускает тесты", command: long ? "swift test --filter AuthTests --parallel --num-workers 4 --enable-code-coverage --very-long-flag-that-goes-on-and-on-and-on-without-end" : "swift test"), ago: 14, took: nil, output: nil)
 
         var review = ActivityLog()
@@ -78,7 +79,8 @@ extension DevData {
             entries: entries,
             thinking: [FeedStore.Thinker(sessionId: "b1", agentId: "finding")],
             names: ["code-review": "Проверка кода", "finding": "Проверка находки", "audit": long ? "Аудит зависимостей со всеми подробностями и длинным названием · Поиск" : "Аудит зависимостей · Поиск"],
-            opened: ["e1"]
+            opened: ["e1"],
+            permissionMode: "acceptEdits"
         )
     }
 }

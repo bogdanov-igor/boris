@@ -92,7 +92,7 @@ enum DevProjects {
         let partPhases = [PhaseGroup(title: "Сбор", agents: (1...5).map { record("part:\($0)", phase: "Сбор") }), PhaseGroup(title: "Сверка", agents: [record("sum:1", phase: "Сверка", state: .failed, failure: FailureInfo(failureClass: .network)), record("sum:2", phase: "Сверка")])]
         let part = run("wf_part", name: "weekly-report", status: .completedWithErrors, phases: partPhases, topFailure: .network, now: now.addingTimeInterval(-3000))
         let partly = node(part, title: "weekly-report", now: now.addingTimeInterval(-3000), tokens: 41_000, children: partPhases.flatMap(\.agents), parent: troubled)
-        let helper = WorkNode(id: "t1", kind: .subagent, parentId: troubled, title: "Миграции", state: .failed, failure: FailureInfo(failureClass: .api), lastActivity: now.addingTimeInterval(-540))
+        let helper = WorkNode(id: "t1", kind: .subagent, parentId: troubled, title: "Миграции", state: .failed, failure: FailureInfo(failureClass: .api, text: "overloaded"), lastActivity: now.addingTimeInterval(-540))
         return WorkSession(
             id: troubled,
             environment: .vsCode,

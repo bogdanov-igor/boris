@@ -368,6 +368,12 @@ final class AppModel {
         page = .projects
     }
 
+    /// Changes the mode for the whole app. A page the new one does not have gives way to «Now», which tells the same failures in plain words.
+    func setDisplayMode(_ mode: DisplayMode) {
+        settings.displayMode = mode
+        if !page.isShown(in: mode) { page = .now }
+    }
+
     /// Choosing the page one is already on goes back to the top of it.
     func choose(_ chosen: AppPage) {
         if chosen == .projects, page == .projects { projectsRoute = .list }

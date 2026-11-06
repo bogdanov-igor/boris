@@ -111,7 +111,7 @@ struct RequestCard: View {
         CardFrame {
             header
             CardMeta(
-                project: request.project ?? session?.displayName ?? String(request.session.prefix(8)),
+                project: RequestWords.project(request.project, session: session, id: request.session, mode: mode),
                 projectIsFolder: request.project != nil,
                 details: [session.map { WorkPhrases.environment($0.environment) } ?? "", agentName],
                 technical: mode == .technical ? RequestWords.technicalMeta(request) : ""
@@ -299,8 +299,8 @@ struct RequestNoticeCard: View {
     private var project: String {
         switch row {
         case .open(let request): return request.project ?? ""
-        case .expired(let request): return request.project ?? session?.displayName ?? String(row.session.prefix(8))
-        case .waiting(let session): return session.displayName
+        case .expired(let request): return RequestWords.project(request.project, session: session, id: row.session, mode: mode)
+        case .waiting(let session): return session.name(in: mode)
         }
     }
 

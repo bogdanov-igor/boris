@@ -308,13 +308,22 @@ struct StepDetails: View {
 
     /// Tool, parameters, time and tokens. Tokens belong to the whole message, which may have made several calls.
     private var facts: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(factsLine)
-                .font(.system(size: 11).monospacedDigit())
-                .foregroundStyle(Palette.text2)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            CopyLink(title: L("Copy event")) { await store.full(entry)?.raw }
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(factsLine)
+                    .font(.system(size: 11).monospacedDigit())
+                    .foregroundStyle(Palette.text2)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                CopyLink(title: L("Copy event")) { await store.full(entry)?.raw }
+            }
+            ForEach(step.input.parameters, id: \.name) { parameter in
+                (Text(verbatim: "\(parameter.name): ").foregroundStyle(Palette.text3) + Text(verbatim: parameter.value).foregroundStyle(Palette.text2))
+                    .font(.system(size: 11, design: .monospaced))
+                    .lineLimit(3)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+            }
         }
         .padding(.horizontal, 2)
         .padding(.top, 2)
@@ -324,6 +333,7 @@ struct StepDetails: View {
         var parts = [step.tool]
         if let target = step.input.target, step.isChange || step.kind == .read { parts.append(target) }
         if let duration = step.duration { parts.append(WorkPhrases.stepDuration(duration)) }
+        if let error = WorkPhrases.stepError(step) { parts.append(L("error: %@", error)) }
         if let tokens = step.tokens {
             parts.append(L("message tokens: in %@, out %@, cache %@", WorkFormat.tokens(tokens.input), WorkFormat.tokens(tokens.output), WorkFormat.tokens(tokens.cacheRead + tokens.cacheWrite)))
         }

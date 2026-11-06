@@ -293,7 +293,7 @@ struct SurfaceSessionRow: View {
         let trailing = SurfaceWords.sessionTrailing(session, mode: mode, now: now)
         HStack(spacing: 8) {
             StatusGlyph(kind: StatusGlyph.Kind(session.state), size: 14)
-            Text(Self.nameAndDetail(session.displayName, isFolder: session.nameIsFolder, detail: SurfaceWords.sessionDetail(session, mode: mode)))
+            Text(Self.nameAndDetail(session.name(in: mode), isFolder: session.nameIsFolder, detail: SurfaceWords.sessionDetail(session, mode: mode)))
                 .font(.system(size: 12.5))
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)

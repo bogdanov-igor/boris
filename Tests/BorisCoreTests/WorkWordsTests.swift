@@ -68,9 +68,15 @@ struct WorkWordsTests {
         let helpers = (1...2).map { WorkNode(id: "h\($0)", kind: .subagent, state: .running) }
         let root = WorkNode(id: "m", kind: .main, state: .running, step: StepBrief(kind: .shell, tool: "Bash"), children: helpers)
         let session = WorkSession(id: "s", cwd: "/x/proj", state: .running, root: root)
-        #expect(WorkPhrases.line(session, mode: .simple) == "Running a command · 2 agents")
+        // Everyone at work is counted, so this says the same as the session's own page.
+        #expect(session.workingAgents == 3)
+        #expect(WorkPhrases.line(session, mode: .simple) == "Running a command · 3 agents working")
+        #expect(WorkPhrases.line(session, mode: .technical) == "Bash · 3 agents")
         #expect(session.displayName == "proj")
         #expect(session.nameIsFolder)
+        // One agent has nobody to count.
+        let alone = WorkSession(id: "s", state: .running, root: WorkNode(id: "m", kind: .main, state: .running, step: StepBrief(kind: .shell, tool: "Bash")))
+        #expect(WorkPhrases.line(alone, mode: .simple) == "Running a command")
     }
 
     @Test("Сессия с названием и без всего")
@@ -81,5 +87,9 @@ struct WorkWordsTests {
         #expect(!titled.nameIsFolder)
         let bare = WorkSession(id: "0123456789", state: .running, root: root)
         #expect(bare.displayName == "01234567")
+        // An id is for the technical mode only.
+        #expect(bare.name(in: .technical) == "01234567")
+        #expect(bare.name(in: .simple) == "Session")
+        #expect(titled.name(in: .simple) == "Отчёт")
     }
 }

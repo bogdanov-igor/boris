@@ -53,7 +53,7 @@ private struct SessionContent: View {
         VStack(alignment: .leading, spacing: 6) {
             Crumbs(model: model, project: .some(session.projectPath), projectIsLast: false)
             HStack(spacing: 10) {
-                Text(session.displayName)
+                Text(session.name(in: mode))
                     .font(.system(size: 18, weight: .semibold, design: session.nameIsFolder ? .monospaced : .default))
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -73,25 +73,10 @@ private struct SessionContent: View {
                 Spacer(minLength: 0)
                 OpenSessionButton(model: model, session: session)
             }
-            if mode == .technical {
-                Text(technicalLine)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(Palette.text2)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .textSelection(.enabled)
-            }
+            if mode == .technical { SessionFactsLine(model: model, session: session).id(session.id) }
         }
         .padding(EdgeInsets(top: 12, leading: 24, bottom: 12, trailing: 20))
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var technicalLine: String {
-        var parts = [session.id]
-        if let model = session.root.model { parts.append(model) }
-        if let branch = session.place?.branch { parts.append(L("branch %@", branch)) }
-        if let cwd = session.cwd { parts.append(ProjectWords.folder(cwd)) }
-        return parts.joined(separator: " · ")
     }
 
     // MARK: - Technical
@@ -173,7 +158,7 @@ private struct SessionContent: View {
                             .foregroundStyle(Palette.text2)
                     }
                 }
-                ForEach(workflowCards) { WorkflowProgressCard(node: $0) }
+                workflowProgress
                 SessionFeedView(model: model, session: session).frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -193,11 +178,47 @@ private struct SessionContent: View {
         .padding(EdgeInsets(top: 22, leading: 24, bottom: 0, trailing: 24))
     }
 
+    /// A few cards stand as they are. More of them scroll on their own, or the feed below would have no room left.
+    @ViewBuilder private var workflowProgress: some View {
+        let cards = workflowCards
+        if cards.count > 2 {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(cards) { WorkflowProgressCard(node: $0) }
+                }
+            }
+            .frame(maxHeight: 190)
+        } else {
+            ForEach(cards) { WorkflowProgressCard(node: $0) }
+        }
+    }
+
     private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) { content() }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .overlay(RoundedRectangle(cornerRadius: DesignMetrics.radiusLarge).strokeBorder(Palette.separator))
+    }
+}
+
+/// What only a person with a reason looks for. It waits for the feed next to it, as only the log says what the permission mode is.
+private struct SessionFactsLine: View {
+    var session: WorkSession
+    @State private var store: FeedStore
+
+    init(model: AppModel, session: WorkSession) {
+        self.session = session
+        _store = State(initialValue: FeedStore.forSession(session, model: model))
+    }
+
+    var body: some View {
+        Text(WorkPhrases.sessionFacts(session, permissionMode: store.permissionMode))
+            .font(.system(size: 11, design: .monospaced))
+            .foregroundStyle(Palette.text2)
+            .lineLimit(2)
+            .truncationMode(.middle)
+            .fixedSize(horizontal: false, vertical: true)
+            .textSelection(.enabled)
     }
 }

@@ -24,6 +24,17 @@ public enum StepState: Sendable, Equatable {
     case unfinished
 }
 
+/// One parameter of a tool call, as the technical details show it.
+public struct ToolParameter: Sendable, Equatable {
+    public var name: String
+    public var value: String
+
+    public init(name: String, value: String) {
+        self.name = name
+        self.value = value
+    }
+}
+
 /// What a tool call is about, taken from its input.
 public struct ToolInput: Sendable, Equatable {
     /// A file, an address or a search pattern.
@@ -34,13 +45,16 @@ public struct ToolInput: Sendable, Equatable {
     public var command: String?
     public var oldText: String?
     public var newText: String?
+    /// What else the call was given. The long texts above are not repeated here, and a value is cut short: the event itself has all of it.
+    public var parameters: [ToolParameter]
 
-    public init(target: String? = nil, note: String? = nil, command: String? = nil, oldText: String? = nil, newText: String? = nil) {
+    public init(target: String? = nil, note: String? = nil, command: String? = nil, oldText: String? = nil, newText: String? = nil, parameters: [ToolParameter] = []) {
         self.target = target
         self.note = note
         self.command = command
         self.oldText = oldText
         self.newText = newText
+        self.parameters = parameters
     }
 }
 

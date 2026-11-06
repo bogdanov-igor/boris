@@ -142,7 +142,7 @@ struct MiniWindowView: View {
                 RowButton {
                     open(session)
                 } label: {
-                    SessionRow(session: session, mode: mode, trailing: trailing(session), compact: true)
+                    SessionRow(session: session, mode: mode, trailing: trailing(session), compact: true, lineEnd: mode == .technical ? WorkPhrases.contextLine(session) ?? "" : "")
                 }
                 .accessibilityHint(L("Opens the session"))
             }

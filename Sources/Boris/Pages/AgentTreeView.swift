@@ -88,8 +88,8 @@ private struct AgentLine: View {
 
     private var mode: DisplayMode { model.settings.displayMode }
     private var selected: Bool { model.feedAgent == node.id }
-    private var tokens: Int? {
-        if let context = node.contextTokens { return context }
+    private var tokens: Int? { node.contextTokens ?? spent }
+    private var spent: Int? {
         // A session's root holds the whole session, and this row is about the main agent alone.
         if node.kind == .main { return model.usage.book?.spent(mainAgentOf: node.id)?.total }
         return model.usage.book?.spent(agent: node.id)?.total ?? node.tokens?.total
@@ -104,6 +104,9 @@ private struct AgentLine: View {
     private var details: String {
         var parts = [node.id]
         if let model = node.model { parts.append(model) }
+        // The number in the row is the context when that is known, so what was spent gets told apart here.
+        if let context = node.contextTokens { parts.append(L("context %@", WorkFormat.tokens(context))) }
+        if let spent = self.spent { parts.append(L("spent %@", WorkFormat.tokens(spent))) }
         if node.attempts > 1 { parts.append(L("attempt %lld", node.attempts)) }
         return parts.joined(separator: " · ")
     }
@@ -141,7 +144,7 @@ private struct AgentLine: View {
                         Text(details)
                             .font(.system(size: 10.5, design: .monospaced))
                             .foregroundStyle(Palette.text3)
-                            .lineLimit(1)
+                            .lineLimit(3)
                             .truncationMode(.middle)
                             .textSelection(.enabled)
                     }

@@ -463,29 +463,8 @@ public actor LossIndex {
         return nil
     }
 
-    /// Names the failure from the beginning of the tool's output. Those are the tools' own words, and the output itself goes no further.
     static func toolFailure(_ head: String) -> (kind: ToolFailure, code: Int?) {
-        if let code = number(after: "Exit code ", in: head), head.hasPrefix("Exit code") { return (.exitCode, code) }
-        if let code = number(after: "status code ", in: head) { return (.http, code) }
-        let lower = head.lowercased()
-        let patterns: [(ToolFailure, [String])] = [
-            (.noFile, ["file does not exist", "no such file"]),
-            (.notRead, ["has not been read"]),
-            (.changed, ["modified since"]),
-            (.noMatch, ["string to replace not found", "matches of the string"]),
-            (.badCall, ["inputvalidationerror"]),
-            (.timeout, ["timed out", "timeout"]),
-            (.tooLarge, ["exceeds maximum", "file content ("]),
-            (.permission, ["permission denied"]),
-            (.network, ["enotfound", "econn", "getaddrinfo", "fetch failed", "unable to fetch", "certificate"]),
-        ]
-        for (kind, words) in patterns where words.contains(where: lower.contains) { return (kind, nil) }
-        return (.other, nil)
-    }
-
-    private static func number(after prefix: String, in text: String) -> Int? {
-        guard let range = text.range(of: prefix) else { return nil }
-        return Int(text[range.upperBound...].prefix { $0.isNumber })
+        ToolFailure.classify(head)
     }
 
     /// Only the start of a tool's output is ever looked at.
