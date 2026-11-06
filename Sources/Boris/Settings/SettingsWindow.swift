@@ -389,10 +389,11 @@ private struct ConnectionSettings: View {
             }
         case .connected:
             SettingsRow(title: L("Hooks")) {
-                Text(L("connected")).font(.system(size: 12)).foregroundStyle(Palette.done)
-                StatusGlyph(kind: .done, size: 14)
-                Button(L("Settings changes")) { connect.showEntries(model, in: .settings) }.buttonStyle(PlainActionStyle(height: 22))
-                Button(L("Disconnect")) { disconnect() }.buttonStyle(PlainActionStyle(height: 22))
+                // In the narrowest window the mark says it alone, and the buttons keep their words.
+                ViewThatFits(in: .horizontal) {
+                    connectedControls(saying: true)
+                    connectedControls(saying: false)
+                }
             }
         case .damaged:
             SettingsRow(title: L("Hooks"), warning: L("Data keeps updating, but you cannot answer from Boris right now.")) {
@@ -412,6 +413,15 @@ private struct ConnectionSettings: View {
             SettingsRow(title: L("Hooks"), warning: L("No instant updates or answers from Boris. Everything else works."), warningIsProblem: false) {
                 StatusGlyph(kind: .stopped, size: 14)
             }
+        }
+    }
+
+    private func connectedControls(saying: Bool) -> some View {
+        HStack(spacing: 10) {
+            if saying { Text(L("connected")).font(.system(size: 12)).foregroundStyle(Palette.done).fixedSize() }
+            StatusGlyph(kind: .done, size: 14)
+            Button(L("Settings changes")) { connect.showEntries(model, in: .settings) }.buttonStyle(PlainActionStyle(height: 22)).fixedSize()
+            Button(L("Disconnect")) { disconnect() }.buttonStyle(PlainActionStyle(height: 22)).fixedSize()
         }
     }
 
