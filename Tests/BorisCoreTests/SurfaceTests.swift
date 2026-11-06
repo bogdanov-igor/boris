@@ -125,23 +125,6 @@ struct SurfaceGeometryTests {
         #expect(closed.left >= 44)
     }
 
-    @Test("Панель на экране без выреза: по центру, сразу под строкой меню")
-    func pill() {
-        let pill = SurfaceGeometry.closedPill(on: monitor, contentWidth: 220.4)
-        #expect(pill.midX == monitor.frame.midX)
-        #expect(pill.maxY == monitor.visibleFrame.maxY - SurfaceGeometry.panelGap)
-        #expect(pill.height == SurfaceGeometry.closedPillHeight)
-        #expect(pill.width == 221)
-        #expect(monitor.frame.contains(pill))
-    }
-
-    @Test("Панель не шире экрана")
-    func pillOnSmallScreen() {
-        let pill = SurfaceGeometry.closedPill(on: tiny, contentWidth: 2000)
-        #expect(tiny.frame.contains(pill))
-        #expect(pill.midX == tiny.frame.midX)
-    }
-
     @Test("Открытая чёлка начинается у самого верха и стоит по центру выреза")
     func openNotch() {
         let frame = SurfaceGeometry.open(on: laptop, contentHeight: 320)
@@ -155,7 +138,7 @@ struct SurfaceGeometryTests {
     func openPanel() {
         let frame = SurfaceGeometry.open(on: monitor, contentHeight: 320)
         #expect(frame.width == SurfaceGeometry.openPanelWidth)
-        #expect(frame.maxY == monitor.visibleFrame.maxY - SurfaceGeometry.panelGap)
+        #expect(frame.maxY == monitor.visibleFrame.maxY)
         #expect(frame.midX == monitor.frame.midX)
     }
 

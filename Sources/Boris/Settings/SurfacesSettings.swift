@@ -12,7 +12,7 @@ struct SurfacesSettings: View {
     var body: some View {
         SettingsGroup {
             row(.icon, title: L("Menu bar icon"))
-            row(.notch, title: L("Notch"), detail: L("On a Mac without a notch and on an external monitor, a panel at the top edge takes its place."))
+            row(.notch, title: L("Notch"), detail: L("On a Mac without a notch and on an external monitor, a small panel in the menu bar takes its place. If the menu bar is hidden or full, it appears only when Claude asks for something."))
             row(.mini, title: L("Mini window"), detail: !switches.icon && switches.mini && model.hotKeyWorks ? L("Without the icon it opens with %@.", settings.hotKey.label) : "")
         }
         SettingsGroup(footer: L("The main screen, a particular monitor, or wherever the cursor is.")) {

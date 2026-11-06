@@ -106,6 +106,7 @@ enum DevSnapshot {
         case license, offer, preview, waiting, connected, iconNotice, repair, policy, formatChanged, folderMissing
         case walrusThemes, walrusPacks, walrusError, walrusLine, walrusSurfaces
         case notchClosed, notchOpen, panelClosed, panelOpen, surfacesLast, surfacesHotKey, surfacesGone
+        case panelTight, panelFull, panelFullOpen, panelHidden, panelHiddenOpen, panelHiddenWaiting
         case lossesReading, lossesFiltered, lossesNothingMatches
         case notificationsQuiet, notificationsBot, notificationsOffline, notificationsConnect, notificationsPreview, quietRequests
         case spendUltra, spendTeam, spendGateway, spendGatewayBudget, spendApiKey, spendExtraOff, spendExtraNoLimit, spendFilling, spendFailed, spendZero, spendAncient
@@ -140,7 +141,7 @@ enum DevSnapshot {
         DevUsageData.Scenario(rawValue: screen.rawValue)?.fill(model)
         if let page = screen.page { model.page = page }
         if let section = screen.section { model.settingsSection = section }
-        if [.requests, .requestCards, .nowRequests, .miniRequests, .notchOpen, .panelOpen].contains(screen) { RequestDevData.fill(model, data: data) }
+        if [.requests, .requestCards, .nowRequests, .miniRequests].contains(screen) || SurfacePreview.Scene(rawValue: screen.rawValue)?.hasRequest == true { RequestDevData.fill(model, data: data) }
 
         let view: AnyView
         var canvas = size ?? CGSize(width: 1200, height: 800)
@@ -157,10 +158,11 @@ enum DevSnapshot {
         case .walrusSurfaces:
             view = AnyView(WalrusDev.surfaces(model))
             canvas = CGSize(width: 720, height: 280)
-        case .notchClosed, .notchOpen, .panelClosed, .panelOpen:
+        case .notchClosed, .notchOpen, .panelClosed, .panelOpen, .panelTight, .panelFull, .panelFullOpen, .panelHidden, .panelHiddenOpen, .panelHiddenWaiting:
             data.fillForSurface(model)
-            canvas = size ?? CGSize(width: 1100, height: screen == .notchClosed || screen == .panelClosed ? 90 : 640)
-            view = AnyView(SurfacePreview(model: model, hasNotch: screen == .notchClosed || screen == .notchOpen, isOpen: screen == .notchOpen || screen == .panelOpen, canvas: canvas))
+            let scene = SurfacePreview.Scene(rawValue: screen.rawValue) ?? .panelClosed
+            canvas = size ?? scene.canvas
+            view = AnyView(SurfacePreview(model: model, scene: scene, canvas: canvas))
         case .notificationsPreview:
             view = AnyView(NotificationPreview(long: data == .long))
             canvas = size ?? CGSize(width: 800, height: 1040)

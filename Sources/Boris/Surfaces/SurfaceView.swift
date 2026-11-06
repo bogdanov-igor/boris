@@ -9,6 +9,12 @@ enum SurfaceMetrics {
     static let pillWalrus: CGFloat = 26
     static let pillSpacing: CGFloat = 8
     static let notchWalrus: CGFloat = 28
+    static let stripText: CGFloat = 12
+    static let stripLeading: CGFloat = 5
+    static let stripSpacing: CGFloat = 5
+    static let stripTrailing: CGFloat = 11
+    /// His picture leaves room for tall hats, so it is drawn larger than the place it takes in the row.
+    static let walrusOverdraw: CGFloat = 1.3
 
     static func textWidth(_ line: SurfaceLine, size: CGFloat) -> CGFloat {
         var width: CGFloat = 0
@@ -22,8 +28,15 @@ enum SurfaceMetrics {
         return width + (line.main.isEmpty || line.waiting.isEmpty ? 0 : pillSpacing)
     }
 
-    static func pillWidth(_ line: SurfaceLine) -> CGFloat {
-        6 + pillWalrus + pillSpacing + textWidth(line, size: pillText) + 14 + 2
+    /// He is drawn larger than his place, and the window ends at the edge of the menu bar, so his hat decides how large he can be.
+    static func stripWalrus(height: CGFloat) -> CGFloat {
+        min((height / walrusOverdraw).rounded(.down), pillWalrus)
+    }
+
+    static func stripWidth(_ line: SurfaceLine, height: CGFloat) -> CGFloat {
+        let walrus = stripWalrus(height: height)
+        let text = textWidth(line, size: stripText)
+        return text > 0 ? stripLeading + walrus + stripSpacing + text + stripTrailing : stripLeading + walrus + stripLeading
     }
 
     private static func measure(_ text: String, _ font: NSFont) -> CGFloat {
@@ -42,12 +55,12 @@ struct SurfaceView: View {
 
     var body: some View {
         Group {
-            if stage.isOpen {
+            if !stage.hasNotch {
+                panel
+            } else if stage.isOpen {
                 open
-            } else if stage.hasNotch {
-                closedNotch
             } else {
-                closedPill
+                closedNotch
             }
         }
         // A row whose values stay the same would otherwise keep the old language while the surface is open.
@@ -62,11 +75,12 @@ struct SurfaceView: View {
         }
     }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var mode: DisplayMode { model.settings.displayMode }
 
-    /// His picture leaves room for tall hats, so it is drawn larger than the place it takes in the row.
     private func walrus(_ size: CGFloat) -> some View {
-        WalrusView(mood: model.mood, outfit: model.outfit, size: size * 1.3, style: .simple, stage: model.walrus, onPoke: speak)
+        WalrusView(mood: model.mood, outfit: model.outfit, size: size * SurfaceMetrics.walrusOverdraw, style: .simple, stage: model.walrus, onPoke: speak)
             .frame(width: size, height: size)
     }
 
@@ -87,17 +101,47 @@ struct SurfaceView: View {
         .background(UnevenRoundedRectangle(bottomLeadingRadius: 12, bottomTrailingRadius: 12, style: .continuous).fill(Palette.notch))
     }
 
-    private var closedPill: some View {
-        HStack(spacing: SurfaceMetrics.pillSpacing) {
-            walrus(SurfaceMetrics.pillWalrus)
-            lineText(stage.line, size: SurfaceMetrics.pillText, waitingWeight: .semibold)
+    /// The strip in the menu bar with the sheet hanging below it. They stand apart inside the window, and what is between them is clear.
+    private var panel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let strip = stage.strip {
+                closedStrip(strip.size)
+                    .padding(.leading, stage.stripInset)
+            }
+            // The animation stays on the sheet: the window jumps when it opens, and the strip has to stand still through that.
+            ZStack(alignment: .topLeading) {
+                if stage.isOpen {
+                    open
+                        .padding(.leading, stage.sheetInset)
+                        .transition(.opacity)
+                }
+            }
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: stage.isOpen)
         }
-        .padding(.leading, 6)
-        .padding(.trailing, 14)
-        .frame(height: SurfaceGeometry.closedPillHeight)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func closedStrip(_ size: CGSize) -> some View {
+        let hasText = !stage.line.main.isEmpty || !stage.line.waiting.isEmpty
+        return HStack(spacing: SurfaceMetrics.stripSpacing) {
+            walrus(SurfaceMetrics.stripWalrus(height: size.height))
+                // With no room for the words he still tells them to VoiceOver.
+                .accessibilityValue(hasText ? "" : [stage.headerLine.main, stage.headerLine.waiting].filter { !$0.isEmpty }.joined(separator: ", "))
+            if hasText {
+                lineText(stage.line, size: SurfaceMetrics.stripText, waitingWeight: .semibold)
+            }
+        }
+        .padding(.leading, SurfaceMetrics.stripLeading)
+        .padding(.trailing, hasText ? SurfaceMetrics.stripTrailing : SurfaceMetrics.stripLeading)
+        .frame(width: size.width, height: size.height, alignment: .leading)
+        // The menu bar shows the wallpaper through it, so the text brings its own background to stay readable.
         // The continuous style leaves a stray piece of the outline beyond the rounded end.
-        .background(Capsule(style: .circular).fill(Palette.panel))
-        .overlay(Capsule(style: .circular).strokeBorder(Palette.separator, lineWidth: 0.5))
+        .background(
+            Capsule(style: .circular)
+                .fill(Palette.panel)
+                .overlay(Capsule(style: .circular).strokeBorder(Palette.separator, lineWidth: 0.5))
+                .padding(.vertical, 2)
+        )
     }
 
     private func lineText(_ line: SurfaceLine, size: CGFloat, waitingWeight: Font.Weight) -> some View {
@@ -122,7 +166,10 @@ struct SurfaceView: View {
 
     private var open: some View {
         VStack(alignment: .leading, spacing: stage.hasNotch ? 12 : 10) {
-            header
+            // Right below the same words in the strip it would only repeat them.
+            if stage.strip == nil || stage.line != stage.headerLine {
+                header
+            }
             if mode == .technical {
                 numbersRow
             }
@@ -155,9 +202,11 @@ struct SurfaceView: View {
         if stage.hasNotch {
             UnevenRoundedRectangle(bottomLeadingRadius: 18, bottomTrailingRadius: 18, style: .continuous).fill(Palette.notch)
         } else {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            // It hangs from the menu bar or from the top of the screen, so its top corners are only slightly round.
+            let shape = UnevenRoundedRectangle(topLeadingRadius: 6, bottomLeadingRadius: 16, bottomTrailingRadius: 16, topTrailingRadius: 6, style: .continuous)
+            shape
                 .fill(Palette.panel)
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Palette.separator, lineWidth: 0.5))
+                .overlay(shape.strokeBorder(Palette.separator, lineWidth: 0.5))
         }
     }
 
@@ -183,7 +232,10 @@ struct SurfaceView: View {
             .frame(height: stage.closedNotch.frame.height)
         } else {
             HStack(spacing: SurfaceMetrics.pillSpacing) {
-                walrus(SurfaceMetrics.pillWalrus)
+                // With a strip above, he is already there.
+                if stage.strip == nil {
+                    walrus(SurfaceMetrics.pillWalrus)
+                }
                 Text(line.main)
                     .font(.system(size: SurfaceMetrics.pillText))
                     .lineLimit(1)
@@ -320,40 +372,84 @@ struct SurfaceSessionRow: View {
 #if DEBUG
 /// A made-up screen with the surface on it, placed by the same code as the real window. A snapshot cannot reach the real notch.
 struct SurfacePreview: View {
+    /// What the screen around the surface is like. Each case is a screen of `BORIS_SCREEN` under the same name.
+    enum Scene: String {
+        case notchClosed, notchOpen
+        /// A menu bar with room.
+        case panelClosed, panelOpen
+        /// So many icons that only something short fits.
+        case panelTight
+        /// No room at all. Without a request nothing shows, and a request opens below the bar all the same.
+        case panelFull, panelFullOpen
+        /// A hidden menu bar: nothing on screen, then a request, then the same request after the person closed it.
+        case panelHidden, panelHiddenOpen, panelHiddenWaiting
+
+        var hasNotch: Bool { self == .notchClosed || self == .notchOpen }
+        var isOpen: Bool { [.notchOpen, .panelOpen, .panelFullOpen, .panelHiddenOpen].contains(self) }
+        var hidesBar: Bool { [.panelHidden, .panelHiddenOpen, .panelHiddenWaiting].contains(self) }
+        var hasRequest: Bool { isOpen || self == .panelHiddenWaiting }
+        var canvas: CGSize { CGSize(width: 1100, height: isOpen ? 640 : 90) }
+
+        func iconsWidth(on width: CGFloat) -> CGFloat {
+            switch self {
+            case .panelTight: return width * 0.5
+            case .panelFull, .panelFullOpen: return width * 0.8
+            default: return 320
+            }
+        }
+    }
+
     var model: AppModel
-    var hasNotch: Bool
-    var isOpen: Bool
+    var scene: Scene
     var canvas: CGSize
 
-    private static let menuBar: CGFloat = 24
+    /// As the real menu bar on a monitor without a notch is on the current macOS.
+    private static let menuBar: CGFloat = 30
     private static let cutout = CGSize(width: 185, height: 37)
+    private static let menusWidth: CGFloat = 360
+
+    private var barHeight: CGFloat {
+        if scene.hidesBar { return 0 }
+        return scene.hasNotch ? Self.cutout.height : Self.menuBar
+    }
+
+    private var iconsWidth: CGFloat { scene.iconsWidth(on: canvas.width) }
 
     private var screen: SurfaceScreen {
         let frame = CGRect(origin: .zero, size: canvas)
         let notch = CGRect(x: (canvas.width - Self.cutout.width) / 2, y: canvas.height - Self.cutout.height, width: Self.cutout.width, height: Self.cutout.height)
         var visible = frame
-        visible.size.height -= hasNotch ? Self.cutout.height : Self.menuBar
-        return SurfaceScreen(id: "preview", name: "Preview", frame: frame, visibleFrame: visible, notch: hasNotch ? notch : nil)
+        visible.size.height -= barHeight
+        return SurfaceScreen(
+            id: "preview",
+            name: "Preview",
+            frame: frame,
+            visibleFrame: visible,
+            notch: scene.hasNotch ? notch : nil,
+            menuBar: barHeight,
+            statusIconsMinX: scene.hidesBar ? nil : canvas.width - iconsWidth
+        )
     }
 
     var body: some View {
         let stage = SurfaceStage()
-        let frame = stage.arrange(SurfaceInputs(model: model), on: screen, isOpen: isOpen, contentHeight: canvas.height)
-        let surface = SurfaceView(model: model, stage: stage, speak: {}, openMain: {}, openSettings: {}, contentHeight: { _ in })
-            .frame(width: frame.width, height: isOpen ? nil : frame.height, alignment: .top)
-            .fixedSize(horizontal: false, vertical: isOpen)
+        let inputs = SurfaceInputs(model: model)
+        let placement = stage.arrange(inputs, on: screen, isOpen: scene.isOpen, contentHeight: canvas.height)
         return ZStack(alignment: .topLeading) {
             Palette.desk
-            Palette.fill2.frame(height: hasNotch ? Self.cutout.height : Self.menuBar)
-            Group {
-                if hasNotch {
-                    surface.environment(\.colorScheme, .dark)
-                } else {
-                    surface
-                }
+            // An app's window right up to the menu bar: it is what the closed panel used to cover.
+            UnevenRoundedRectangle(topLeadingRadius: 8, topTrailingRadius: 8, style: .continuous)
+                .fill(Palette.window)
+                .padding(.top, barHeight)
+                .padding(.horizontal, 12)
+            if barHeight > 0 {
+                Palette.fill2.frame(height: barHeight)
+                bar
             }
-            .offset(x: frame.minX, y: canvas.height - frame.maxY)
-            if hasNotch {
+            if let placement {
+                surface(stage, placement)
+            }
+            if scene.hasNotch {
                 // The real cutout is black on black. Its outline shows that nothing runs behind it.
                 Rectangle()
                     .strokeBorder(Palette.grey, style: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
@@ -363,6 +459,43 @@ struct SurfacePreview: View {
         }
         .frame(width: canvas.width, height: canvas.height, alignment: .topLeading)
         .clipped()
+    }
+
+    /// Places of the menus and the icons, to see that the panel stays off them.
+    @ViewBuilder private var bar: some View {
+        if !scene.hasNotch {
+            ZStack(alignment: .leading) {
+                HStack(spacing: 10) {
+                    ForEach(0..<7, id: \.self) { _ in
+                        Capsule().fill(Palette.fill2).frame(width: Self.menusWidth / 7 - 10, height: 10)
+                    }
+                }
+                .padding(.leading, 12)
+                HStack(spacing: 8) {
+                    ForEach(0..<Int(iconsWidth / 32), id: \.self) { _ in
+                        Circle().fill(Palette.fill2).frame(width: 16, height: 16)
+                    }
+                }
+                .frame(width: iconsWidth, alignment: .trailing)
+                .offset(x: canvas.width - iconsWidth - 8)
+            }
+            .frame(height: barHeight)
+        }
+    }
+
+    private func surface(_ stage: SurfaceStage, _ placement: SurfacePlacement) -> some View {
+        let frame = placement.frame
+        let view = SurfaceView(model: model, stage: stage, speak: {}, openMain: {}, openSettings: {}, contentHeight: { _ in })
+            .frame(width: frame.width, height: scene.isOpen ? nil : frame.height, alignment: .top)
+            .fixedSize(horizontal: false, vertical: scene.isOpen)
+        return Group {
+            if scene.hasNotch {
+                view.environment(\.colorScheme, .dark)
+            } else {
+                view
+            }
+        }
+        .offset(x: frame.minX, y: canvas.height - frame.maxY)
     }
 }
 
