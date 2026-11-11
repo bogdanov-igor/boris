@@ -139,7 +139,13 @@ def decision(line, tool, tool_input):
     elif behavior == "deny":
         reason = answer.get("reason")
         reason = reason.strip() if isinstance(reason, str) else ""
-        verdict = {"behavior": "deny", "message": reason or "Denied in Boris"}
+        if not reason:
+            message = "Denied in Boris"
+        elif tool == "ExitPlanMode":
+            message = "The user did not approve this plan in Boris and said: " + reason
+        else:
+            message = "The user denied this in Boris and said: " + reason
+        verdict = {"behavior": "deny", "message": message}
     else:
         return None
     return {"hookSpecificOutput": {"hookEventName": "PermissionRequest", "decision": verdict}}

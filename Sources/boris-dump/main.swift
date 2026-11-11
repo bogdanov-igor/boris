@@ -138,7 +138,9 @@ func work() async {
         print("\(project.name ?? "(no project)")")
         for session in project.sessions {
             let place = session.environment.map { "\($0)" } ?? "?"
-            print("  session \(session.id.prefix(8)) · \(place) · \(session.state.rawValue)\(session.waitingFor.map { " (\($0))" } ?? "")")
+            // Whether it is a separate copy and whether its main copy is known, never which folder or branch.
+            let copy = session.place?.isSeparateCopy == true ? " · separate copy, main copy \(session.place?.mainFolder == nil ? "unknown" : "known")" : ""
+            print("  session \(session.id.prefix(8)) · \(place) · \(session.state.rawValue)\(session.waitingFor.map { " (\($0))" } ?? "")\(copy)")
             describe(session.root, depth: 0)
         }
     }

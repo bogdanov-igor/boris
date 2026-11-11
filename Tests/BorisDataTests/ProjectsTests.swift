@@ -284,18 +284,90 @@ struct WorktreeTests {
         #expect(place.mainFolder == main.path)
     }
 
-    @Test("Своя копия человека видна по файлу .git, в том числе из вложенной папки")
+    /// The folder as Claude writes it: Claude Code 2.1.319 put `/private/var/folders/…` into the session file and the transcript, not `/var/folders/…`.
+    private func real(_ url: URL) -> String {
+        guard let resolved = realpath(url.path, nil) else { return url.path }
+        defer { free(resolved) }
+        return String(cString: resolved)
+    }
+
+    @Test("Своя копия человека видна по файлу .git, в том числе из вложенной папки, и знает основную копию")
     func ownCopy() throws {
-        let (folder, _, _, copy) = try repository()
+        let (folder, main, _, copy) = try repository()
         _ = folder
         let inner = copy.appendingPathComponent("src/deep")
         try FileManager.default.createDirectory(at: inner, withIntermediateDirectories: true)
-        for path in [copy.path, inner.path] {
+        for path in [real(copy), real(inner)] {
             let place = try #require(GitPlaceReader.place(folder: path, branch: "hotfix"))
             #expect(place.isSeparateCopy)
             #expect(place.label == "hotfix")
-            #expect(place.mainFolder == nil)
+            #expect(place.mainFolder == real(main))
         }
+    }
+
+    /// A real session made with `git worktree add` next to the main copy, as Claude Code 2.1.319 logged it:
+    /// the transcript has only the copy's own folder and branch, and nothing that names the main copy.
+    @Test("Сессия в своей копии человека числится в проекте основной копии")
+    func sessionInOwnCopy() async throws {
+        let (folder, main, _, copy) = try repository()
+        _ = folder
+        let logs = TempFolder()
+        logs.write("projects/p/one.jsonl", #"{"type":"user","cwd":"\#(real(copy))","entrypoint":"cli","gitBranch":"hotfix"}"# + "\n")
+        logs.write("projects/q/two.jsonl", #"{"type":"user","cwd":"\#(real(main))","entrypoint":"cli","gitBranch":"main"}"# + "\n")
+        let sessions = await SessionHistory(paths: ClaudePaths(root: logs.url)).sessions()
+        let inCopy = try #require(sessions.first { $0.id == "one" })
+        #expect(inCopy.place?.isSeparateCopy == true)
+        #expect(inCopy.place?.label == "hotfix")
+        #expect(inCopy.projectPath == real(main))
+        let inMain = try #require(sessions.first { $0.id == "two" })
+        #expect(inMain.projectPath == real(main))
+    }
+
+    @Test("Путь в .git может быть относительным")
+    func relativePointer() throws {
+        let folder = TempFolder()
+        let copy = folder.url.appendingPathComponent("app-relative")
+        folder.write("app-relative/.git", "gitdir: ../app/.git/worktrees/app-relative\n")
+        let place = try #require(GitPlaceReader.place(folder: real(copy), branch: "x"))
+        #expect(place.isSeparateCopy)
+        #expect(place.mainFolder == real(folder.url) + "/app")
+    }
+
+    @Test("Подмодуль с файлом .git не считается отдельной копией")
+    func submodule() throws {
+        let folder = TempFolder()
+        folder.write("app/.git/HEAD", "ref: refs/heads/main\n")
+        folder.write("app/lib/.git", "gitdir: ../.git/modules/lib\n")
+        let place = GitPlaceReader.place(folder: real(folder.url.appendingPathComponent("app/lib")), branch: "main")
+        #expect(place?.isSeparateCopy == false)
+        #expect(place?.label == "main")
+    }
+
+    @Test("Копия голого репозитория отмечена, но основной копии у неё нет")
+    func bareCopy() throws {
+        let folder = TempFolder()
+        folder.write("wt/.git", "gitdir: /srv/app.git/worktrees/wt\n")
+        let place = try #require(GitPlaceReader.place(folder: real(folder.url.appendingPathComponent("wt")), branch: "x"))
+        #expect(place.isSeparateCopy)
+        #expect(place.mainFolder == nil)
+    }
+
+    @Test("Файл .git не прочитать: копия отмечена, а основная копия неизвестна")
+    func unreadablePointer() throws {
+        let (folder, _, _, copy) = try repository()
+        _ = folder
+        let pointer = copy.appendingPathComponent(".git").path
+        #expect(chmod(pointer, 0) == 0)
+        defer { chmod(pointer, 0o644) }
+        let place = try #require(GitPlaceReader.place(folder: real(copy), branch: "hotfix"))
+        #expect(place.isSeparateCopy)
+        #expect(place.mainFolder == nil)
+    }
+
+    @Test("Путь разбирается по тексту и не теряет /private")
+    func normalizedPath() {
+        #expect(GitPlaceReader.normalized("/private/var/x/./wt/../app/.git") == "/private/var/x/app/.git")
+        #expect(GitPlaceReader.normalized("/a//b/") == "/a/b")
     }
 
     @Test("Обычная папка проекта не отмечена, но ветка известна")
