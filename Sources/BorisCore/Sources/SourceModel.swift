@@ -127,7 +127,7 @@ public struct SourceSettings: Codable, Sendable, Equatable {
     /// so that a switch shown as on always means the chat is read and notified about.
     public mutating func setChat(on: Bool) {
         set(.chat, on: on)
-        self[.chat] = SourceSwitches()
+        switches[SourceID.chat.rawValue] = nil
     }
 
     public func reads(_ source: SourceID) -> Bool {
