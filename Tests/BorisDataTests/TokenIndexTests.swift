@@ -56,6 +56,16 @@ struct TokenIndexTests {
         #expect(await total(index) == 1111)
     }
 
+    @Test("Время без долей секунды относит запись к её дню, а не ко дню, когда файл писали последний раз")
+    func wholeSecondTimestamp() async throws {
+        let folder = TempFolder()
+        let file = folder.write("projects/p/a.jsonl", #"{"type":"assistant","timestamp":"2026-11-05T12:00:00Z","message":{"id":"a","model":"opus","usage":{"input_tokens":7,"output_tokens":0}}}"# + "\n")
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_794_225_600)], ofItemAtPath: file.path)
+        let index = TokenIndex(cacheFile: nil, timeZone: utc)
+        await index.update(roots: [ClaudePaths(root: folder.url)])
+        #expect(await index.records().map(\.day) == ["2026-11-05"])
+    }
+
     @Test("Скрытая папка обновления лимитов не читается и по названной папке")
     func namedFolderSkipsHidden() async {
         let folder = TempFolder()

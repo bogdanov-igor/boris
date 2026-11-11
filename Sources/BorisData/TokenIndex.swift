@@ -46,6 +46,8 @@ public actor TokenIndex {
     private var lastSaved: Date?
     private var editors: EditorBook?
     private let timestamps: ISO8601DateFormatter
+    /// A time written to the second, with no fraction. Without it such a record went to the day its file was last written.
+    private let wholeSeconds: ISO8601DateFormatter
     private let dayKeys: DateFormatter
 
     /// - Parameter cacheFile: nil keeps everything in memory.
@@ -54,6 +56,9 @@ public actor TokenIndex {
         let timestamps = ISO8601DateFormatter()
         timestamps.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         self.timestamps = timestamps
+        let wholeSeconds = ISO8601DateFormatter()
+        wholeSeconds.formatOptions = [.withInternetDateTime]
+        self.wholeSeconds = wholeSeconds
         let dayKeys = DateFormatter()
         dayKeys.locale = Locale(identifier: "en_US_POSIX")
         dayKeys.timeZone = timeZone
@@ -222,7 +227,7 @@ public actor TokenIndex {
             entry.recent[id] = usage
         }
 
-        let day = (record["timestamp"] as? String).flatMap { timestamps.date(from: $0) }.map { dayKeys.string(from: $0) } ?? fallbackDay
+        let day = (record["timestamp"] as? String).flatMap { timestamps.date(from: $0) ?? wholeSeconds.date(from: $0) }.map { dayKeys.string(from: $0) } ?? fallbackDay
         if let index = entry.buckets.firstIndex(where: { $0.day == day && $0.model == model }) {
             entry.buckets[index].usage = entry.buckets[index].usage + growth
         } else {
