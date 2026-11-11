@@ -12,8 +12,11 @@ final class UsageRefresher {
     /// The last attempt did not work out. The old values stay, so this is a remark, not a failure of the work.
     private(set) var failed = false
     @ObservationIgnored private var lastAttempt: Date?
-    @ObservationIgnored private var startedAt = Date()
+    /// Time awake, so that the log tells how long it worked and not how long the Mac slept in between.
+    @ObservationIgnored private var startedAt = ProcessInfo.processInfo.systemUptime
     @ObservationIgnored var onFinished: (() -> Void)?
+    /// False from «going to sleep» to «woke up». The short wakes with the lid closed come in between and do not count.
+    @ObservationIgnored var macAwake = true
 
     init(settings: AppSettings) {
         self.settings = settings
@@ -25,6 +28,7 @@ final class UsageRefresher {
         guard !refreshing, UsageRefreshPolicy.isDue(
             now: now,
             enabled: settings.usageRefreshEnabled,
+            macAwake: macAwake,
             intervalMinutes: settings.usageRefreshMinutes,
             liveSessions: liveSessions,
             account: account,
@@ -44,7 +48,7 @@ final class UsageRefresher {
         AppLog.note(.limitsRefreshSkipped)
         #else
         refreshing = true
-        startedAt = Date()
+        startedAt = ProcessInfo.processInfo.systemUptime
         AppLog.note(.limitsRefreshStarted, .word(why))
         failed = false
         let paths = ClaudePaths.resolve(custom: settings.claudeFolder)
@@ -64,7 +68,7 @@ final class UsageRefresher {
     private func finish(_ outcome: UsageProbe.Outcome) {
         refreshing = false
         failed = outcome == .failed
-        AppLog.note(failed ? .limitsRefreshFailed : .limitsRefreshDone, .seconds(Date().timeIntervalSince(startedAt)))
+        AppLog.note(failed ? .limitsRefreshFailed : .limitsRefreshDone, .seconds(ProcessInfo.processInfo.systemUptime - startedAt))
         onFinished?()
     }
 

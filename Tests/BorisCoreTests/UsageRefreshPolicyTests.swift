@@ -6,10 +6,11 @@ import Testing
 struct UsageRefreshPolicyTests {
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
-    private func due(enabled: Bool = true, sessions: Int = 1, account: ClaudeAccount = .signedIn, fetched: Double? = 20, attempt: Double? = nil) -> Bool {
+    private func due(enabled: Bool = true, awake: Bool = true, sessions: Int = 1, account: ClaudeAccount = .signedIn, fetched: Double? = 20, attempt: Double? = nil) -> Bool {
         UsageRefreshPolicy.isDue(
             now: now,
             enabled: enabled,
+            macAwake: awake,
             intervalMinutes: 15,
             liveSessions: sessions,
             account: account,
@@ -27,6 +28,12 @@ struct UsageRefreshPolicyTests {
     @Test("Выключено настройкой: никогда")
     func disabled() {
         #expect(!due(enabled: false))
+    }
+
+    @Test("Mac спит с закрытой крышкой и проснулся сам на пару секунд: не запускается, даже когда пора")
+    func darkWake() {
+        #expect(!due(awake: false))
+        #expect(!due(awake: false, fetched: nil))
     }
 
     @Test("Без открытых сессий ничего не запускается")

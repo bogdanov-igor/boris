@@ -163,7 +163,7 @@ public enum LogWord: String, Sendable, CaseIterable {
     // Telegram
     case noConnection, badToken, badRecipient, botCannotWrite, tooOften
     // Limits
-    case onSchedule, byButton, noClaudeBinary, noTerminal, couldNotStart, noFreshData
+    case onSchedule, byButton, noClaudeBinary, noTerminal, couldNotStart, noFreshData, macSlept
     // Panel
     case byPointer, byRequest
 
@@ -228,6 +228,7 @@ public enum LogWord: String, Sendable, CaseIterable {
         case .noTerminal: return L("no terminal for it")
         case .couldNotStart: return L("Claude Code did not start")
         case .noFreshData: return L("no fresh data came")
+        case .macSlept: return L("the Mac fell asleep meanwhile")
         case .byPointer: return L("by the pointer")
         case .byRequest: return L("by a request")
         }

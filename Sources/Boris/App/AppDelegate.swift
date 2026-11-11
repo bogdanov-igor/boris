@@ -101,8 +101,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             AppLog.note(.macWoke)
             MainActor.assumeIsolated { model?.noteWake() }
         })
-        observers.append(center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { _ in
+        // Neither comes for the short wakes with the lid closed: the app runs then, but as if the Mac were still asleep.
+        observers.append(center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak model] _ in
             AppLog.note(.macSleeping)
+            MainActor.assumeIsolated { model?.noteSleep() }
         })
         launch.listen { [weak statusBar] in statusBar?.toggleMiniWindow() }
         registerHotKey()

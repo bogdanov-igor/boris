@@ -17,9 +17,11 @@ public struct UsageProbe: Sendable {
     public var configFolder: String?
     public var trustAfter: TimeInterval = 1
     public var askAfter: TimeInterval = 4
-    public var timeout: TimeInterval = 25
+    /// Counted only while the Mac is awake. A refresh takes 6 to 9 seconds, the trust question included.
+    public var timeout: TimeInterval = 20
     /// How long it gets to remove its own session file on the way out.
     public var exitGrace: TimeInterval = 8
+    var clock = ProbeClock.mac
 
     public init(binary: URL, folder: URL, profile: URL, configFolder: String?) {
         self.binary = binary
@@ -71,11 +73,12 @@ public struct UsageProbe: Sendable {
             return Self.failed(.couldNotStart)
         }
         var buffer = [UInt8](repeating: 0, count: 8192)
+        let clock = clock
         defer {
             // Its output is still read meanwhile: on a full terminal buffer it would hang while exiting. Force is the last resort.
             process.terminate()
-            let deadline = Date().addingTimeInterval(exitGrace)
-            while process.isRunning, Date() < deadline {
+            let deadline = clock.awake() + exitGrace
+            while process.isRunning, clock.awake() < deadline {
                 _ = read(master, &buffer, buffer.count)
                 usleep(100_000)
             }
@@ -85,22 +88,26 @@ public struct UsageProbe: Sendable {
 
         let before = fetchedAt()
         var seenFile = FileInfo.modified(profile)
-        let began = Date()
+        let began = clock.awake()
+        let sleptBefore = clock.asleep()
         var screen = [UInt8]()
         var answeredTrust = false
         var asked = false
         // An answer to the trust question moves this: the screen behind it needs its own time to come up.
-        var askFrom = began.addingTimeInterval(askAfter)
+        var askFrom = began + askAfter
         func send(_ text: String) {
             _ = text.withCString { write(master, $0, strlen($0)) }
         }
-        while Date().timeIntervalSince(began) < timeout, process.isRunning {
+        while clock.awake() - began < timeout, process.isRunning {
+            // With the lid closed the Mac wakes for 2 to 10 seconds every few minutes, and Claude Code froze halfway when it fell asleep again.
+            // Waiting on into the next such wake kept it there for minutes, so a sleep ends the attempt at once.
+            if clock.asleep() - sleptBefore > 1 { return fetchedAt() != before ? .refreshed : Self.failed(.macSlept) }
             let count = read(master, &buffer, buffer.count)
             if count > 0 {
                 screen.append(contentsOf: buffer[0..<count])
                 if screen.count > 16 * 1024 { screen.removeFirst(screen.count - 16 * 1024) }
             }
-            let elapsed = Date().timeIntervalSince(began)
+            let elapsed = clock.awake() - began
             if !answeredTrust, elapsed > trustAfter, String(decoding: screen, as: UTF8.self).lowercased().contains("trust") {
                 // The cursor starts on «No, exit». This is Boris's own empty folder, not a project.
                 answeredTrust = true
@@ -109,11 +116,11 @@ public struct UsageProbe: Sendable {
                 usleep(500_000)
                 send("\r")
                 screen.removeAll()
-                askFrom = Date().addingTimeInterval(askAfter)
+                askFrom = clock.awake() + askAfter
                 continue
             }
             // Typed earlier, the command and its Enter would answer whatever comes up first, and the trust question starts on «No, exit».
-            if !asked, Date() > askFrom, Self.showsText(screen) {
+            if !asked, clock.awake() > askFrom, Self.showsText(screen) {
                 asked = true
                 send("/usage")
                 usleep(800_000)
@@ -146,5 +153,18 @@ public struct UsageProbe: Sendable {
 
     private func fetchedAt() -> Double {
         UsageReader.read(profile)?.fetchedAt?.timeIntervalSince1970 ?? 0
+    }
+}
+
+/// Time as the probe counts it: how long the Mac has been awake and how long it has slept. Both only grow, and setting the clock moves neither.
+struct ProbeClock: Sendable {
+    var awake: @Sendable () -> TimeInterval
+    var asleep: @Sendable () -> TimeInterval
+
+    // The first clock goes on while the Mac sleeps, the second one stops.
+    static let mac = ProbeClock(awake: { seconds(CLOCK_UPTIME_RAW) }, asleep: { seconds(CLOCK_MONOTONIC_RAW) - seconds(CLOCK_UPTIME_RAW) })
+
+    private static func seconds(_ clock: clockid_t) -> TimeInterval {
+        TimeInterval(clock_gettime_nsec_np(clock)) / 1_000_000_000
     }
 }
