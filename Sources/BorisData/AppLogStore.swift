@@ -46,6 +46,7 @@ public final class AppLogStore: LogSink, @unchecked Sendable {
     /// Repeats of `last` not yet in the file.
     private var unwritten = 0
     private var flushPlanned = false
+    private var tidyPlanned = false
     private var viewer: (@Sendable (LogChange) -> Void)?
     private var broken = false {
         didSet { if broken != oldValue { viewer?(.saving(!broken)) } }
@@ -127,6 +128,21 @@ public final class AppLogStore: LogSink, @unchecked Sendable {
         guard append(data, now: now) else { return }
         last = record
         viewer?(.added(record))
+        planTidy()
+    }
+
+    /// A quiet app writes nothing for days, and lines older than a day must not stay in the file until it speaks again.
+    /// So while the file holds anything, it is looked at once in a while on its own. Usually that is one look at its first line.
+    private func planTidy() {
+        guard !tidyPlanned else { return }
+        tidyPlanned = true
+        queue.asyncAfter(deadline: .now() + limits.tidyEvery) { [weak self] in
+            guard let self else { return }
+            self.tidyPlanned = false
+            let now = self.clock()
+            if now.timeIntervalSince(self.lastTidy) >= self.limits.tidyEvery { self.tidy(now: now, incoming: 0) }
+            if self.size > 0 { self.planTidy() }
+        }
     }
 
     private func planFlush() {
