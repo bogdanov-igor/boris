@@ -80,6 +80,11 @@ final class AppSettings {
         usageRefreshMinutes = defaults?.object(forKey: "usageRefreshMinutes") as? Int ?? 15
         sources = Self.load(defaults, "sources") ?? SourceSettings()
         chatConsent = defaults?.bool(forKey: "chatConsent") ?? false
+        // An older version showed the chat as a row of its own, so its source could be off with the consent given, or the other way round.
+        // The switch would then say on while nothing looks. The chat is on only when both say so, and then wholly.
+        let chatOn = chatConsent && sources.reads(.chat)
+        chatConsent = chatOn
+        sources.setChat(on: chatOn)
         Localizer.use(language)
         NSApp?.appearance = theme.appearance
     }

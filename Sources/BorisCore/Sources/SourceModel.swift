@@ -123,6 +123,13 @@ public struct SourceSettings: Codable, Sendable, Equatable {
         }
     }
 
+    /// The chat has one switch, the person's consent, and no row of its own. Whatever an older version kept about that row goes with it,
+    /// so that a switch shown as on always means the chat is read and notified about.
+    public mutating func setChat(on: Bool) {
+        set(.chat, on: on)
+        self[.chat] = SourceSwitches()
+    }
+
     public func reads(_ source: SourceID) -> Bool {
         isOn(source.product) && self[source].read
     }

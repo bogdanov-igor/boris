@@ -18,7 +18,8 @@ struct ChatSourceBlock: View {
 
     private var isOn: Binding<Bool> {
         Binding {
-            explaining || model.settings.chatConsent
+            // On only while Boris really may look: the consent and the source together.
+            explaining || (model.settings.chatConsent && model.settings.sources.reads(.chat))
         } set: { wanted in
             if wanted {
                 explaining = true
@@ -95,7 +96,7 @@ extension AppModel {
     func setChatConsent(_ on: Bool) {
         settings.chatConsent = on
         // Agreeing is what turns the chat on: its source is off by default, and without it nothing would ever be said.
-        settings.sources.set(.chat, on: on)
+        settings.sources.setChat(on: on)
         sourcesChanged(reading: false)
         if on { chat.askForPermission() }
     }
