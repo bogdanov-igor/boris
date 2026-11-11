@@ -15,15 +15,15 @@ public enum Timeline {
         switch mood {
         case .working(let agents):
             let speedup = 1 + 0.35 * log2(Double(max(agents, 1)))
-            return max(2.4 / speedup, fastestWorkLoop)
+            return max(2.1 / speedup, fastestWorkLoop)
         default:
-            return 1.92
+            return 1.7
         }
     }
 
     /// A short blink every few seconds, for the big drawing.
     public static func isBlinking(elapsed: TimeInterval) -> Bool {
-        elapsed.truncatingRemainder(dividingBy: 5.3) > 5.14
+        elapsed.truncatingRemainder(dividingBy: 4.6) > 4.44
     }
 
     /// `firstLoop` is false once a one-time move has played: the cigar that fell stays on the floor.

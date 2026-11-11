@@ -36,7 +36,7 @@ final class WalrusArt {
         case .drawn(let frame):
             return simple ? Renderer.image(frame.simplePose(), pixels: pixels, roomy: true) : Renderer.image(frame.fullPose(), pixels: pixels, roomy: true)
         case .shelf(let outfit):
-            return Renderer.image(Dress.shelfSimple(outfit, mono: false), pixels: pixels, roomy: true)
+            return simple ? Renderer.image(Dress.shelfSimple(outfit, mono: false), pixels: pixels, roomy: true) : Renderer.image(Dress.shelf(outfit), pixels: pixels, roomy: true)
         case .file(let url):
             return Self.thumbnail(url, pixels: pixels)
         }

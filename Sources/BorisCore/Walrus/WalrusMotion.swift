@@ -2,7 +2,7 @@ import Foundation
 
 /// When the walrus needs a timer at all. A walrus that is still or cannot be seen must cost nothing.
 public enum WalrusMotion {
-    public static let frameInterval: TimeInterval = 1.0 / 8
+    public static let frameInterval: TimeInterval = 1.0 / 12
 
     /// Seconds until the next picture, or nil when no timer should run.
     /// - Parameters:

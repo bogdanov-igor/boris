@@ -9,6 +9,9 @@ struct WalrusView: View {
         case full, simple
     }
 
+    /// The simple drawing is made for the menu bar. Anything bigger than the notch gets the full one, or he looks crude.
+    static let simpleBelow: CGFloat = 32
+
     var pose: PoseName
     var loop: TimeInterval
     var outfit: Outfit
@@ -48,7 +51,7 @@ struct WalrusView: View {
                 loop: loop,
                 outfit: stage?.costume ?? outfit,
                 pixels: Int(size * 2),
-                simple: style == .simple,
+                simple: style == .simple && size < Self.simpleBelow,
                 loops: loops,
                 pack: WalrusArt.shared.pack,
                 revision: stage?.revision ?? 0,

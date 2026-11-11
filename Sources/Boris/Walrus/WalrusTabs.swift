@@ -125,7 +125,7 @@ private struct WalrusTile: View {
 
     var body: some View {
         Group {
-            if let image = WalrusArt.shared.still(source, pixels: Int(size * 2), simple: true) {
+            if let image = WalrusArt.shared.still(source, pixels: Int(size * 2), simple: size < WalrusView.simpleBelow) {
                 Image(decorative: image, scale: 2).resizable().interpolation(.high).aspectRatio(contentMode: .fit)
             }
         }
