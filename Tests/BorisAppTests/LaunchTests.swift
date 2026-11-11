@@ -164,3 +164,25 @@ struct AutostartTests {
         #expect(!LaunchCoordinator(agent: FakeAgent(), environment: [:]).shouldReopenSettings())
     }
 }
+
+@Suite("Проверка собранного приложения")
+struct BuiltAppCheckTests {
+    private let app = URL(fileURLWithPath: "/Applications/Boris.app")
+
+    @Test("Внутри приложения уведомления настоящие, а проверка с BORIS_SMOKE=1 обходится без них")
+    func smokeKeepsBannersOff() {
+        #expect(BannerChannel.canRun(bundle: app, environment: [:]))
+        #expect(!BannerChannel.canRun(bundle: app, environment: ["BORIS_SMOKE": "1"]))
+        #expect(!BannerChannel.canRun(bundle: URL(fileURLWithPath: "/x/.build/debug"), environment: [:]), "вне приложения центр уведомлений падает")
+    }
+
+    /// The measurement refuses to run where real notifications could go out, and the script that runs it inside the built app must get past that.
+    @Test("Замер в check-network.py проходит проверку режима замера внутри приложения")
+    func networkCheckGetsPastTheGuard() throws {
+        let script = try String(contentsOf: packageRoot.appendingPathComponent("scripts/check-network.py"), encoding: .utf8)
+        let line = try #require(script.split(separator: "\n").first { $0.contains("BORIS_APP_MEASURE=") })
+        #expect(line.contains("BORIS_STATE_DIR="))
+        #expect(line.contains("BORIS_SMOKE=\"1\""))
+        #expect(!BannerChannel.canRun(bundle: app, environment: ["BORIS_SMOKE": "1", "BORIS_STATE_DIR": "/tmp/x", "BORIS_APP_MEASURE": "10"]))
+    }
+}

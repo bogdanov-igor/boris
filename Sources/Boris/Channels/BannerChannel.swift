@@ -42,7 +42,18 @@ final class BannerChannel: NSObject, BannerPosting, UNUserNotificationCenterDele
 
     /// The notification center crashes outside an app bundle, which is how debug tools run.
     static var canRun: Bool {
-        Bundle.main.bundleURL.pathExtension == "app"
+        canRun(bundle: Bundle.main.bundleURL, environment: ProcessInfo.processInfo.environment)
+    }
+
+    /// A check that runs the built app, as `scripts/check-network.py` does, sets `BORIS_SMOKE=1`: real notifications are out of the question there,
+    /// and so is Telegram. Only a debug build knows the variable.
+    nonisolated static func canRun(bundle: URL, environment: [String: String]) -> Bool {
+        guard bundle.pathExtension == "app" else { return false }
+        #if DEBUG
+        return environment["BORIS_SMOKE"] != "1"
+        #else
+        return true
+        #endif
     }
 
     func refreshPermission() {

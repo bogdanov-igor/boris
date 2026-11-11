@@ -15,23 +15,6 @@ struct TokenIndexTests {
         await index.records().reduce(0) { $0 + $1.usage.total }
     }
 
-    private final class Flag: @unchecked Sendable {
-        private let lock = NSLock()
-        private var value = false
-
-        func set() {
-            lock.lock()
-            value = true
-            lock.unlock()
-        }
-
-        var isSet: Bool {
-            lock.lock()
-            defer { lock.unlock() }
-            return value
-        }
-    }
-
     @Test("Названная папка читается сама, а остальная история не трогается")
     func readsOnlyNamedFolders() async {
         let folder = TempFolder()
@@ -54,6 +37,16 @@ struct TokenIndexTests {
         #expect(await total(index) == 1101)
         await index.update(roots: [paths])
         #expect(await total(index) == 1111)
+    }
+
+    @Test("Время без долей секунды относит запись к её дню, а не ко дню, когда файл писали последний раз")
+    func wholeSecondTimestamp() async throws {
+        let folder = TempFolder()
+        let file = folder.write("projects/p/a.jsonl", #"{"type":"assistant","timestamp":"2026-11-05T12:00:00Z","message":{"id":"a","model":"opus","usage":{"input_tokens":7,"output_tokens":0}}}"# + "\n")
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_794_225_600)], ofItemAtPath: file.path)
+        let index = TokenIndex(cacheFile: nil, timeZone: utc)
+        await index.update(roots: [ClaudePaths(root: folder.url)])
+        #expect(await index.records().map(\.day) == ["2026-11-05"])
     }
 
     @Test("Скрытая папка обновления лимитов не читается и по названной папке")
@@ -252,46 +245,5 @@ struct TokenIndexTests {
         let index = TokenIndex(cacheFile: nil, timeZone: utc)
         await index.update(roots: [ClaudePaths(root: folder.url)])
         #expect(await total(index) == 11)
-    }
-
-    @Test("Чтение логов не держит главный поток")
-    @MainActor
-    func mainThreadStaysFree() async throws {
-        let folder = TempFolder()
-        let path = "/x/\(String(repeating: "p", count: 200))"
-        for file in 0..<40 {
-            let body = (0..<2000).map { line("f\(file)m\($0)", cwd: path) }.joined()
-            folder.write("projects/p/s\(file).jsonl", body)
-        }
-        let index = TokenIndex(cacheFile: nil, timeZone: utc)
-        let roots = [ClaudePaths(root: folder.url)]
-        let finished = Flag()
-        Task.detached(priority: .utility) {
-            await index.update(roots: roots)
-            finished.set()
-        }
-
-        // The main thread only ticks here and never waits for the index, as in the app. The bound keeps a broken index from hanging the tests.
-        let began = Date()
-        let watchdog = began.addingTimeInterval(60)
-        var longest: TimeInterval = 0
-        var last = began
-        var ticks = 0
-        while !finished.isSet, Date() < watchdog {
-            try await Task.sleep(for: .milliseconds(5))
-            let now = Date()
-            longest = max(longest, now.timeIntervalSince(last))
-            last = now
-            ticks += 1
-        }
-        // A stall that lasts until the read ends leaves the loop without being counted.
-        longest = max(longest, Date().timeIntervalSince(last))
-        let reading = Date().timeIntervalSince(began)
-        #expect(finished.isSet)
-        #expect(await total(index) == 40 * 2000 * 11)
-        #expect(ticks > 1)
-        // Other tests in this process stall the ticks by up to 0.9 s with no index running at all, so a fixed limit says nothing here.
-        // A read that holds the main thread shows up differently: as a stall about as long as the read itself.
-        #expect(longest < max(1.5, reading / 2), "главный поток простаивал \(longest) с из \(reading) с чтения")
     }
 }

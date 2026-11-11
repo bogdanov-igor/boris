@@ -186,6 +186,21 @@ struct AppLogStoreTests {
         #expect(!text.contains("n:1\n"))
     }
 
+    @Test("Старое уходит из файла и тогда, когда новых строк больше нет")
+    func ageWithoutNewLines() async throws {
+        let folder = TempFolder()
+        let clock = TestClock(start)
+        var limits = AppLogStore.Limits()
+        limits.tidyEvery = 0.05
+        let store = makeStore(folder, clock: clock, limits: limits)
+        store.write(line(1, at: start))
+        store.flush()
+        #expect(try String(contentsOf: store.file, encoding: .utf8).contains("n:1\n"))
+        // A day and more of silence: the app has nothing to say, and nothing new is written.
+        clock.advance(25 * 3600)
+        #expect(await waitUntil { ((try? String(contentsOf: store.file, encoding: .utf8)) ?? "").isEmpty }, "строке больше суток, а она всё ещё в файле")
+    }
+
     @Test("Серия переживает уборку файла со своим счётчиком")
     func tidyKeepsCount() {
         let folder = TempFolder()

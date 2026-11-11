@@ -386,8 +386,8 @@ struct EditorTests {
         }
 
         func stop() {
-            process.terminate()
-            process.waitUntilExit()
+            kill(process.processIdentifier, SIGKILL)
+            waitUntilGone(process)
         }
     }
 

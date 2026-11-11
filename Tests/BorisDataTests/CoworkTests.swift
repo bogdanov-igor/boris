@@ -1,4 +1,5 @@
 import BorisCore
+import Darwin
 import Foundation
 import Testing
 @testable import BorisData
@@ -232,6 +233,45 @@ struct CoworkSessionTests {
         let now = Date()
         #expect(await place.scan(scanner, at: now).sessions.first?.status == "busy")
         #expect(await place.scan(scanner, at: now.addingTimeInterval(11)).sessions.first?.status == "idle")
+    }
+
+    @Test("Ключи и учётные данные рядом с задачей не открываются, хотя всё остальное читается")
+    func keysStayClosed() async throws {
+        let place = CoworkHome()
+        let task = "Library/Application Support/Claude/local-agent-mode-sessions/org/acc/\(place.id)"
+        let keys = [
+            place.home.write("\(task)/.audit-key", "made-up key"),
+            place.home.write("\(task)/.claude/.credentials.json", #"{"made":"up"}"#),
+            place.home.write("\(task)/.claude/.claude.json", #"{"cachedUsageUtilization":{}}"#),
+            place.home.write("\(task)/.claude/mcp-needs-auth-cache.json", "{}"),
+        ]
+        place.describe(#"{"title":"Отчёт"}"#)
+        let transcript = place.transcript([user(), call("Read"), result(), turnEnd])
+        let long = timespec(tv_sec: 1_000_000_000, tv_nsec: 0)
+        func atime(_ file: URL) -> Int {
+            var info = stat()
+            stat(file.path, &info)
+            return info.st_atimespec.tv_sec
+        }
+        for file in keys + [transcript] {
+            var info = stat()
+            stat(file.path, &info)
+            var times = [long, info.st_mtimespec]
+            utimensat(AT_FDCWD, file.path, &times, 0)
+        }
+
+        let roots = [place.main] + place.others()
+        _ = await place.scan(place.scanner())
+        _ = await TokenIndex(cacheFile: nil).update(roots: roots)
+        _ = await SessionHistory(paths: place.main, others: place.others).sessions()
+        let losses = LossIndex(cacheFile: nil)
+        await losses.update(roots: roots)
+
+        // The check is not blind: the transcript was read, so its time moved, if this disk keeps such times at all.
+        guard atime(transcript) != long.tv_sec else { return }
+        for file in keys {
+            #expect(atime(file) == long.tv_sec, "\(file.lastPathComponent) открыт")
+        }
     }
 
     @Test("Читаются только нужные поля файла задачи")

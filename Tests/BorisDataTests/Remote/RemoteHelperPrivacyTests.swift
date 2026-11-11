@@ -74,7 +74,11 @@ struct RemoteHelperPrivacyTests {
         process.standardOutput = output
         process.standardError = FileHandle.nullDevice
         let received = Collected()
-        output.fileHandleForReading.readabilityHandler = { received.add($0.availableData) }
+        // At the end of the output it is called again and again with nothing, so it lets go then.
+        output.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if data.isEmpty { handle.readabilityHandler = nil } else { received.add(data) }
+        }
         try process.run()
         defer { if process.isRunning { process.terminate() } }
 
@@ -83,7 +87,7 @@ struct RemoteHelperPrivacyTests {
         machine.appendClaudeFile("projects/-srv-app/s-1.jsonl", FakeMachine.assistantLine(id: "m9", input: 5, text: "SECRETanswer"))
         #expect(await arrives { received.text.components(separatedBy: "\"numbers\"").count > 2 })
         process.terminate()
-        process.waitUntilExit()
+        waitUntilGone(process)
         output.fileHandleForReading.readabilityHandler = nil
 
         let allowedFields: [String: Set<String>] = [
@@ -255,7 +259,11 @@ struct RemoteHelperPrivacyTests {
         let output = Pipe()
         process.standardOutput = output
         process.standardError = FileHandle.nullDevice
-        output.fileHandleForReading.readabilityHandler = { received.add($0.availableData) }
+        // At the end of the output it is called again and again with nothing, so it lets go then.
+        output.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if data.isEmpty { handle.readabilityHandler = nil } else { received.add(data) }
+        }
         try process.run()
         return process
     }

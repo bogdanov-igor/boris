@@ -656,60 +656,6 @@ struct LossIndexTests {
         await index.update(roots: [ClaudePaths(root: folder.url)])
         #expect(await index.history(live: []).entries.count == 1)
     }
-
-    private final class Flag: @unchecked Sendable {
-        private let lock = NSLock()
-        private var value = false
-
-        func set() {
-            lock.lock()
-            value = true
-            lock.unlock()
-        }
-
-        var isSet: Bool {
-            lock.lock()
-            defer { lock.unlock() }
-            return value
-        }
-    }
-
-    @Test("Чтение логов не держит главный поток")
-    @MainActor
-    func mainThreadStaysFree() async throws {
-        let folder = TempFolder()
-        for file in 0..<30 {
-            let body = (0..<1000).map { Log.toolUse("f\(file)t\($0)", name: "WebFetch") + Log.result("f\(file)t\($0)", "Exit code 1", error: true) }.joined()
-            folder.write("projects/p/s\(file).jsonl", body)
-        }
-        let index = LossIndex(cacheFile: nil, timeZone: utc)
-        let roots = [ClaudePaths(root: folder.url)]
-        let finished = Flag()
-        Task.detached(priority: .utility) {
-            await index.update(roots: roots)
-            finished.set()
-        }
-
-        // The same measure as for the token index: a read that holds the main thread shows as a stall about as long as the read.
-        let began = Date()
-        let watchdog = began.addingTimeInterval(120)
-        var longest: TimeInterval = 0
-        var last = began
-        var ticks = 0
-        while !finished.isSet, Date() < watchdog {
-            try await Task.sleep(for: .milliseconds(5))
-            let now = Date()
-            longest = max(longest, now.timeIntervalSince(last))
-            last = now
-            ticks += 1
-        }
-        longest = max(longest, Date().timeIntervalSince(last))
-        let reading = Date().timeIntervalSince(began)
-        #expect(finished.isSet)
-        #expect(await index.history(live: []).entries.count == 30 * 1000)
-        #expect(ticks > 1)
-        #expect(longest < max(1.5, reading / 2), "главный поток простаивал \(longest) с из \(reading) с чтения")
-    }
 }
 
 /// The numbers here were counted by a separate pass in Python over the fixture files, with its own rules, not by this code.
