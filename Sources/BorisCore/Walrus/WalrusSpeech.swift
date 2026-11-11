@@ -68,6 +68,14 @@ public struct WalrusSpeech: Sendable, Equatable {
         current = Line(cue: .poke, text: text, until: now.addingTimeInterval(Self.shownFor))
     }
 
+    /// Something he says on his own. It never pushes aside a line on screen, nor comes right after one about the work.
+    /// - Returns: false when it was not the moment, so it can be tried again later.
+    public mutating func remark(_ text: String, now: Date) -> Bool {
+        guard line(now: now) == nil, now.timeIntervalSince(lastEventLine) >= Self.quietGap else { return false }
+        current = Line(cue: .poke, text: text, until: now.addingTimeInterval(Self.shownFor))
+        return true
+    }
+
     /// Never the same line twice in a row, if there is another one.
     private mutating func choose(_ lines: [String], cue: WalrusCue, pick: (Int) -> Int) -> String? {
         let fresh = lines.count > 1 ? lines.filter { $0 != lastText[cue] } : lines

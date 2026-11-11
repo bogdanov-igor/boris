@@ -90,7 +90,7 @@ struct WardrobeTests {
     @Test("Даты календаря", arguments: [
         (2026, 12, 20, Outfit.santa), (2026, 12, 31, .santa), (2027, 1, 1, .santa), (2027, 1, 10, .santa), (2027, 1, 11, .none),
         (2026, 12, 19, .none), (2026, 10, 25, .witch), (2026, 10, 31, .witch), (2026, 10, 24, .none), (2026, 2, 14, .hearts),
-        (2026, 3, 8, .flower), (2026, 9, 1, .scholar), (2026, 11, 30, .none), (2026, 7, 7, .none),
+        (2026, 3, 8, .flower), (2026, 9, 1, .scholar), (2026, 11, 30, .party), (2026, 11, 29, .none), (2026, 7, 7, .none),
     ] as [(Int, Int, Int, Outfit)])
     func dated(y: Int, m: Int, d: Int, expected: Outfit) {
         #expect(outfit(date(y, m, d)) == expected)

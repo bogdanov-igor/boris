@@ -161,18 +161,32 @@ public struct Play: Sendable, Equatable {
         return false
     }
 
-    public mutating func key(_ key: PlayKey, now: Date) {
+    /// - Returns: the trick the key completed, if it did.
+    @discardableResult
+    public mutating func key(_ key: PlayKey, now: Date) -> KeyTrick? {
         keys.append(Self.normalized(key))
         if keys.count > Self.konami.count { keys.removeFirst(keys.count - Self.konami.count) }
         if keys == Self.konami {
             glassesEnd = now.addingTimeInterval(Self.glassesFor)
             keys = []
-        } else if keys.suffix(3) == [.character("у"), .character("г"), .character("у")] || keys.suffix(3) == [.character("u"), .character("g"), .character("u")] {
+            return .konami
+        }
+        if Self.names.contains(where: { keys.suffix($0.count) == $0 }) {
+            start(.wink, now: now)
+            keys = []
+            return .name
+        }
+        if keys.suffix(3) == [.character("у"), .character("г"), .character("у")] || keys.suffix(3) == [.character("u"), .character("g"), .character("u")] {
             start(.hoot, now: now)
             say(.hoot, now: now)
             keys = []
+            return .hoot
         }
+        return nil
     }
+
+    /// His name in either layout, as `normalized` leaves it.
+    private static let names: [[PlayKey]] = ["boris", "борис"].map { word in word.map { normalized(.character(String($0))) } }
 
     public mutating func yawn(now: Date) {
         start(.yawn, now: now)

@@ -46,7 +46,7 @@ struct WalrusView: View {
             look: WalrusCanvasView.Look(
                 pose: pose,
                 loop: loop,
-                outfit: outfit,
+                outfit: stage?.costume ?? outfit,
                 pixels: Int(size * 2),
                 simple: style == .simple,
                 loops: loops,

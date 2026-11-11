@@ -14,6 +14,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     private let model: AppModel
     private let connect: ConnectFlow
     private var window: NSWindow?
+    private lazy var walrusKeys = WalrusKeyWatch(window: { [weak self] in self?.window }) { [weak self] key in self?.model.typedToWalrus(key) }
     var onOpenSettings: ((SettingsSection) -> Void)?
 
     /// Every page fits from this size up, in both modes and languages: checked by laying them out at each width.
@@ -43,6 +44,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+        walrusKeys.start()
         model.setLookingClosely(true, from: .mainWindow)
     }
 

@@ -352,6 +352,7 @@ final class AppModel {
             store?.save(state)
         }
         refreshPresence()
+        lookForSurprise(at: output.at)
     }
 
     /// The sums were added up off the main thread, and now the numbers on the screens can use them.
@@ -390,6 +391,14 @@ final class AppModel {
     }
 
     var hasFish: Bool { state.awards.hasFish }
+
+    /// What the walrus's surprises remember, kept with the rest, so a restart does not bring one back the same day.
+    var eggs: EggDiary { state.eggs ?? EggDiary() }
+
+    func noteEggs(_ diary: EggDiary) {
+        state.eggs = diary
+        store?.save(state)
+    }
 
     func startQuiet(for duration: TimeInterval) {
         quiet.start(for: duration, now: Date())
