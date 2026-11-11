@@ -46,7 +46,7 @@ struct SessionLifeTests {
         #expect(WorkBuilder.build(world: alive, runs: []).sessions.first?.state == .running)
 
         #expect(kill(pid, SIGKILL) == 0)
-        process.waitUntilExit()
+        waitUntilGone(process)
 
         let dead = await scanner.scan(now: Date())
         #expect(dead.sessions.isEmpty)

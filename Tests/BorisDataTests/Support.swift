@@ -81,3 +81,16 @@ enum Fixtures {
         return ClaudePaths(root: destination)
     }
 }
+
+/// Waits until a child process is gone, at most `seconds`.
+///
+/// Not `waitUntilExit`: after an `await` a test goes on on another thread than the one that started the process,
+/// and there that call has waited for good, in a run of the tests one after another, though the process was long gone.
+/// So the system is asked about the process itself.
+func waitUntilGone(_ process: Process, seconds: TimeInterval = 10) {
+    let pid = process.processIdentifier
+    let deadline = Date().addingTimeInterval(seconds)
+    while Date() < deadline, kill(pid, 0) == 0 {
+        usleep(10_000)
+    }
+}

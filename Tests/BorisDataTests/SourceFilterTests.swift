@@ -385,15 +385,9 @@ struct EditorTests {
             try process.run()
         }
 
-        /// Not `waitUntilExit`: a test that awaited something in between goes on on another thread than the one that started the process,
-        /// and there that call could wait for good, though the process was long gone. So the system is asked about the process itself.
         func stop() {
-            let pid = process.processIdentifier
-            kill(pid, SIGKILL)
-            let deadline = Date().addingTimeInterval(10)
-            while Date() < deadline, kill(pid, 0) == 0 {
-                usleep(10_000)
-            }
+            kill(process.processIdentifier, SIGKILL)
+            waitUntilGone(process)
         }
     }
 

@@ -305,7 +305,7 @@ struct NotificationRestartTests {
         // While it is closed, the sessions die.
         for process in processes {
             process.interrupt()
-            process.waitUntilExit()
+            waitUntilGone(process)
         }
 
         // The second life reads the state file and takes a first look.
@@ -354,7 +354,7 @@ struct NotificationRestartTests {
 
         for process in processes {
             process.interrupt()
-            process.waitUntilExit()
+            waitUntilGone(process)
         }
         // Boris stayed closed for a while, so the run's last write is no longer fresh.
         let past = Date().addingTimeInterval(-600)

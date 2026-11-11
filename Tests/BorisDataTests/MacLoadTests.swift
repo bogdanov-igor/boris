@@ -172,7 +172,7 @@ struct MacLoadSamplerTests {
             if let cpu = load.cpu { #expect(cpu.parts.reduce(0) { $0 + $1.points } == cpu.points) }
             if let memory = load.memory { #expect(memory.parts.reduce(0) { $0 + $1.points } == memory.points) }
         }
-        shell.waitUntilExit()
+        waitUntilGone(shell, seconds: 30)
         // A session whose process has gone has nothing to show, and that is not a zero.
         #expect(await sampler.read(request).sessions["s"] == nil)
     }
