@@ -140,6 +140,60 @@ struct WalrusFrameTests {
         }
         #expect(PoseName.watch.packPose == nil)
     }
+
+    /// Alarm is left out: he trembles with fright there, which is not rocking.
+    @Test("Ни одна поза не качается из стороны в сторону", arguments: PoseName.allCases.filter { $0 != .alarm })
+    func noRocking(name: PoseName) {
+        var frame = WalrusFrame(name: name, outfit: .none)
+        let tilts = Set((0..<Timeline.framesPerLoop).map { step -> [CGFloat] in
+            frame.step = step
+            return [frame.fullPose().tilt, frame.simplePose().tilt, frame.simplePose(mono: true).tilt]
+        })
+        #expect(tilts.count == 1)
+    }
+
+    @Test("И реакции не качаются", arguments: Act.allCases)
+    func actsDoNotRock(act: Act) {
+        let steps = 0..<WalrusFrame.actSteps
+        #expect(Set(steps.map { acted(act, step: $0).fullPose().tilt }).count == 1)
+        // The simple spin turns him round in place.
+        if act != .spin { #expect(Set(steps.map { acted(act, step: $0).simplePose().tilt }).count == 1) }
+    }
+
+    @Test("Наклон виден только в позах, где он стоит прямо", arguments: PoseName.allCases)
+    func leanShows(name: PoseName) {
+        var frame = WalrusFrame(name: name, outfit: .none)
+        frame.step = 5
+        let full = frame.fullPose().tilt, simple = frame.simplePose().tilt, mono = frame.simplePose(mono: true).tilt
+        // Upright, so his lean is all the tilt there is, and it never goes past ten degrees.
+        if name.leans { #expect(full == 0 && simple == 0 && mono == 0) }
+        frame.lean = -7.5
+        let shift: CGFloat = name.leans ? -7.5 : 0
+        #expect(frame.fullPose().tilt == full + shift)
+        #expect(frame.simplePose().tilt == simple + shift)
+        #expect(frame.simplePose(mono: true).tilt == mono + shift)
+        #expect(frame.showsLean == name.leans)
+    }
+
+    @Test("Реакция без своей позы остаётся в наклоне, со своей позой ставит свою", arguments: Act.allCases)
+    func leanInActs(act: Act) {
+        var frame = acted(act)
+        let full = frame.fullPose().tilt, simple = frame.simplePose().tilt
+        frame.lean = 6
+        let shift: CGFloat = act.keepsLean ? 6 : 0
+        #expect(frame.fullPose().tilt == full + shift)
+        #expect(frame.simplePose().tilt == simple + shift)
+    }
+
+    @Test("Разный наклон даёт разную картинку") func leanKeys() {
+        var frame = WalrusFrame(name: .work, outfit: .none)
+        frame.step = 3
+        var leaning = frame
+        leaning.lean = 4
+        #expect(frame != leaning)
+        #expect(full(frame) != full(leaning))
+        #expect(simple(frame) != simple(leaning))
+    }
 }
 
 private extension Outfit {

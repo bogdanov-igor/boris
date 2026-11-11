@@ -16,6 +16,14 @@ public enum Renderer {
     /// The red alarm dot in icon points. It is a separate layer, because a template image loses its colour.
     public static let alarmDot = (x: CGFloat(18.25), y: CGFloat(2.75), radius: CGFloat(2.25))
 
+    /// What he tilts around in a `roomy` picture, as a share of its width and height from the top left.
+    /// A view can turn a picture drawn upright around it, and he leans just as if the lean were drawn.
+    public static func leanPivot(simple: Bool) -> CGPoint {
+        let view = simple ? roomySimpleView : roomyFullView
+        let pivot = simple ? WalrusSimple.pivot : WalrusFull.pivot
+        return CGPoint(x: (pivot.x - view.minX) / view.width, y: (pivot.y - view.minY) / view.height)
+    }
+
     public static func image(_ pose: Pose, pixels: Int, roomy: Bool = false) -> CGImage? {
         colour(view: roomy ? roomyFullView : fullView, width: pixels, height: pixels) { WalrusFull(s: $0, crow: pose.crow).draw(pose) }
     }

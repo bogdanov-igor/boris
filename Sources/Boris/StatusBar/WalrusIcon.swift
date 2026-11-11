@@ -42,9 +42,13 @@ final class WalrusIcon {
         let outfit: Outfit
         /// `nil` is the still key frame.
         let index: Int?
+        /// Degrees, from `Lean`. A still icon stands upright.
+        let lean: CGFloat
     }
 
     private static let tick: TimeInterval = 0.125
+    /// Each lean draws its own frames, so the old ones are let go now and then.
+    private static let maxKept = 96
 
     private let button: NSStatusBarButton
     private let frameView = FrameView(frame: .zero)
@@ -61,6 +65,9 @@ final class WalrusIcon {
     private var pack: WalrusPack?
     private var timer: Timer?
     private var phase = 0.0
+    /// He leans now and then instead of rocking. Like `phase`, his time runs only while he moves.
+    private var lean = Lean(seed: .random(in: .min ... .max))
+    private var leanTime = 0.0
     private var lastTick = Date()
     private var shown: Frame?
     /// Why nothing can be seen right now: the Mac sleeps, the display is off, the screen is locked or another user is active.
@@ -87,7 +94,11 @@ final class WalrusIcon {
     func show(_ mood: Mood, outfit: Outfit) {
         guard mood != self.mood || outfit != self.outfit else { return }
         self.outfit = outfit
-        if PoseName(mood: mood) != self.mood.map({ PoseName(mood: $0) }) { phase = 0 }
+        if PoseName(mood: mood) != self.mood.map({ PoseName(mood: $0) }) {
+            phase = 0
+            lean = Lean(seed: .random(in: .min ... .max))
+            leanTime = 0
+        }
         self.mood = mood
         refresh()
     }
@@ -136,7 +147,9 @@ final class WalrusIcon {
     private func step() {
         guard let mood else { return }
         let now = Date()
-        phase = (phase + now.timeIntervalSince(lastTick) / Timeline.loop(for: mood)).truncatingRemainder(dividingBy: 1)
+        let passed = now.timeIntervalSince(lastTick)
+        phase = (phase + passed / Timeline.loop(for: mood)).truncatingRemainder(dividingBy: 1)
+        leanTime += passed
         lastTick = now
         draw()
     }
@@ -144,7 +157,8 @@ final class WalrusIcon {
     private func draw() {
         guard let mood else { return }
         let name = PoseName(mood: mood)
-        let frame = Frame(name: name, outfit: outfit, index: moving ? Int(phase * Double(Timeline.framesPerLoop)) : nil)
+        let leaning = name.leans ? lean.degrees(at: leanTime, moving: moving) : 0
+        let frame = Frame(name: name, outfit: outfit, index: moving ? Int(phase * Double(Timeline.framesPerLoop)) : nil, lean: leaning)
         guard frame != shown else { return }
         shown = frame
         if moving {
@@ -159,14 +173,17 @@ final class WalrusIcon {
         let white = button.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
         let key = MovingFrame(frame: frame, scale: scale, white: white)
         if movingFrames[key] == nil {
+            if movingFrames.count >= Self.maxKept { movingFrames = [:] }
             movingFrames[key] = Renderer.template(pose(frame), scale: scale, white: white)
         }
         if let image = movingFrames[key] { frameView.show(image, scale: CGFloat(scale)) }
     }
 
     private func pose(_ frame: Frame) -> SimplePose {
-        let t = frame.index.map { CGFloat($0) / CGFloat(Timeline.framesPerLoop) } ?? frame.name.keyTime
-        return Dress.apply(frame.outfit, to: Timeline.simple(frame.name, t: t, mono: true), mono: true)
+        var drawn = WalrusFrame(name: frame.name, outfit: frame.outfit)
+        drawn.step = frame.index
+        drawn.lean = frame.lean
+        return drawn.simplePose(mono: true)
     }
 
     private func image(_ frame: Frame) -> NSImage {

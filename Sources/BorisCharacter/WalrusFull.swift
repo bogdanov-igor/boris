@@ -8,6 +8,8 @@ struct WalrusFull {
     private static let band = Ink(0xB3313F), gold = Ink(0xF4C542), goldDark = Ink(0xB98A1F), goldLight = Ink(0xFFE99A)
     private static let ink = Ink(0x231814)
     private static let edge: CGFloat = 6
+    /// What he tilts around.
+    static let pivot = CGPoint(x: 120, y: 130)
     private static let cigars: [Cigar: (x: CGFloat, y: CGFloat, rotation: CGFloat)] = [.flat: (128, 156, 10), .up: (128, 156, -16), .droop: (128, 156, 36)]
 
     let s: Sketch
@@ -40,7 +42,7 @@ struct WalrusFull {
     private func drawFront(_ pose: Pose) {
         s.group {
             s.translate(0, pose.bob)
-            s.rotate(pose.tilt, around: 120, 130)
+            s.rotate(pose.tilt, around: Self.pivot.x, Self.pivot.y)
             s.translate(120, 232)
             s.scale(pose.squash.width, pose.squash.height)
             s.translate(-120, -232)

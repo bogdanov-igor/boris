@@ -65,7 +65,46 @@ struct WalrusCanvasTests {
     @Test("Файл набора пропал: вместо пустого места встроенный морж") func missingPackFile() {
         let view = WalrusCanvasView()
         view.look = look(.sleep, pack: pack(frames: [URL(fileURLWithPath: "/nonexistent/1.png")]))
-        #expect(view.layer?.contents != nil)
+        #expect(view.layer?.sublayers?.contains { $0.contents != nil } == true)
+    }
+
+    /// The pictures are drawn upright and kept, and his lean turns the layer. It has to look as if the lean were drawn.
+    @Test("Наклон поворачивает готовую картинку так же, как если бы его нарисовали", arguments: [false, true])
+    func leanTurnsThePicture(simple: Bool) throws {
+        let view = WalrusCanvasView()
+        view.frame = NSRect(x: 0, y: 0, width: 100, height: 100)
+        view.look = WalrusCanvasView.Look(pose: .work, loop: 1, outfit: .none, pixels: 200, simple: simple, loops: false, pack: nil, revision: 0, upsideDown: false)
+        view.leanForTest(9)
+        let turned = try alpha(rendered(view))
+        func drawn(_ lean: CGFloat) throws -> [UInt8] {
+            var frame = WalrusFrame(name: .work, outfit: .none)
+            frame.lean = lean
+            return try alpha(simple ? Renderer.image(frame.simplePose(), pixels: 200, roomy: true) : Renderer.image(frame.fullPose(), pixels: 200, roomy: true))
+        }
+        let same = try differing(turned, drawn(9)), upright = try differing(turned, drawn(0)), otherWay = try differing(turned, drawn(-9))
+        #expect(same * 6 < upright, "\(same) против \(upright)")
+        #expect(same * 6 < otherWay, "\(same) против \(otherWay)")
+    }
+
+    private func rendered(_ view: NSView) throws -> CGImage {
+        let layer = try #require(view.layer)
+        let context = try #require(CGContext(data: nil, width: 200, height: 200, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.scaleBy(x: 200 / view.bounds.width, y: 200 / view.bounds.height)
+        layer.render(in: context)
+        return try #require(context.makeImage())
+    }
+
+    private func alpha(_ image: CGImage?) throws -> [UInt8] {
+        let image = try #require(image)
+        let context = try #require(CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: image.width, space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.alphaOnly.rawValue))
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        let data = try #require(context.data)
+        return Array(UnsafeBufferPointer(start: data.assumingMemoryBound(to: UInt8.self), count: image.width * image.height))
+    }
+
+    /// Points where one picture is solid and the other is not.
+    private func differing(_ a: [UInt8], _ b: [UInt8]) -> Int {
+        zip(a, b).filter { abs(Int($0) - Int($1)) > 128 }.count
     }
 
     /// The format promises that importing a pack again brings its new version. The old folder goes, so the walrus has to move too.
