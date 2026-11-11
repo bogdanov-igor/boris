@@ -27,14 +27,6 @@ private final class FakeTransport: TelegramTransport, @unchecked Sendable {
     }
 }
 
-/// Never answers, as a network that takes forever.
-private struct StuckTransport: TelegramTransport {
-    func send(_ request: URLRequest) async throws -> (status: Int, body: Data) {
-        try await Task.sleep(for: .seconds(3600))
-        return (200, Data())
-    }
-}
-
 private final class FakeSecret: SecretStore, @unchecked Sendable {
     private let lock = NSLock()
     private var value: String?
@@ -192,16 +184,6 @@ struct TelegramTests {
         await sender.send(line, chat: "777")
         await results.wait(for: 2)
         #expect(await results.all == [.noConnection, nil])
-    }
-
-    @Test("Сеть зависла: Boris не ждёт, а очередь не растёт без конца") func stuckNetwork() async {
-        let sender = channel(StuckTransport(), FakeSecret(token))
-        let started = ContinuousClock.now
-        for _ in 0..<(TelegramChannel.maxQueued * 3) {
-            await sender.send(line, chat: "777")
-        }
-        #expect(ContinuousClock.now - started < .seconds(5))
-        #expect(await sender.queuedCount <= TelegramChannel.maxQueued)
     }
 
     @Test("Токена нет: сообщение не уходит, причина видна") func tokenMissing() async {

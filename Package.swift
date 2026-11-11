@@ -20,6 +20,8 @@ let package = Package(
         .testTarget(name: "BorisCoreTests", dependencies: ["BorisCore"]),
         .testTarget(name: "BorisDataTests", dependencies: ["BorisCore", "BorisData"]),
         .testTarget(name: "BorisCharacterTests", dependencies: ["BorisCore", "BorisCharacter"]),
+        // A bundle of its own: these measure time, and beside hundreds of other tests they measured those tests instead. Bundles run one after another.
+        .testTarget(name: "BorisTimingTests", dependencies: ["BorisCore", "BorisData"]),
         // A bundle of its own: AppSettings sets the language for its whole process, and numbers in other tests depend on it.
         .testTarget(name: "BorisAppTests", dependencies: ["Boris", "BorisCore", "BorisData", "BorisCharacter"]),
     ]
