@@ -218,7 +218,10 @@ struct LiveSessionCard: View {
                 .truncationMode(.tail)
                 if let place = session.place, place.isSeparateCopy { CopyBadge(place: place, mode: mode) }
                 Spacer(minLength: 0)
-                Text(WorkPhrases.agents(max(session.workingAgents, 1))).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Palette.text2).lineLimit(1)
+                // The same count as everywhere else, so the cards of a project add up to what the notch says. Nobody at work is no number at all.
+                if session.workingAgents > 0 {
+                    Text(WorkPhrases.agents(session.workingAgents)).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Palette.text2).lineLimit(1)
+                }
                 Text(model.usage.book?.spent(session: session.id).map { WorkFormat.tokens($0.total) } ?? "–").font(.system(size: 12.5, weight: .semibold).monospacedDigit()).lineLimit(1)
                 Text(UsageFormat.estimateCell(model.usage.book?.estimate(session: session.id))).font(.system(size: 12).monospacedDigit()).foregroundStyle(Palette.text2).lineLimit(1)
                 Button(L("Open session")) { model.openSession(session.id) }.buttonStyle(PlainActionStyle())
