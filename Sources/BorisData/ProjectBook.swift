@@ -37,6 +37,8 @@ public struct ProjectSummary: Sendable, Equatable, Identifiable {
     public var lastActivity: Date? { sessions.compactMap { $0.lastActivity ?? $0.startedAt }.max() }
     /// The session that says how the project is doing.
     public var lead: WorkSession? { active.first ?? past.first }
+    /// Agents at work in it right now: the sum of its sessions' own counts, so the projects add up to the total too.
+    public var workingAgents: Int { active.reduce(0) { $0 + $1.workingAgents } }
 
     public var environments: [WorkEnvironment] { ProjectBook.environments(of: sessions) }
 

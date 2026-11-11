@@ -199,14 +199,15 @@ struct ProjectStateLabel: View {
     var size: CGFloat = 14
     var font = Font.system(size: 12.5)
 
-    private var text: String {
+    var text: String {
         guard let lead = project.lead else { return L("No sessions in this period") }
         switch lead.state {
         case .waiting:
             guard let last = lead.lastActivity else { return WorkPhrases.state(.waiting, mode: mode) }
             return "\(WorkPhrases.state(.waiting, mode: mode)) · \(WorkFormat.duration(max(now.timeIntervalSince(last), 0)))"
         case .running:
-            return "\(WorkPhrases.state(.running, mode: mode)) · \(WorkPhrases.agents(max(lead.workingAgents, 1)))"
+            let running = WorkPhrases.state(.running, mode: mode)
+            return project.workingAgents > 0 ? "\(running) · \(WorkPhrases.agents(project.workingAgents))" : running
         case .silent, .finished, .failed, .stopped, .interrupted:
             return WorkPhrases.outcome(lead.state, mode: mode)
         case .unreachable:

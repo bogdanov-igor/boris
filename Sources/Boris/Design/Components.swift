@@ -264,10 +264,15 @@ struct SessionRow: View {
                     if let place = session.place, place.isSeparateCopy { CopyBadge(place: place, mode: mode) }
                 }
                 HStack(spacing: 0) {
-                    Text(WorkPhrases.line(session, mode: mode))
+                    let line = WorkPhrases.lineParts(session, mode: mode)
+                    Text(line.doing)
                         .foregroundStyle(waiting ? Palette.waiting : Palette.text2)
                         .lineLimit(1)
                         .truncationMode(.tail)
+                    // What is being done gives way first: the number of agents is what adds up to the notch, so it is never cut.
+                    if let agents = line.agents {
+                        Text(verbatim: " · \(agents)").foregroundStyle(Palette.text2).lineLimit(1).fixedSize()
+                    }
                     if !lineEnd.isEmpty {
                         Text(verbatim: " · \(lineEnd)").foregroundStyle(Palette.text2).lineLimit(1).fixedSize()
                     }

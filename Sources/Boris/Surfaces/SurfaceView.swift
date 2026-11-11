@@ -343,12 +343,19 @@ struct SurfaceSessionRow: View {
 
     var body: some View {
         let trailing = SurfaceWords.sessionTrailing(session, mode: mode, now: now)
+        let detail = SurfaceWords.sessionDetailParts(session, mode: mode)
         HStack(spacing: 8) {
             StatusGlyph(kind: StatusGlyph.Kind(session.state), size: 14)
-            Text(Self.nameAndDetail(session.name(in: mode), isFolder: session.nameIsFolder, detail: SurfaceWords.sessionDetail(session, mode: mode)))
-                .font(.system(size: 12.5))
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 0) {
+                Text(Self.nameAndDetail(session.name(in: mode), isFolder: session.nameIsFolder, detail: detail.detail))
+                    .lineLimit(1)
+                // As in the mini window: what is being done gives way first, and the number of agents stays whole.
+                if let agents = detail.agents {
+                    Text(verbatim: " · \(agents)").foregroundStyle(Palette.text2).lineLimit(1).fixedSize()
+                }
+            }
+            .font(.system(size: 12.5))
+            .frame(maxWidth: .infinity, alignment: .leading)
             if !trailing.isEmpty {
                 Text(trailing).font(.system(size: 11).monospacedDigit()).foregroundStyle(Palette.text2).lineLimit(1)
             }

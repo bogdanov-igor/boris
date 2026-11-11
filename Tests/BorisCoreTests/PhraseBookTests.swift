@@ -317,6 +317,24 @@ struct PhraseBookTests {
         #expect(SurfaceWords.working(3) == "3 agents at work")
     }
 
+    /// The three ways the count is worded: on the notch and under the walrus, on the session's page and in its row, and in the technical mode.
+    @Test("Число агентов читается правильно на обоих языках", arguments: [
+        (1, ["1 агент работает", "Работает 1 агент", "1 агент"], ["1 agent at work", "1 agent working", "1 agent"]),
+        (2, ["2 агента работают", "Работают 2 агента", "2 агента"], ["2 agents at work", "2 agents working", "2 agents"]),
+        (5, ["5 агентов работают", "Работают 5 агентов", "5 агентов"], ["5 agents at work", "5 agents working", "5 agents"]),
+        (11, ["11 агентов работают", "Работают 11 агентов", "11 агентов"], ["11 agents at work", "11 agents working", "11 agents"]),
+        (21, ["21 агент работает", "Работает 21 агент", "21 агент"], ["21 agents at work", "21 agents working", "21 agents"]),
+        (0, ["0 агентов работают", "Работают 0 агентов", "0 агентов"], ["0 agents at work", "0 agents working", "0 agents"]),
+    ])
+    func agentPlurals(count: Int, russian: [String], english: [String]) {
+        let shown = [SurfaceWords.working(count), WorkPhrases.agentsWorking(count), WorkPhrases.agents(count)]
+        #expect(shown == english)
+        // Tests run in English, where the text is its own key, so the key each phrase picked for this number can be read back from it.
+        #expect(shown.map { Russian.text($0.replacingOccurrences(of: "\(count)", with: "%lld"), count) } == russian)
+        // The walrus has words of his own for work with nobody to count.
+        if count > 0 { #expect(WalrusLines.standing(mood: .working(agents: count), waiting: 0) == english[0]) }
+    }
+
     @Test("Несколько незавершённых шагов не говорят об одном")
     func unfinishedSteps() {
         var log = ActivityLog()

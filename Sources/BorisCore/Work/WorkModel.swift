@@ -215,9 +215,23 @@ public struct WorkSession: Sendable, Equatable, Identifiable {
         return place?.mainFolder ?? GitPlace.projectPath(cwd: cwd, environment: environment)
     }
 
-    /// Agents busy right now, whatever started them. A workflow is a script, so it is not one of them.
+    /// How many of its agents work right now. This is the one count behind every «agents working» on any screen,
+    /// and the total is the sum of these, so a session's own number always adds up to it.
+    /// The main agent counts like any other, so do subagents, forks and the agents of a workflow, each once.
+    /// A session that is over has nobody at work, whatever its files still say about agents left running.
     public var workingAgents: Int {
-        root.flattened.filter { $0.kind != .workflow && ($0.state == .running || $0.state == .silent) }.count
+        guard state.isActive else { return 0 }
+        var counted: Set<String> = []
+        return root.flattened.reduce(0) { count, node in
+            node.isAgentAtWork && counted.insert(node.id).inserted ? count + 1 : count
+        }
+    }
+}
+
+extension WorkNode {
+    /// An agent busy right now, whatever started it. A workflow is a script, so it is not one of them, and an agent waiting for the person is not at work.
+    public var isAgentAtWork: Bool {
+        kind != .workflow && (state == .running || state == .silent)
     }
 }
 
@@ -252,6 +266,7 @@ public struct WorkModel: Sendable, Equatable {
     /// True while anything works, with or without a workflow.
     public var isWorking: Bool { sessions.contains { $0.state.isActive } }
 
+    /// Every agent at work right now, across all sessions: the number the sidebar, the notch and the panel show. It is the sum of the sessions' own counts.
     public var workingAgents: Int { sessions.reduce(0) { $0 + $1.workingAgents } }
 }
 
