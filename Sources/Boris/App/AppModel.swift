@@ -230,8 +230,13 @@ final class AppModel {
     }
 
     func noteWake() {
+        usageRefresher.macAwake = true
         Task { await engine?.noteWake(at: Date()) }
         remote.retryAll()
+    }
+
+    func noteSleep() {
+        usageRefresher.macAwake = false
     }
 
     /// Remote machines reach the rest of Boris the same way a Mac's own files do: through the engine and the sums.

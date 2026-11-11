@@ -207,6 +207,39 @@ struct UsageProbeTests {
         #expect(await run(probe) == .failed)
     }
 
+    /// Seen on the person's Mac: lid closed, the Mac woke by itself at 09:37:35 and the refresh started, it fell asleep again at 09:37:37
+    /// and woke next at 09:41:18. Claude Code stood frozen in between, /usage was never typed, and the attempt only then ended
+    /// with «no fresh data», 224 seconds after the start. The next such wake might well be just as short.
+    @Test("Mac уснул через две секунды после запуска и проснулся через 223: запуск сдаётся сразу и закрывает Claude Code")
+    func macSleptMidway() async throws {
+        let place = try Place(body: "")
+        try """
+        #!/bin/sh
+        echo $$ > '\(place.logs.path)/pid'
+        echo Welcome
+        read line
+        touch '\(place.logs.path)/typed'
+        \(place.writesFresh)
+        sleep 30
+        """.write(to: place.script, atomically: true, encoding: .utf8)
+        // As there: the Mac falls asleep again before it is time to type the command.
+        var probe = place.probe
+        probe.askAfter = 2
+        probe.clock = SleepingClock(awakeFor: 1, sleeps: 223).clock
+        let problems = ProblemCapture()
+        AppLog.add(problems)
+        defer { AppLog.remove(problems) }
+
+        let began = Date()
+        #expect(await run(probe) == .failed)
+        #expect(Date().timeIntervalSince(began) < 3)
+        #expect(problems.words.contains(.word(.macSlept)))
+        #expect(place.log("typed") == nil)
+        let written = try #require(place.log("pid"))
+        let pid = try #require(Int32(written.trimmingCharacters(in: .whitespacesAndNewlines)))
+        #expect(kill(pid, 0) != 0)
+    }
+
     @Test("Программа, которая не хочет закрываться, закрывается силой")
     func stubbornProcess() async throws {
         let place = try Place(body: "")
@@ -243,6 +276,47 @@ struct UsageProbeTests {
         probe.binary = place.folder.url.appendingPathComponent("no-such-program")
         #expect(await run(probe) == .failed)
     }
+}
+
+/// The Mac's clocks with a sleep put in: once it has been awake `awakeFor` seconds since the first look, it has slept `sleeps` seconds.
+private final class SleepingClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var start: TimeInterval?
+    private let awakeFor: TimeInterval
+    private let sleeps: TimeInterval
+
+    init(awakeFor: TimeInterval, sleeps: TimeInterval) {
+        self.awakeFor = awakeFor
+        self.sleeps = sleeps
+    }
+
+    var clock: ProbeClock {
+        ProbeClock(awake: { ProbeClock.mac.awake() }, asleep: { self.asleep() })
+    }
+
+    private func asleep() -> TimeInterval {
+        let now = ProbeClock.mac.awake()
+        let start = lock.withLock {
+            if self.start == nil { self.start = now }
+            return self.start ?? now
+        }
+        return now - start > awakeFor ? sleeps : 0
+    }
+}
+
+/// Only what the probe says went wrong. Other tests may report problems at the same time, but none of them a sleep.
+private final class ProblemCapture: LogSink, @unchecked Sendable {
+    private let lock = NSLock()
+    private var heard: [LogValue] = []
+
+    func write(_ record: LogRecord) {
+        guard record.message == .limitsRefreshProblem else { return }
+        lock.withLock { heard += record.values }
+    }
+
+    func flush() {}
+
+    var words: [LogValue] { lock.withLock { heard } }
 }
 
 @Suite("Сессии скрытого запуска не видны в списках")
