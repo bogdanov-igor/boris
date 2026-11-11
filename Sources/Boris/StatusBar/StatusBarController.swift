@@ -119,6 +119,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
     func openMiniWindow() {
         guard let anchor = miniWindowAnchor, !popover.isShown else { return }
+        SpeedLog.began(.openMiniWindow)
         NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()

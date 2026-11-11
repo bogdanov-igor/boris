@@ -295,6 +295,7 @@ final class AppModel {
     }
 
     func apply(_ output: WorkEngine.Output) {
+        SpeedLog.did(.scanApplied)
         logWatch.saw(output)
         work = (usage.book?.applied(to: output.model) ?? output.model).withChat(chat.tracker.session)
         hooks.note(work: output.model, now: output.at)
@@ -355,6 +356,7 @@ final class AppModel {
 
     /// The sums were added up off the main thread, and now the numbers on the screens can use them.
     private func tokensAddedUp() {
+        SpeedLog.did(.tokensAddedUp)
         today = usage.spentToday(now)
         if let book = usage.book { work = book.applied(to: work) }
     }
@@ -419,13 +421,16 @@ final class AppModel {
     func open(_ route: NotificationRoute) {
         switch route {
         case .now:
+            SpeedLog.began(.openFromNotification, to: page == .now ? nil : .now)
             page = .now
         case .usage:
+            SpeedLog.began(.openFromNotification, to: page == .spend ? nil : .spend)
             page = .spend
         case .session(let id):
             openSession(id)
             return
         case .requests(let id):
+            SpeedLog.began(.openFromNotification, to: page == .requests ? nil : .requests)
             if let id, let row = hooks.queue.rows(now: Date()).first(where: { $0.session == id }) { hooks.selectedRow = row.id }
             page = .requests
         }
@@ -438,6 +443,7 @@ final class AppModel {
     /// - Parameter agent: the agent its feed starts on. Nil shows them all.
     /// - Parameter target: the failure its feed goes to. Nil stays at the newest record.
     func openSession(_ id: String, agent: String? = nil, target: FeedTarget? = nil) {
+        SpeedLog.began(.openSession, to: .session)
         projectsRoute = .session(id)
         feedAgent = agent
         feedTarget = target
@@ -447,20 +453,36 @@ final class AppModel {
     }
 
     func openProject(_ path: String?) {
+        SpeedLog.began(.openProject, to: .project)
         projectsRoute = .project(path)
         page = .projects
     }
 
     /// Changes the mode for the whole app. A page the new one does not have gives way to «Now», which tells the same failures in plain words.
     func setDisplayMode(_ mode: DisplayMode) {
+        SpeedLog.began(.changeDisplayMode)
         settings.displayMode = mode
         if !page.isShown(in: mode) { page = .now }
     }
 
     /// Choosing the page one is already on goes back to the top of it.
     func choose(_ chosen: AppPage) {
+        let route = chosen == .projects && page == .projects ? ProjectsRoute.list : projectsRoute
+        if chosen != page || route != projectsRoute { SpeedLog.began(.choosePage, to: chosen == .projects ? route.speedPlace : chosen.speedPlace) }
         if chosen == .projects, page == .projects { projectsRoute = .list }
         page = chosen
+    }
+
+    /// The agent the session's feed shows, as the person chose it. Nil shows them all.
+    func chooseAgent(_ agent: String?) {
+        SpeedLog.began(.chooseAgent)
+        feedAgent = agent
+    }
+
+    /// The way back from a project or a session to the list.
+    func backToProjects() {
+        if projectsRoute != .list { SpeedLog.began(.backToProjects, to: .projects) }
+        projectsRoute = .list
     }
 
     /// Reads the logs for past sessions, at most twice a minute: a log that Claude has deleted leaves the list soon after.
@@ -470,14 +492,17 @@ final class AppModel {
         pastReading = true
         let owner = WeakModel(self)
         let generation = pastGeneration
+        let started = SpeedLog.start()
         Task.detached(priority: .utility) {
             let sessions = await engine.pastSessions()
+            SpeedLog.loaded(.pastSessions, since: started, items: sessions.count, onMain: false)
             await MainActor.run { owner.model?.pastSessionsRead(sessions, at: began, generation: generation) }
         }
     }
 
     private func pastSessionsRead(_ sessions: [WorkSession], at began: Date, generation: Int) {
         guard generation == pastGeneration else { return }
+        SpeedLog.did(.pastSessionsArrived)
         pastSessions = sessions
         pastLoaded = true
         pastReading = false
@@ -486,7 +511,9 @@ final class AppModel {
 
     /// Every session there is: what works from the live scan, the rest from the logs.
     var allSessions: [WorkSession] {
-        ProjectBook.sessions(work: work, past: pastSessions + remote.pastSessions, logsReadAt: pastLoaded ? pastRead : nil)
+        SpeedLog.measure(.sessionList, items: \.count) {
+            ProjectBook.sessions(work: work, past: pastSessions + remote.pastSessions, logsReadAt: pastLoaded ? pastRead : nil)
+        }
     }
 
     /// Sessions at work now. What belongs to them is not over yet, for the Losses page as for the failures of a project.
@@ -565,6 +592,7 @@ final class AppModel {
     }
 
     func copyDiagnostics() async {
+        SpeedLog.did(.copyDiagnostics)
         guard let report = await diagnosticsReport() else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(report, forType: .string)

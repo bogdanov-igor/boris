@@ -25,7 +25,7 @@ struct ProjectPage: View {
 
     var body: some View {
         let all = model.allSessions
-        let project = ProjectBook.summary(path: path, sessions: all, tokens: model.usage.records, filter: model.projectFilter, now: model.now)
+        let project = SpeedLog.measure(.projectSums, items: { _ in all.count }) { ProjectBook.summary(path: path, sessions: all, tokens: model.usage.records, filter: model.projectFilter, now: model.now) }
         VStack(spacing: 0) {
             header(project)
             Rectangle().fill(Palette.separator).frame(height: 1)

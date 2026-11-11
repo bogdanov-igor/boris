@@ -112,7 +112,7 @@ private struct AgentLine: View {
 
     var body: some View {
         Button {
-            model.feedAgent = selected ? nil : node.id
+            model.chooseAgent(selected ? nil : node.id)
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 StatusGlyph(kind: StatusGlyph.Kind(node.state), size: 14)
@@ -241,6 +241,7 @@ private struct PhaseLine: View {
     var body: some View {
         let summary = PhaseWords.summary(phase)
         Button {
+            SpeedLog.began(.togglePhase)
             if open { model.expandedPhases.remove(key) } else { model.expandedPhases.insert(key) }
         } label: {
             HStack(spacing: 8) {

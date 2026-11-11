@@ -113,10 +113,10 @@ private struct SessionFeedContent: View {
 
     private var agentMenu: some View {
         Menu {
-            Button(L("All agents")) { model.feedAgent = nil }
-            Button(L("Main agent")) { model.feedAgent = session.id }
+            Button(L("All agents")) { model.chooseAgent(nil) }
+            Button(L("Main agent")) { model.chooseAgent(session.id) }
             ForEach(store.agentIds, id: \.self) { id in
-                Button(store.agentName(id, session: session)) { model.feedAgent = id }
+                Button(store.agentName(id, session: session)) { model.chooseAgent(id) }
             }
         } label: {
             HStack(spacing: 5) {

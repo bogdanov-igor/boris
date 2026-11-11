@@ -34,6 +34,7 @@ struct MiniWindowView: View {
         .overlay(alignment: .topLeading) {
             WalrusLineOverlay(stage: model.walrus, tail: .up, maxWidth: 300).padding(EdgeInsets(top: 58, leading: 14, bottom: 0, trailing: 0))
         }
+        .speedPlace(.miniWindow)
     }
 
     private var header: some View {

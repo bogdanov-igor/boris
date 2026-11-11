@@ -218,6 +218,24 @@ struct AppLogRunTests {
         panel.note(isOpen: false, hovering: false)
         let guardian = PowerGuard()
         guardian.update(shouldHold: false)
+
+        // Speed, with the secret session, project and agent open, and every timing let through. All in one stretch, so no other test runs meanwhile.
+        SpeedLog.isWatching = true
+        SpeedLog.thresholds = .everything
+        model.openSession(Secret.session, agent: Secret.sessionTail)
+        SpeedLog.appeared(.session)
+        SpeedLog.mainThread(.waking)
+        usleep(60_000)
+        SpeedLog.mainThread(.sleeping)
+        model.openProject(Secret.projectPath)
+        SpeedLog.appeared(.project)
+        SpeedLog.mainThread(.sleeping)
+        model.chooseAgent(Secret.sessionTail)
+        SpeedLog.mainThread(.sleeping)
+        _ = model.allSessions
+        SpeedLog.thresholds = .standard
+        SpeedLog.isWatching = false
+
         try hooks.disconnect(asker: .disconnectInConnections)
     }
 
@@ -247,6 +265,7 @@ struct AppLogRunTests {
             .firstRead, .formatIssue, .hooksConnected, .hooksDisconnected, .claudeSettingsWritten, .requestAsked, .requestEnded, .requestAnswerRefused,
             .bannerSent, .telegramSent, .telegramFailed, .telegramConnected, .telegramConnectFailed, .keychainFailed, .telegramDisconnected,
             .soundPlayed, .soundFailed, .settingChanged, .settingChangedHidden, .limitsRefreshSkipped, .panelOpened, .panelClosed, .quietStarted, .quietUntilOff, .quietEnded,
+            .pageShown, .actionSlow, .loadSlow, .mainThreadStalled,
         ]
         for message in expected { #expect(written.contains(message), "нет строки: \(message.rawValue)") }
         #expect(raw.contains("t:Bash"))

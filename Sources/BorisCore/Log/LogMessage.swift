@@ -27,6 +27,8 @@ public enum LogMessage: String, Sendable, CaseIterable {
     case windowOpened, windowClosed, panelOpened, panelClosed
     // The Mac
     case macWoke, macSleeping, keepAwakeOn, keepAwakeOff, keepAwakeFailed
+    // Speed: only what took long enough to feel
+    case pageShown, actionSlow, loadSlow, mainThreadStalled
 
     public var level: LogLevel {
         switch self {
@@ -57,6 +59,7 @@ public enum LogMessage: String, Sendable, CaseIterable {
         case .hotKeyRegistered, .hotKeyTaken, .hotKeyOff, .answerKeysTaken, .answerKeysFree: return .keys
         case .windowOpened, .windowClosed, .panelOpened, .panelClosed: return .windows
         case .macWoke, .macSleeping, .keepAwakeOn, .keepAwakeOff, .keepAwakeFailed: return .system
+        case .pageShown, .actionSlow, .loadSlow, .mainThreadStalled: return .speed
         }
     }
 
@@ -135,6 +138,10 @@ public enum LogMessage: String, Sendable, CaseIterable {
         case .keepAwakeOn: return L("Keeping the Mac awake while work runs")
         case .keepAwakeOff: return L("No longer keeping the Mac awake")
         case .keepAwakeFailed: return L("Could not keep the Mac awake")
+        case .pageShown: return L("%@ drawn %@ after %@")
+        case .actionSlow: return L("%@ took %@ until drawn, on %@")
+        case .loadSlow: return L("%@ read in %@, items: %@, on the main thread: %@")
+        case .mainThreadStalled: return L("Main thread busy for %@, on %@, after %@")
         }
     }
 }

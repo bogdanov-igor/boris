@@ -71,14 +71,14 @@ struct LogValueTests {
 
     @Test("Значение возвращается из файла таким же", arguments: [
         LogValue.number(12), .number(-3), .decimal(0.6), .seconds(1.25), .flag(true), .flag(false), .word(.connectSheet), .choice(WalrusSound.done),
-        .tool("Bash"), .tool("mcp__x__y"), .session("3f9a11c2-77aa"), .version("0.4.1"), .failure(CocoaError(.fileWriteOutOfSpace)), .keys("⌥⌘O"),
+        .tool("Bash"), .tool("mcp__x__y"), .session("3f9a11c2-77aa"), .version("0.4.1"), .failure(CocoaError(.fileWriteOutOfSpace)), .keys("⌥⌘O"), .milliseconds(250), .choice(SpeedPlace.session),
     ])
     func storedRoundTrip(value: LogValue) {
         #expect(LogValue(stored: value.stored) == value)
     }
 
     @Test("Подправленный файл не вставит слова в то, что копируют", arguments: [
-        "w:Какой-то текст", "w:connectSheet ", "c:has space", "c:/Users/someone", "t:SecretProjectName", "i:/Users/x", "i:123456789", "e:a b/1", "e:domain", "n:abc", "s:nan", "f:maybe", "v:my secret", "k:", "k:a b", "x:1", "нет двоеточия",
+        "w:Какой-то текст", "w:connectSheet ", "c:has space", "c:/Users/someone", "t:SecretProjectName", "i:/Users/x", "i:123456789", "e:a b/1", "e:domain", "n:abc", "s:nan", "f:maybe", "v:my secret", "k:", "k:a b", "x:1", "нет двоеточия", "m:-5", "m:1.5", "m:abc",
     ])
     func tampered(stored: String) {
         #expect(LogValue(stored: stored) == nil)
@@ -499,7 +499,7 @@ struct LogCallsTests {
 
     @Test("Значения идут только через двери, которые их проверяют")
     func onlyCheckedDoors() {
-        let doors = [".number(", ".decimal(", ".seconds(", ".flag(", ".word(", ".choice(", ".tool(", ".session(", ".version(", ".failure(", ".keys("]
+        let doors = [".number(", ".decimal(", ".seconds(", ".milliseconds(", ".flag(", ".word(", ".choice(", ".tool(", ".session(", ".version(", ".failure(", ".keys("]
         let others = ["about", "banner.about", "summary.about", "line.about", "name", "value"]
         for call in Self.calls {
             for value in call.values {

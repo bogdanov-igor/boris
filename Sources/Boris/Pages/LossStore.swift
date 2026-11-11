@@ -47,6 +47,7 @@ final class LossStore {
     }
 
     private func update(_ model: AppModel) async {
+        let started = SpeedLog.start()
         let folder = model.settings.claudeFolder
         let index = index
         let filter = model.sourceFilter
@@ -67,6 +68,7 @@ final class LossStore {
         updated = true
         await publish(model)
         progress = nil
+        SpeedLog.loaded(.losses, since: started, items: book?.entries.count ?? 0, onMain: false)
     }
 
     /// What went wrong in one session besides its fallen agents, by kind and counted as the Losses page counts it. Only that session's files are read.
@@ -77,11 +79,13 @@ final class LossStore {
         let index = index
         let filter = model.sourceFilter
         let live = model.sessionsAtWork
+        let started = SpeedLog.start()
         let entries = await Task.detached(priority: .utility) {
             let paths = ClaudePaths.resolve(custom: folder)
             await index.update(session: session, roots: [paths] + ClaudeFolders.others(besides: paths), filter: filter)
             return await index.history(session: session, live: live)
         }.value
+        SpeedLog.loaded(.sessionLosses, since: started, items: entries.count, onMain: false)
         var kinds: [LossKind: Int] = [:]
         for entry in entries where entry.kind != .crash { kinds[entry.kind, default: 0] += entry.count }
         return kinds
@@ -91,7 +95,10 @@ final class LossStore {
         let chosen = period
         let live = model.sessionsAtWork
         let fresh = await index.book(period: chosen, tokens: model.usage.records, live: live, now: Date())
-        if chosen == period, fresh != book { book = fresh }
+        if chosen == period, fresh != book {
+            SpeedLog.did(.lossesArrived)
+            book = fresh
+        }
     }
 
     #if DEBUG

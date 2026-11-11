@@ -14,7 +14,7 @@ public enum LogLevel: String, Sendable, CaseIterable {
 }
 
 public enum LogArea: String, Sendable, CaseIterable {
-    case app, data, hooks, requests, notifications, sound, limits, settings, keys, windows, system
+    case app, data, hooks, requests, notifications, sound, limits, settings, keys, windows, system, speed
 
     public var label: String {
         switch self {
@@ -29,6 +29,7 @@ public enum LogArea: String, Sendable, CaseIterable {
         case .keys: return L("keys")
         case .windows: return L("windows")
         case .system: return L("system")
+        case .speed: return L("speed")
         }
     }
 }
@@ -37,7 +38,7 @@ public enum LogArea: String, Sendable, CaseIterable {
 /// every door below takes a number, a closed list, or a string it cuts down to something that cannot hold a prompt, a path or a token.
 public struct LogValue: Sendable, Equatable, Hashable {
     enum Kind: String, Sendable {
-        case number = "n", decimal = "d", seconds = "s", flag = "f", word = "w", name = "c", tool = "t", session = "i", version = "v", failure = "e", keys = "k"
+        case number = "n", decimal = "d", seconds = "s", milliseconds = "m", flag = "f", word = "w", name = "c", tool = "t", session = "i", version = "v", failure = "e", keys = "k"
     }
 
     let kind: Kind
@@ -53,6 +54,11 @@ public struct LogValue: Sendable, Equatable, Hashable {
 
     public static func seconds(_ value: TimeInterval) -> LogValue {
         LogValue(kind: .seconds, text: value.isFinite ? String(format: "%.2f", max(0, value)) : "0.00")
+    }
+
+    /// A short wait, in whole milliseconds, where a tenth of a second would say too little.
+    public static func milliseconds(_ value: Int) -> LogValue {
+        LogValue(kind: .milliseconds, text: String(max(0, value)))
     }
 
     public static func flag(_ on: Bool) -> LogValue {
@@ -109,6 +115,7 @@ public struct LogValue: Sendable, Equatable, Hashable {
         let isValid: Bool
         switch kind {
         case .number: isValid = Int(text) != nil
+        case .milliseconds: isValid = Int(text).map { $0 >= 0 } ?? false
         case .decimal, .seconds: isValid = Double(text)?.isFinite == true
         case .flag: isValid = text == "on" || text == "off"
         case .word: isValid = LogWord(rawValue: text) != nil
@@ -136,6 +143,7 @@ public struct LogValue: Sendable, Equatable, Hashable {
         switch kind {
         case .seconds: return Self.duration(Double(text) ?? 0)
         case .decimal: return Self.localized(Double(text) ?? 0, digits: 2)
+        case .milliseconds: return L("%@ ms", text)
         case .flag: return text == "on" ? L("on") : L("off")
         case .word: return LogWord(rawValue: text)?.label ?? text
         case .number, .name, .tool, .session, .version, .failure, .keys: return text

@@ -39,7 +39,10 @@ final class SettingsWindowController {
             }
             window = created
         }
-        if window?.isVisible != true { AppLog.note(.windowOpened, .word(.settingsWindow)) }
+        if window?.isVisible != true {
+            SpeedLog.began(.openSettings)
+            AppLog.note(.windowOpened, .word(.settingsWindow))
+        }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
@@ -69,6 +72,7 @@ struct SettingsView: View {
                 Color.clear.frame(height: 34)
                 ForEach(SettingsSection.allCases) { section in
                     Button {
+                        if section != model.settingsSection { SpeedLog.began(.chooseSettingsSection, to: section.speedPlace) }
                         model.settingsSection = section
                     } label: {
                         Text(section.title)
@@ -100,13 +104,13 @@ struct SettingsView: View {
 
     @ViewBuilder private var content: some View {
         switch model.settingsSection {
-        case .general: page { GeneralSettings(model: model, actions: actions) }
-        case .connections: page { ConnectionSettings(model: model, connect: connect) }
-        case .log: LogSection(model: model)
-        case .about: AboutSection(model: model, license: openLicense)
-        case .sources: page { SourcesSettings(model: model) }
-        case .surfaces: page { SurfacesSettings(model: model) }
-        case .notifications: page { NotificationSettings(model: model) }
+        case .general: page { GeneralSettings(model: model, actions: actions) }.speedPlace(.settingsGeneral)
+        case .connections: page { ConnectionSettings(model: model, connect: connect) }.speedPlace(.settingsConnections)
+        case .log: LogSection(model: model).speedPlace(.settingsLog)
+        case .about: AboutSection(model: model, license: openLicense).speedPlace(.settingsAbout)
+        case .sources: page { SourcesSettings(model: model) }.speedPlace(.settingsSources)
+        case .surfaces: page { SurfacesSettings(model: model) }.speedPlace(.settingsSurfaces)
+        case .notifications: page { NotificationSettings(model: model) }.speedPlace(.settingsNotifications)
         }
     }
 

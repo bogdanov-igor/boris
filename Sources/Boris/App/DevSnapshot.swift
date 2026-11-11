@@ -47,6 +47,7 @@ enum DevSnapshot {
         if WalrusDev.measureIfRequested() { return true }
         guard let folder = environment["BORIS_SNAPSHOT"] else { return false }
         if LoadMeasure.runIfRequested() { return true }
+        if SpeedTour.runIfRequested() { return true }
         if AppMeasure.runIfRequested() { return true }
         if DevUpdateCheck.runIfRequested() { return true }
         try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)

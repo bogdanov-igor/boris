@@ -13,6 +13,8 @@
   "keys": "клавиши",
   "windows": "окна",
   "system": "система",
+  "speed": "скорость",
+  "%@ ms": "%@ мс",
   "off": "выключено",
   "%@ min": "%@ мин",
   "%@ h": "%@ ч",
@@ -169,5 +171,9 @@
   "Warnings and errors": "Предупреждения и ошибки",
   "Lines": "Строки",
   "No warnings or errors in this period.": "За этот период нет предупреждений и ошибок.",
-  "Nothing in this period yet.": "За этот период пока ничего нет."
+  "Nothing in this period yet.": "За этот период пока ничего нет.",
+  "%@ drawn %@ after %@": "%@: нарисовано через %@ после %@",
+  "%@ took %@ until drawn, on %@": "%@: до кадра %@, на %@",
+  "%@ read in %@, items: %@, on the main thread: %@": "%@: прочитано за %@, элементов: %@, в главном потоке: %@",
+  "Main thread busy for %@, on %@, after %@": "Главный поток занят %@, на %@, после %@"
 }

@@ -77,8 +77,10 @@ final class UsageModel {
         let records = records
         let generation = generation
         Task.detached(priority: .utility) { [weak self] in
+            let started = SpeedLog.start()
             let book = TokenBook(records: records, now: Date())
             let sources = Self.sources(of: records)
+            SpeedLog.loaded(.spendSums, since: started, items: records.count, onMain: false)
             await self?.finish(book, sources: sources, generation: generation)
         }
     }

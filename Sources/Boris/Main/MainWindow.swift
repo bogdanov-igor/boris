@@ -44,13 +44,18 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             }
             window = created
         }
-        if window?.isVisible != true { AppLog.note(.windowOpened, .word(.mainWindow)) }
+        if window?.isVisible != true {
+            SpeedLog.began(.openMainWindow)
+            AppLog.note(.windowOpened, .word(.mainWindow))
+        }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
         model.setLookingClosely(true, from: .mainWindow)
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
+        // Back from another window: what stalls now happens on the page shown here.
+        SpeedLog.appeared(model.page == .projects ? model.projectsRoute.speedPlace : model.page.speedPlace)
         model.acknowledgeAlarm()
     }
 
@@ -189,13 +194,13 @@ private struct PageContent: View {
 
     @ViewBuilder private var page: some View {
         switch model.page {
-        case .now: NowPage(model: model)
+        case .now: NowPage(model: model).speedPlace(.now)
         case .projects: ProjectsPage(model: model)
-        case .spend: SpendPage(model: model)
-        case .requests: RequestsPage(model: model)
-        case .activity: ActivityPage(model: model)
-        case .losses: LossesPage(model: model)
-        case .walrus: WalrusPage(model: model)
+        case .spend: SpendPage(model: model).speedPlace(.spend)
+        case .requests: RequestsPage(model: model).speedPlace(.requests)
+        case .activity: ActivityPage(model: model).speedPlace(.activity)
+        case .losses: LossesPage(model: model).speedPlace(.losses)
+        case .walrus: WalrusPage(model: model).speedPlace(.walrus)
         }
     }
 }

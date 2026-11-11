@@ -148,7 +148,7 @@ struct Crumbs: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            link(L("Projects")) { model.projectsRoute = .list }
+            link(L("Projects")) { model.backToProjects() }
             if let project {
                 Text(verbatim: "›")
                 let name = ProjectWords.name(project)
@@ -224,6 +224,7 @@ struct ProjectFilterBar: View {
             case .dates: return .dates
             }
         } set: { chosen in
+            SpeedLog.began(.changeFilter)
             switch chosen {
             case .today: model.projectFilter.period = .today
             case .week: model.projectFilter.period = .week

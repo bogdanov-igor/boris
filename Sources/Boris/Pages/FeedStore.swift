@@ -116,6 +116,7 @@ final class FeedStore {
     }
 
     private func tick() async {
+        let started = SpeedLog.start()
         let sessions = sessions
         var files: [(session: WorkSession, file: URL)] = []
         for session in sessions {
@@ -128,8 +129,9 @@ final class FeedStore {
         let sources = files
         // A big workflow can have hundreds of files, so the first look is only at the main agents, and the rest follow on the next tick.
         let firstLook = !lookedOnce
+        let merging: SpeedLoad = sessionId == nil ? .activityMerge : .sessionMerge
         let reading = Task.detached(priority: .userInitiated) {
-            Self.read(current, files: sources, live: live, force: force, window: window, withAgents: !firstLook)
+            Self.read(current, files: sources, live: live, force: force, window: window, withAgents: !firstLook, merging: merging)
         }
         // This can take seconds, and nobody should keep paying for it after leaving the page.
         let result = await withTaskCancellationHandler { await reading.value } onCancel: { reading.cancel() }
@@ -137,8 +139,11 @@ final class FeedStore {
         lastLive = firstLook ? nil : live
         readers = result.readers
         if let merged = result.entries {
+            SpeedLog.did(.feedArrived)
             let next = keepsOldest ? SessionFeed.keepingOlder(entries, next: merged) : merged
             if next != entries { entries = next }
+            // Only a look that brought something: one every second that found nothing new says nothing about a page.
+            SpeedLog.loaded(sessionId == nil ? .activity : .sessionFeed, since: started, items: entries.count, onMain: false)
         }
         if result.thinking != thinking { thinking = result.thinking }
         if result.names != fileNames { fileNames = result.names }
@@ -191,7 +196,7 @@ final class FeedStore {
         var permissionMode: String?
     }
 
-    private nonisolated static func read(_ current: [String: SessionFeedReader], files: [(session: WorkSession, file: URL)], live: Set<String>, force: Bool, window: UInt64, withAgents: Bool) -> ReadResult {
+    private nonisolated static func read(_ current: [String: SessionFeedReader], files: [(session: WorkSession, file: URL)], live: Set<String>, force: Bool, window: UInt64, withAgents: Bool, merging: SpeedLoad) -> ReadResult {
         var readers = current
         var changed = force
         for (session, file) in files {
@@ -202,6 +207,7 @@ final class FeedStore {
         }
         // Nobody is waiting for the rest, and this result goes unused.
         if Task.isCancelled { return ReadResult(readers: current, entries: nil, thinking: [], names: [:], partWay: false) }
+        let mergeStarted = SpeedLog.start()
         var feeds: [[FeedEntry]] = []
         var thinking: [Thinker] = []
         var names: [String: String] = [:]
@@ -215,6 +221,7 @@ final class FeedStore {
             partWay = partWay || reader.startedPartWay
         }
         let merged = changed ? SessionFeed.merged(feeds) : nil
+        if let merged { SpeedLog.loaded(merging, since: mergeStarted, items: merged.count, onMain: pthread_main_np() != 0) }
         return ReadResult(readers: readers, entries: merged, thinking: thinking, names: names, partWay: partWay, permissionMode: files.first.flatMap { readers[$0.session.id]?.permissionMode })
     }
 

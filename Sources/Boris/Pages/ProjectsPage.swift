@@ -12,9 +12,9 @@ struct ProjectsPage: View {
                 FolderMissing(model: model).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 switch model.projectsRoute {
-                case .list: ProjectList(model: model)
-                case .project(let path): ProjectPage(model: model, path: path)
-                case .session(let id): SessionPage(model: model, id: id)
+                case .list: ProjectList(model: model).speedPlace(.projects)
+                case .project(let path): ProjectPage(model: model, path: path).speedPlace(.project)
+                case .session(let id): SessionPage(model: model, id: id).speedPlace(.session)
                 }
             }
         }
@@ -60,7 +60,7 @@ private struct ProjectList: View {
 
     var body: some View {
         let sessions = model.allSessions
-        let projects = ProjectBook.summaries(sessions: sessions, tokens: model.usage.records, filter: filter, now: model.now)
+        let projects = SpeedLog.measure(.projectSums, items: \.count) { ProjectBook.summaries(sessions: sessions, tokens: model.usage.records, filter: filter, now: model.now) }
         VStack(spacing: 0) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 12) {

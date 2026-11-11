@@ -129,6 +129,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Only here, in the app itself: tests, snapshots and tools have no log file.
     private func startLog() {
         AppLog.add(AppLogStore())
+        SpeedWatch.start()
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? BorisCore.version
         #if DEBUG
         AppLog.note(.appStarted, .version(version), .word(.debugBuild))

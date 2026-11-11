@@ -88,6 +88,7 @@ struct ActivityPage: View {
             ForEach(ActivityFilter.allCases) { filter in
                 let selected = filter == query.type
                 Button {
+                    SpeedLog.began(.changeFilter)
                     query.type = filter
                 } label: {
                     Text(filter.title)
