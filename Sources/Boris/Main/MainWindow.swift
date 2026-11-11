@@ -16,6 +16,9 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
     var onOpenSettings: ((SettingsSection) -> Void)?
 
+    /// Every page fits from this size up, in both modes and languages: checked by laying them out at each width.
+    static let minimum = NSSize(width: 900, height: 600)
+
     init(model: AppModel, connect: ConnectFlow) {
         self.model = model
         self.connect = connect
@@ -26,22 +29,12 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             let host = WindowFit.host(MainWindowView(model: model, connect: connect, openSettings: { [weak self] section in
                 self?.onOpenSettings?(section)
             }))
-            let created = NSWindow(contentViewController: host)
-            created.title = "Boris"
-            created.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-            created.titlebarAppearsTransparent = true
-            created.titleVisibility = .hidden
-            created.isMovableByWindowBackground = true
-            created.isReleasedWhenClosed = false
+            let created = WindowFit.window(host, title: "Boris", size: NSSize(width: 1200, height: 800), minimum: Self.minimum)
             created.delegate = self
             model.capture.watch(created, as: .main)
-            created.setContentSize(NSSize(width: 1200, height: 800))
-            created.minSize = NSSize(width: 900, height: 600)
             created.setFrameAutosaveName("main")
             if !created.setFrameUsingName("main") { created.center() }
-            if let visible = (created.screen ?? NSScreen.main)?.visibleFrame {
-                created.setFrame(WindowFit.fitted(created.frame, in: visible), display: false)
-            }
+            WindowFit.keepOnScreen(created, minimum: Self.minimum)
             window = created
         }
         if window?.isVisible != true {
@@ -114,7 +107,7 @@ private struct Sidebar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Color.clear.frame(height: 38)
+            WindowDragArea().frame(height: 38)
             ForEach(AppPage.allCases.filter { $0.isShown(in: model.settings.displayMode) }) { page in
                 item(page.title, selected: model.page == page, badge: page == .requests ? model.requestCount : 0) {
                     model.choose(page)
@@ -171,8 +164,9 @@ private struct PageContent: View {
             // The page of projects has a header of its own, with the way back and its filters.
             if model.page != .projects {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(model.page.title).font(.system(size: 18, weight: .semibold))
-                    Text(subtitle).font(.system(size: 12)).foregroundStyle(Palette.text2).lineLimit(1)
+                    // The words of the header are part of what the window is moved by, as in a title bar.
+                    Text(model.page.title).font(.system(size: 18, weight: .semibold)).allowsHitTesting(false)
+                    Text(subtitle).font(.system(size: 12)).foregroundStyle(Palette.text2).lineLimit(1).allowsHitTesting(false)
                     if model.page == .walrus { WalrusPageTabs(model: model) }
                     if model.page == .requests { RequestsHeader(model: model) } else { Spacer(minLength: 0) }
                     if model.page == .walrus { WalrusImportButton(model: model) }
@@ -184,6 +178,7 @@ private struct PageContent: View {
                 }
                 .padding(.horizontal, 24)
                 .frame(height: 52)
+                .background(WindowDragArea())
                 Rectangle().fill(Palette.separator).frame(height: 1)
             }
             ConnectionNotices(model: model, connect: connect)

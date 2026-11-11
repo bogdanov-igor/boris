@@ -244,6 +244,7 @@ struct RequestsHeader: View {
             .font(.system(size: 12.5, weight: rows.isEmpty ? .regular : .semibold))
             .foregroundStyle(rows.isEmpty ? Palette.text2 : Palette.waiting)
             .lineLimit(1)
+            .allowsHitTesting(false)
         Spacer(minLength: 8)
         // Shortened as a whole phrase: cut anywhere, the reminder about Enter would lose the word that gives it its meaning.
         ViewThatFits(in: .horizontal) {
@@ -257,6 +258,7 @@ struct RequestsHeader: View {
             .font(.system(size: 11.5))
             .foregroundStyle(Palette.text3)
             .lineLimit(1)
+            .allowsHitTesting(false)
     }
 }
 

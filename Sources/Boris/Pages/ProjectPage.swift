@@ -82,6 +82,7 @@ struct ProjectPage: View {
         }
         .padding(EdgeInsets(top: 12, leading: 24, bottom: 12, trailing: 24))
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(WindowDragArea())
     }
 
     private func stats(_ project: ProjectSummary) -> some View {

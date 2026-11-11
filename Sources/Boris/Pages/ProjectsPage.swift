@@ -75,6 +75,7 @@ private struct ProjectList: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(EdgeInsets(top: 14, leading: 24, bottom: 12, trailing: 24))
+            .background(WindowDragArea())
             Rectangle().fill(Palette.separator).frame(height: 1)
             if projects.isEmpty {
                 empty(hasSessions: !sessions.isEmpty)
@@ -104,6 +105,8 @@ private struct ProjectList: View {
                     .lineLimit(1)
             }
         }
+        // Part of what the window is moved by, as in a title bar.
+        .allowsHitTesting(false)
     }
 
     @ViewBuilder private func empty(hasSessions: Bool) -> some View {
