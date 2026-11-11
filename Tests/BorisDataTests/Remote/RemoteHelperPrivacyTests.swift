@@ -74,12 +74,8 @@ struct RemoteHelperPrivacyTests {
         process.standardOutput = output
         process.standardError = FileHandle.nullDevice
         let received = Collected()
-        // At the end of the output it is called again and again with nothing, so it lets go then.
-        output.fileHandleForReading.readabilityHandler = { handle in
-            let data = handle.availableData
-            if data.isEmpty { handle.readabilityHandler = nil } else { received.add(data) }
-        }
         try process.run()
+        let reader = PipeReader(output, into: received)
         defer { if process.isRunning { process.terminate() } }
 
         // Something changes while it watches, so a line of new numbers goes through as well.
@@ -88,7 +84,7 @@ struct RemoteHelperPrivacyTests {
         #expect(await arrives { received.text.components(separatedBy: "\"numbers\"").count > 2 })
         process.terminate()
         waitUntilGone(process)
-        output.fileHandleForReading.readabilityHandler = nil
+        #expect(reader.finish(), "вывод кончается вместе с помощником")
 
         let allowedFields: [String: Set<String>] = [
             "hello": ["k"],
@@ -224,8 +220,12 @@ struct RemoteHelperPrivacyTests {
         machine.writeClaudeFile("projects/-srv-app/s-2.jsonl", FakeMachine.assistantLine(id: "m2", input: 10, output: 0, cacheRead: 0, cacheWrite: 0))
         machine.installHelper()
         let received = Collected()
-        let process = try startWatch(machine, into: received)
-        defer { if process.isRunning { process.terminate() } }
+        let (process, reader) = try startWatch(machine, into: received)
+        defer {
+            if process.isRunning { process.terminate() }
+            waitUntilGone(process)
+            reader.finish()
+        }
         #expect(await arrives { received.lines(ofKind: "numbers").count >= 1 })
 
         machine.appendClaudeFile("projects/-srv-app/s-1.jsonl", FakeMachine.assistantLine(id: "m3", input: 7, output: 0, cacheRead: 0, cacheWrite: 0))
@@ -250,7 +250,7 @@ struct RemoteHelperPrivacyTests {
         #expect(Set(left.map(\.session)) == ["s-1"])
     }
 
-    private func startWatch(_ machine: FakeMachine, into received: Collected) throws -> Process {
+    private func startWatch(_ machine: FakeMachine, into received: Collected) throws -> (Process, PipeReader) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["python3", machine.boris.appendingPathComponent("boris-hook").path, "watch"]
@@ -259,13 +259,8 @@ struct RemoteHelperPrivacyTests {
         let output = Pipe()
         process.standardOutput = output
         process.standardError = FileHandle.nullDevice
-        // At the end of the output it is called again and again with nothing, so it lets go then.
-        output.fileHandleForReading.readabilityHandler = { handle in
-            let data = handle.availableData
-            if data.isEmpty { handle.readabilityHandler = nil } else { received.add(data) }
-        }
         try process.run()
-        return process
+        return (process, PipeReader(output, into: received))
     }
 }
 
@@ -291,6 +286,38 @@ final class Collected: @unchecked Sendable {
         let all = text
         guard let end = all.lastIndex(of: "\n") else { return [] }
         return all[..<end].split(separator: "\n").map(String.init).filter { $0.contains("\"k\":\"\(kind)\"") }
+    }
+}
+
+/// Reads a pipe on a thread of its own, with plain blocking reads, until the end of the output.
+/// A readability handler was used before: at the end of the output it is called again and again with nothing, and when it was let go
+/// from its own queue and from the test at the same moment it went on at full speed, while the run around it stood still.
+final class PipeReader: @unchecked Sendable {
+    private let done = DispatchSemaphore(value: 0)
+
+    init(_ pipe: Pipe, into received: Collected) {
+        Thread.detachNewThread { [done] in
+            // The pipe is held here, so its end stays open for as long as this reads it.
+            let fd = pipe.fileHandleForReading.fileDescriptor
+            var buffer = [UInt8](repeating: 0, count: 65_536)
+            while true {
+                let count = read(fd, &buffer, buffer.count)
+                if count > 0 {
+                    received.add(Data(buffer[0..<count]))
+                } else if count < 0, errno == EINTR {
+                    continue
+                } else {
+                    break
+                }
+            }
+            done.signal()
+        }
+    }
+
+    /// Waits for the end of the output, at most `seconds`. Returns false if it has not come.
+    @discardableResult
+    func finish(seconds: TimeInterval = 10) -> Bool {
+        done.wait(timeout: .now() + seconds) == .success
     }
 }
 
