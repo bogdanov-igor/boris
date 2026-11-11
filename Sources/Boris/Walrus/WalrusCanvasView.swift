@@ -3,6 +3,7 @@ import BorisCharacter
 import BorisCore
 
 /// Shows the walrus by swapping a layer's contents, so moving him redraws nothing else.
+/// His lean turns that layer instead of being drawn, so the pictures already kept serve every lean.
 /// A timer exists only while he is meant to move and can be seen: a still or hidden walrus costs nothing.
 @MainActor
 final class WalrusCanvasView: NSView {
@@ -31,6 +32,11 @@ final class WalrusCanvasView: NSView {
     func refreshForTest() {
         refresh()
     }
+
+    func leanForTest(_ degrees: CGFloat) {
+        leaning = degrees
+        placeArt()
+    }
     #endif
 
     private static let maxKept = 48
@@ -44,16 +50,25 @@ final class WalrusCanvasView: NSView {
                 refresh()
             } else {
                 since = Date()
+                lean = Lean(seed: .random(in: .min ... .max))
                 kept = [:]
                 shown = nil
+                // Each drawing leans around its own point.
+                placeArt()
                 refresh()
             }
         }
     }
 
     private var picture: CGImage?
+    /// The picture's own layer, which his lean turns.
+    private let art = CALayer()
+    /// Degrees the picture is turned now.
+    private var leaning: CGFloat = 0
     private var timer: Timer?
     private var since = Date()
+    /// He leans now and then instead of rocking, and starts upright with every new look.
+    private var lean = Lean(seed: .random(in: .min ... .max))
     private var kept: [WalrusArt.Source: CGImage] = [:]
     private var shown: WalrusArt.Source?
     private var gaze: WalrusFrame.Gaze?
@@ -64,10 +79,11 @@ final class WalrusCanvasView: NSView {
         super.init(frame: .zero)
         wantsLayer = true
         layerContentsRedrawPolicy = .never
-        layer?.contentsGravity = .resizeAspect
-        // No fading between frames.
-        layer?.actions = ["contents": NSNull()]
-        layer?.contentsScale = 2
+        art.contentsGravity = .resizeAspect
+        // No fading between frames, and no gliding: the timer shows each step of a turn.
+        art.actions = ["contents": NSNull(), "transform": NSNull(), "position": NSNull(), "bounds": NSNull(), "anchorPoint": NSNull()]
+        art.contentsScale = 2
+        layer?.addSublayer(art)
     }
 
     @available(*, unavailable)
@@ -76,7 +92,12 @@ final class WalrusCanvasView: NSView {
     override var wantsUpdateLayer: Bool { true }
 
     override func updateLayer() {
-        layer?.contents = picture
+        art.contents = picture
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        placeArt()
     }
 
     /// Only for snapshots, which do not go through the layer.
@@ -85,7 +106,47 @@ final class WalrusCanvasView: NSView {
         let side = min(bounds.width, bounds.height)
         let scale = side / CGFloat(max(picture.width, picture.height))
         let width = CGFloat(picture.width) * scale, height = CGFloat(picture.height) * scale
-        context.draw(picture, in: CGRect(x: (bounds.width - width) / 2, y: (bounds.height - height) / 2, width: width, height: height))
+        let place = CGRect(x: (bounds.width - width) / 2, y: (bounds.height - height) / 2, width: width, height: height)
+        let share = artPivot(down: false)
+        let pivot = CGPoint(x: place.minX + share.x * place.width, y: place.minY + share.y * place.height)
+        context.translateBy(x: pivot.x, y: pivot.y)
+        context.rotate(by: -leaning * .pi / 180)
+        context.translateBy(x: -pivot.x, y: -pivot.y)
+        context.draw(picture, in: place)
+    }
+
+    /// The point he leans around, as a share of the picture from its bottom left, or from its top left when y counts downwards.
+    private func artPivot(down: Bool) -> CGPoint {
+        let pivot = Renderer.leanPivot(simple: look?.simple ?? false)
+        return CGPoint(x: pivot.x, y: down ? pivot.y : 1 - pivot.y)
+    }
+
+    /// Whether the picture's layer counts y downwards on screen. AppKit flips layers on the way down to match its views,
+    /// so this depends on what the view sits in, and is worked out each time rather than assumed.
+    private var layerCountsDown: Bool {
+        var down = false
+        var current = layer
+        while let one = current {
+            if one.isGeometryFlipped { down.toggle() }
+            current = one.superlayer
+        }
+        return down
+    }
+
+    /// The picture fills the largest centred square, turned by his lean around the point the drawing tilts around.
+    private func placeArt() {
+        let side = min(bounds.width, bounds.height)
+        let down = layerCountsDown
+        let pivot = artPivot(down: down)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        art.setAffineTransform(.identity)
+        art.anchorPoint = pivot
+        art.bounds = CGRect(x: 0, y: 0, width: side, height: side)
+        art.position = CGPoint(x: (bounds.width - side) / 2 + pivot.x * side, y: (bounds.height - side) / 2 + pivot.y * side)
+        // The drawing counts y downwards. Where the layer counts upwards, the same lean turns the other way round.
+        art.setAffineTransform(CGAffineTransform(rotationAngle: (down ? 1 : -1) * leaning * .pi / 180))
+        CATransaction.commit()
     }
 
     // MARK: - Being seen
@@ -120,6 +181,8 @@ final class WalrusCanvasView: NSView {
         observe(.default, NSWindow.didChangeOcclusionStateNotification, of: window)
         observe(NSWorkspace.shared.notificationCenter, NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, of: nil)
         watchPointer(in: window)
+        // Which way its layer counts may have changed with the window.
+        placeArt()
         refresh()
     }
 
@@ -190,7 +253,11 @@ final class WalrusCanvasView: NSView {
 
     private func show(at now: Date) {
         guard let look else { return }
-        let source = source(for: look, at: now)
+        let (source, degrees) = source(for: look, at: now)
+        if degrees != leaning {
+            leaning = degrees
+            placeArt()
+        }
         guard source != shown else { return }
         shown = source
         let image: CGImage?
@@ -206,7 +273,7 @@ final class WalrusCanvasView: NSView {
         // A pack's file can vanish or spoil while he is on screen. The built-in walrus is better than an empty place.
         let shownImage = image ?? WalrusArt.shared.still(.drawn(WalrusFrame(name: look.pose, outfit: look.outfit)), pixels: look.pixels, simple: look.simple)
         picture = shownImage
-        layer?.contents = shownImage
+        art.contents = shownImage
     }
 
     /// A key frame looks the same every time, so it can be shared and kept for good. The rest of a pack's frames are only kept while they move.
@@ -221,13 +288,14 @@ final class WalrusCanvasView: NSView {
         }
     }
 
-    private func source(for look: Look, at now: Date) -> WalrusArt.Source {
+    /// The picture to show, drawn upright, and how far to turn it.
+    private func source(for look: Look, at now: Date) -> (WalrusArt.Source, CGFloat) {
         let elapsed = max(0, now.timeIntervalSince(since))
         let moving = WalrusMotion.nextFrame(moves: moves(look), visible: isSeen, reduceMotion: Self.reduceMotion) != nil
         if let pack = look.pack {
             let frames = pack.frames(for: look.pose.packPose)
             let index = moving ? Int(elapsed * pack.framesPerSecond) % frames.count : 0
-            return .file(frames[index])
+            return (.file(frames[index]), 0)
         }
         var frame = WalrusFrame(name: look.pose, outfit: look.outfit)
         if moving {
@@ -241,9 +309,10 @@ final class WalrusCanvasView: NSView {
             frame.actStep = Int(t * Double(WalrusFrame.actSteps))
             frame.softPoke = stage.play.isSoftPoke
         }
+        let degrees = frame.showsLean ? lean.degrees(at: elapsed, moving: moving) : 0
         if look.pose.followsPointer { frame.gaze = gaze }
         frame.upsideDown = look.upsideDown
-        return .drawn(frame)
+        return (.drawn(frame), degrees)
     }
 
     // MARK: - The pointer

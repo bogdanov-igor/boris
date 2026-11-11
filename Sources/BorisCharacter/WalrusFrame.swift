@@ -19,6 +19,8 @@ public struct WalrusFrame: Hashable, Sendable {
     /// Where the pupils look, as a share of how far they can go, in whole steps. `nil` leaves them to the pose.
     public var gaze: Gaze?
     public var upsideDown = false
+    /// His lean in degrees, from `Lean`. Only a pose that stands upright shows it, and a reaction with no posture of its own.
+    public var lean: CGFloat = 0
 
     public struct Gaze: Hashable, Sendable {
         /// Steps from -3 to 3.
@@ -48,6 +50,12 @@ public struct WalrusFrame: Hashable, Sendable {
 
     private var actTime: CGFloat { CGFloat(actStep) / CGFloat(Self.actSteps) }
 
+    /// Whether `lean` changes the picture.
+    public var showsLean: Bool {
+        guard let act, !softPoke else { return name.leans }
+        return act.keepsLean
+    }
+
     public func fullPose() -> Pose {
         var pose = Timeline.full(name, t: loopTime, firstLoop: step != nil && firstLoop)
         if let act {
@@ -61,6 +69,7 @@ public struct WalrusFrame: Hashable, Sendable {
             pose.eyeLeft = .closed
             pose.eyeRight = .closed
         }
+        if showsLean { pose.tilt += lean }
         if let gaze, name.followsPointer, act == nil || softPoke {
             pose.look = CGPoint(x: 2 * CGFloat(gaze.x), y: 5 * CGFloat(gaze.y) / 3)
         }
@@ -81,6 +90,7 @@ public struct WalrusFrame: Hashable, Sendable {
             pose.eyeLeft = .closed
             pose.eyeRight = .closed
         }
+        if showsLean { pose.tilt += lean }
         if let gaze, name.followsPointer, act == nil || softPoke {
             pose.look = CGPoint(x: 0.8 * CGFloat(gaze.x), y: 0.4 * CGFloat(gaze.y))
         }

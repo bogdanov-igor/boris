@@ -3,6 +3,7 @@ import Foundation
 import BorisCore
 
 /// Each state is a pure function of time. `t` runs from 0 to 1 over one loop.
+/// No state rocks from side to side: a tilt is either the pose's own and stays put, or his lean, which `Lean` decides.
 public enum Timeline {
     private static let tau = 2 * CGFloat.pi
 
@@ -43,9 +44,7 @@ public enum Timeline {
             pose.browLeft = Brow(6 + 2 * twitch, -4)
         case .work:
             pose.look = CGPoint(x: 6 * s, y: 0)
-            pose.tilt = 3.5 * s
             pose.smoke = (t * 2).truncatingRemainder(dividingBy: 1)
-            pose.hat = Hat(126 + 2 * s, 18, 9 + 2 * s)
             pose.browRight = Brow(1 + s, 12)
             pose.smile = 0.06 * sin(tau * t * 4)
         case .happy:
@@ -101,7 +100,7 @@ public enum Timeline {
             pose.look = CGPoint(x: 0, y: 1)
             pose.browLeft = Brow(9 + 3 * max(0, s), -6)
             pose.browRight = Brow(0, 4)
-            pose.tilt = -4 + 1.2 * s
+            pose.tilt = -4
             pose.smoke = t
             if t.truncatingRemainder(dividingBy: 0.5) < 0.36 { pose.effects = [.question(x: 214, y: 46)] }
         case .limit:
@@ -124,8 +123,7 @@ public enum Timeline {
             pose.cigar = .droop
             pose.lit = false
             pose.smile = -0.25
-            pose.tilt = 5 * s
-            pose.hat = Hat(130, 14, 22 + 4 * s)
+            pose.hat = Hat(130, 14, 24)
             pose.browLeft = Brow(8, -6)
             pose.browRight = Brow(8, -6)
             pose.effects = (0..<3).map { index in
@@ -188,7 +186,7 @@ public enum Timeline {
             pose.eyeLeft = .lid
             pose.eyeRight = .lid
             pose.look = CGPoint(x: 7, y: 0)
-            pose.tilt = -5 + 0.6 * sin(tau * t)
+            pose.tilt = -5
             pose.browLeft = Brow(-2, 12)
             pose.browRight = Brow(-2, 14)
             pose.smile = -0.2
@@ -252,7 +250,7 @@ public enum Timeline {
             pose.eyeLeft = .lid
             pose.eyeRight = .lid
             pose.look = CGPoint(x: 2.4, y: 0)
-            pose.tilt = -4 + 0.5 * sin(tau * t)
+            pose.tilt = -4
             pose.smile = -0.2
         case .back:
             pose.eyeLeft = .lid
@@ -294,7 +292,6 @@ public enum Timeline {
             pose.bob = 0.5 * s
         case .work:
             pose.look = CGPoint(x: 2.4 * s, y: 0)
-            pose.tilt = 3 * s
             pose.smoke = (t * 2).truncatingRemainder(dividingBy: 1)
         case .happy:
             let jump = abs(s)
@@ -332,7 +329,7 @@ public enum Timeline {
         case .wait:
             pose.eyeRight = .open
             pose.hat = Hat(0, -1, 7)
-            pose.tilt = -3 + s * 0.6
+            pose.tilt = -3
             pose.smoke = mono ? nil : t
         case .limit:
             pose.eyeLeft = .tired
@@ -349,7 +346,6 @@ public enum Timeline {
             pose.ring = false
             pose.smile = -0.25
             pose.cigar = .droop
-            pose.tilt = 5 * s
             pose.hat = Hat(2, -2, 20)
         case .alert:
             pose.eyeRight = .small

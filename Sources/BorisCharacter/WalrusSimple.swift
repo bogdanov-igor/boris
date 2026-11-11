@@ -9,6 +9,8 @@ struct WalrusSimple {
     private static let hatInk = Ink(0x2F2E44), band = Ink(0xB3313F), gold = Ink(0xF4C542), ink = Ink(0x231814)
     private static let cigarInk = Ink(0x7A4A28), jawInk = Ink(0x8A5539), ember = Ink(0xFF7A2A), ash = Ink(0xCFCBC4)
     private static let edge: CGFloat = 2.8
+    /// What he tilts around.
+    static let pivot = CGPoint(x: 30, y: 38)
     private static let cut: CGFloat = 3
     private static let cigars: [Cigar: (x0: CGFloat, y0: CGFloat, x1: CGFloat, y1: CGFloat)] = [.flat: (36, 49, 77, 56), .up: (36, 49, 76, 36), .droop: (36, 49, 60, 69)]
     private static let leftX: CGFloat = 19, rightX: CGFloat = 41.5, eyeY: CGFloat = 27.5
@@ -36,7 +38,7 @@ struct WalrusSimple {
     private func drawPose(_ pose: SimplePose) {
         s.group {
             s.translate(0, pose.bob)
-            s.rotate(pose.tilt, around: 30, 38)
+            s.rotate(pose.tilt, around: Self.pivot.x, Self.pivot.y)
             if let kind = pose.cigar { cigar(kind) }
             jaw(pose.jaw)
             tusks(apart: pose.jaw > 0.3)
