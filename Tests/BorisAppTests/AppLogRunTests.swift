@@ -443,6 +443,34 @@ private struct Named: RawRepresentable, CaseIterable {
     static let allCases: [Named] = []
 }
 
+/// The system says no to keeping the Mac awake, every time. No real power setting is touched.
+@MainActor
+private final class RefusingBlocker: SleepBlocker {
+    var refuses = true
+    func hold(reason: String) -> UInt32? { refuses ? nil : 1 }
+    func release(_ id: UInt32) {}
+}
+
+@MainActor
+@Suite("Журнал: не на каждом проходе")
+struct AppLogRepeatTests {
+    @Test("Отказ системы держать Mac бодрым записан один раз, хотя попытка повторяется с каждым проходом")
+    func refusalOnce() {
+        let capture = ThreadCapture()
+        defer { capture.stop() }
+        let blocker = RefusingBlocker()
+        let guardian = PowerGuard(blocker: blocker)
+        for _ in 0..<5 { guardian.update(shouldHold: true) }
+        #expect(capture.messages == [.keepAwakeFailed])
+        // Work stopped and came back: that is news again.
+        guardian.update(shouldHold: false)
+        guardian.update(shouldHold: true)
+        blocker.refuses = false
+        guardian.update(shouldHold: true)
+        #expect(capture.messages == [.keepAwakeFailed, .keepAwakeFailed, .keepAwakeOn])
+    }
+}
+
 @MainActor
 @Suite("Журнал: окно просмотра", .serialized)
 struct LogViewerTests {

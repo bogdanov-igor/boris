@@ -28,6 +28,8 @@ struct SystemSleepBlocker: SleepBlocker {
 final class PowerGuard {
     private let blocker: any SleepBlocker
     private var held: UInt32?
+    /// A refusal is tried again at every update, which comes with every scan, and the log says it once.
+    private var refusalNoted = false
 
     var isHolding: Bool { held != nil }
 
@@ -39,8 +41,16 @@ final class PowerGuard {
     func update(shouldHold: Bool) {
         if shouldHold, held == nil {
             held = blocker.hold(reason: "Boris: Claude is working")
-            AppLog.note(held != nil ? .keepAwakeOn : .keepAwakeFailed)
-        } else if !shouldHold, let id = held {
+            if held != nil {
+                AppLog.note(.keepAwakeOn)
+                refusalNoted = false
+            } else if !refusalNoted {
+                AppLog.note(.keepAwakeFailed)
+                refusalNoted = true
+            }
+        } else if !shouldHold {
+            refusalNoted = false
+            guard let id = held else { return }
             blocker.release(id)
             held = nil
             AppLog.note(.keepAwakeOff)
