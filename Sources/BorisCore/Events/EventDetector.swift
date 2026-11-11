@@ -54,10 +54,11 @@ public struct EventDetector: Sendable {
         self.config = config
     }
 
-    public mutating func detect(runs: [RunState], sessions: [SessionInfo], usage: UsageSnapshot?, now: Date, failures: [HookState.Failure] = [], endedSessions: [SessionInfo] = []) -> [BorisEvent] {
+    public mutating func detect(runs: [RunState], sessions: [SessionInfo], usage: UsageSnapshot?, now: Date, failures: [HookState.Failure] = [], endedSessions: [SessionInfo] = [], agents: [AgentSnapshot] = []) -> [BorisEvent] {
         var events: [BorisEvent] = []
         let fromRuns = runEvents(runs, now: now)
         events += fromRuns
+        events += agentEvents(agents, runs: runs, sessions: sessions + endedSessions, now: now)
         events += interruptedSessions(sessions, ended: endedSessions, runs: runs, now: now)
         events += limitEvents(runs, justFailed: Set(fromRuns.filter(\.failedFromLimit).compactMap(\.runId)), hookLimit: failures.contains { $0.error == "rate_limit" }, now: now)
         events += sessionErrors(failures.filter { $0.error != "rate_limit" }, sessions: sessions, now: now)
@@ -65,7 +66,7 @@ public struct EventDetector: Sendable {
         events += sessionEvents(sessions, now: now)
         if !bootstrapped {
             bootstrapped = true
-            prune(existing: Set(runs.map(\.runId)))
+            prune(existing: Set(runs.map(\.runId)).union(agents.map { Self.agentKey($0.id) }))
         }
         return events
     }
@@ -107,12 +108,55 @@ public struct EventDetector: Sendable {
             name: run.name,
             project: run.projectName,
             agentsTotal: run.total,
-            agentsFailed: run.failed,
+            // The same count as the Losses page: an agent stopped together with its run did not fall.
+            agentsFailed: run.fallenAgents.count,
             topFailure: run.topFailure,
             durationMs: run.durationMs,
             environment: run.environment,
             whileAway: !bootstrapped
         )
+    }
+
+    /// An ordinary agent that fell is news once, the way a workflow's end is. One of a workflow's agents that went on after the workflow
+    /// is the same agent: it goes by its name in the workflow, and when it fell inside the workflow, the workflow has told of it already.
+    private mutating func agentEvents(_ agents: [AgentSnapshot], runs: [RunState], sessions: [SessionInfo], now: Date) -> [BorisEvent] {
+        let told = Set(runs.flatMap(\.fallenAgents))
+        var labels: [String: String] = [:]
+        for run in runs {
+            for agent in run.agents {
+                if let id = agent.agentId, let label = agent.label { labels[id] = label }
+            }
+        }
+        var events: [BorisEvent] = []
+        for agent in agents {
+            let key = Self.agentKey(agent.id)
+            if agent.state == .running { memory.activeRuns[key] = 1 }
+            guard agent.state == .failed, !told.contains(agent.id), !memory.notified.contains(key) else { continue }
+            memory.notified.insert(key)
+            // On the first pass only an agent last seen at work is news. Everything else is already old.
+            let isNews = bootstrapped || memory.activeRuns[key] != nil
+            memory.activeRuns[key] = nil
+            guard isNews else { continue }
+            let session = sessions.first { $0.sessionId == agent.sessionId }
+            events.append(BorisEvent(
+                id: key,
+                kind: .failed,
+                at: now,
+                sessionId: agent.sessionId,
+                name: labels[agent.id] ?? agent.description,
+                project: session?.projectName ?? GitPlace.projectPath(cwd: agent.cwd, environment: agent.environment).map { URL(fileURLWithPath: $0).lastPathComponent },
+                agentsTotal: 1,
+                agentsFailed: 1,
+                topFailure: agent.failure?.failureClass ?? .unknown,
+                environment: session?.environment ?? agent.environment,
+                whileAway: !bootstrapped
+            ))
+        }
+        return events
+    }
+
+    private static func agentKey(_ id: String) -> String {
+        "agent|\(id)"
     }
 
     private static func processKey(_ session: SessionInfo) -> String {
@@ -287,10 +331,13 @@ public struct EventDetector: Sendable {
 
     /// Runs outside the 24 hour window will not come back with the same attempt, so their keys can go.
     private mutating func prune(existing: Set<String>) {
-        memory.notified = memory.notified.filter { key in
-            guard let run = key.split(separator: "|").first else { return false }
-            return existing.contains(String(run))
+        func owner(_ key: String) -> String {
+            let parts = key.split(separator: "|")
+            // An agent's keys go by `agent|<id>`, a run's by its id first.
+            if parts.first == "agent", parts.count > 1 { return "agent|\(parts[1])" }
+            return parts.first.map(String.init) ?? ""
         }
-        memory.activeRuns = memory.activeRuns.filter { existing.contains($0.key) }
+        memory.notified = memory.notified.filter { existing.contains(owner($0)) }
+        memory.activeRuns = memory.activeRuns.filter { existing.contains(owner($0.key)) }
     }
 }

@@ -76,6 +76,11 @@ public struct WorkflowDetails: Sendable, Equatable {
     public var errorFirstLine: String?
     public var stoppedByClaude: Bool
     public var totalTokens: Int?
+    /// The node ids of the agents that fell, and of those left at work when it was cut off, as the Losses page counts them.
+    public var fallenAgents: [String]
+    public var closedAgents: [String]
+    public var scriptFailure: LossReason?
+    public var endedAt: Date?
 
     public init(_ run: RunState) {
         runId = run.runId
@@ -92,6 +97,10 @@ public struct WorkflowDetails: Sendable, Equatable {
         errorFirstLine = run.errorFirstLine
         stoppedByClaude = run.stoppedByClaude
         totalTokens = run.totalTokens
+        fallenAgents = run.fallenAgents
+        closedAgents = run.closedAgents
+        scriptFailure = run.scriptFailure
+        endedAt = run.endedAt
     }
 }
 
@@ -117,6 +126,9 @@ public struct WorkNode: Sendable, Equatable, Identifiable {
     /// Set only when it works somewhere other than its session: in its own separate copy of the project.
     public var place: GitPlace?
     public var lastActivity: Date?
+    /// The files of its earlier attempts, and for an agent that went on after its workflow, true: it wrote a second file of its own.
+    public var attemptIds: [String] = []
+    public var continued = false
     public var children: [WorkNode]
 
     public init(
@@ -200,7 +212,7 @@ public struct WorkSession: Sendable, Equatable, Identifiable {
     /// The project this session belongs to: the main copy for a separate copy, and none for Cowork, whose folder lives inside a virtual machine.
     public var projectPath: String? {
         if environment == .cowork { return nil }
-        return place?.mainFolder ?? cwd.flatMap { $0.isEmpty ? nil : $0 }
+        return place?.mainFolder ?? GitPlace.projectPath(cwd: cwd, environment: environment)
     }
 
     /// Agents busy right now, whatever started them. A workflow is a script, so it is not one of them.

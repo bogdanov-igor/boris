@@ -489,6 +489,11 @@ final class AppModel {
         ProjectBook.sessions(work: work, past: pastSessions + remote.pastSessions, logsReadAt: pastLoaded ? pastRead : nil)
     }
 
+    /// Sessions at work now. What belongs to them is not over yet, for the Losses page as for the failures of a project.
+    var sessionsAtWork: Set<String> {
+        Set(work.sessions.filter(\.state.isCurrent).map(\.id))
+    }
+
     func session(_ id: String) -> WorkSession? {
         allSessions.first { $0.id == id }
     }

@@ -32,14 +32,15 @@ public struct ProjectSummary: Sendable, Equatable, Identifiable {
 
     public var name: String? { path.map { URL(fileURLWithPath: $0).lastPathComponent } }
     public var sessions: [WorkSession] { active + past }
-    public var failures: Int { sessions.reduce(0) { $0 + $1.failureCount } }
+    /// Agents that fell within the period, by when each one fell: the same count the Losses page gives.
+    public var failures = 0
     public var lastActivity: Date? { sessions.compactMap { $0.lastActivity ?? $0.startedAt }.max() }
     /// The session that says how the project is doing.
     public var lead: WorkSession? { active.first ?? past.first }
 
     public var environments: [WorkEnvironment] { ProjectBook.environments(of: sessions) }
 
-    var isEmpty: Bool { active.isEmpty && past.isEmpty && inPeriod.total == 0 }
+    var isEmpty: Bool { active.isEmpty && past.isEmpty && inPeriod.total == 0 && failures == 0 }
 }
 
 public enum ProjectBook {
@@ -47,7 +48,11 @@ public enum ProjectBook {
     /// One that ended before the logs were read and is not among them has had its log deleted, whatever the live scan still remembers.
     /// - Parameter logsReadAt: when the logs were last read. Nil until they have been.
     public static func sessions(work: WorkModel, past: [WorkSession], logsReadAt: Date? = nil) -> [WorkSession] {
-        let active = work.sessions.filter(\.state.isCurrent)
+        // The live scan sees only the last day. What a session at work did before that is in its log, and it stays on its page.
+        let logged = Dictionary(past.map { ($0.id, $0) }) { first, _ in first }
+        let active = work.sessions.filter(\.state.isCurrent).map { session in
+            logged[session.id].map { WorkBuilder.merged(live: session, logged: $0) } ?? session
+        }
         let activeIds = Set(active.map(\.id))
         let pastIds = Set(past.map(\.id))
         let newer = work.sessions.filter { session in
@@ -94,6 +99,7 @@ public enum ProjectBook {
             } else if overlaps(session, days) {
                 project.past.append(session)
             }
+            project.failures += session.failureCount(in: days)
             projects[session.projectPath] = project
         }
 

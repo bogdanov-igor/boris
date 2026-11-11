@@ -94,7 +94,7 @@ extension TimingTests {
             longest = max(longest, Date().timeIntervalSince(last))
             let reading = Date().timeIntervalSince(began)
             #expect(finished.isSet)
-            #expect(await index.history(live: []).entries.count == 30 * 1000)
+            #expect(await index.history(live: Set((0..<30).map { "s\($0)" })).entries.count == 30 * 1000)
             #expect(ticks > 1)
             #expect(longest < max(1.5, reading / 2), "главный поток простаивал \(longest) с из \(reading) с чтения")
         }

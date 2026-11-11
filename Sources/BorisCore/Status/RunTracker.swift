@@ -110,12 +110,15 @@ public struct RunTracker: Sendable, Equatable {
         var agents: [AgentRecord]
         let plan: [String]
         if let final, !final.entries.isEmpty {
-            agents = final.entries.map(\.record)
+            agents = RunLoss.agents(final: final, journal: run.agents)
             plan = final.phaseTitles.isEmpty ? run.plannedPhases : final.phaseTitles
         } else {
             agents = run.agents
             plan = run.plannedPhases
         }
+        let killed = final?.status == "killed"
+        let fallen = agents.filter { RunLoss.fell($0, runKilled: killed) }
+        let closed = final == nil && status == .interrupted ? agents.filter { $0.state == .running } : []
         if status.isTerminal {
             agents = agents.map { agent in
                 var agent = agent
@@ -145,6 +148,9 @@ public struct RunTracker: Sendable, Equatable {
         )
         state.startedAt = run.startedAt
         state.entrypoint = run.entrypoint
+        state.closedAgents = closed.map { RunLoss.nodeId($0, runId: run.runId) }
+        state.scriptFailure = RunLoss.scriptFailure(status: final?.status, error: final?.errorFirstLine, anyFallen: !fallen.isEmpty)
+        state.endedAt = RunLoss.endedAt(final: final, finalModified: run.finalModified, journalModified: run.journalModified)
         return state
     }
 }

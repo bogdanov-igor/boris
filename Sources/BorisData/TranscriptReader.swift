@@ -19,6 +19,15 @@ public enum TranscriptReader {
         public var spokeToPerson = false
         public var gitBranch: String?
 
+        /// How a session ended, from its last message. Claude's own records come after it, and a log without any message has nothing to say.
+        /// Cut off means Claude was in the middle of its turn when the log stopped.
+        public var ending: WorkState {
+            guard let last = lastMessage else { return .finished }
+            if last.isApiError { return .failed }
+            if turnEnded || spokeToPerson { return .finished }
+            return last.text?.hasPrefix("[Request interrupted") == true ? .stopped : .interrupted
+        }
+
         public init(last: LastRecord? = nil, usage: TokenUsage? = nil, model: String? = nil, running: StepBrief? = nil) {
             self.last = last
             self.usage = usage
@@ -59,7 +68,7 @@ public enum TranscriptReader {
                 guard let record = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] else { continue }
                 if result.last == nil { result.last = lastRecord(record) }
                 if result.gitBranch == nil { result.gitBranch = record["gitBranch"] as? String }
-                if !messageSeen, let type = record["type"] as? String, type == "assistant" || type == "user" {
+                if !messageSeen, let type = record["type"] as? String, type == "assistant" || type == "user", !isPersonsCommand(record) {
                     messageSeen = true
                     result.lastMessage = lastRecord(record)
                     result.turnEnded = type == "assistant" && closesTurn(record)
@@ -80,6 +89,15 @@ public enum TranscriptReader {
             if length == size { break }
         }
         return result
+    }
+
+    /// A slash command the person typed, such as `/exit`, and what it printed. It is written as a message, and it says nothing about how Claude's turn ended.
+    private static func isPersonsCommand(_ record: [String: Any]) -> Bool {
+        guard record["type"] as? String == "user" else { return false }
+        if record["isMeta"] as? Bool == true { return true }
+        guard let text = (record["message"] as? [String: Any])?["content"] as? String else { return false }
+        let start = text.drop { $0.isWhitespace }
+        return ["<local-command-", "<command-name>", "<command-message>", "<command-args>"].contains { start.hasPrefix($0) }
     }
 
     private static func closesTurn(_ record: [String: Any]) -> Bool {

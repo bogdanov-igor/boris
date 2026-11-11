@@ -460,9 +460,10 @@ public actor RunScanner {
     }
 
     /// Notices agents in a folder. Ones that ended long ago are left out, so old sessions cost nothing later.
+    /// A transcript is what makes an agent: one that goes on after its workflow writes a second file here with no description beside it.
     private func discoverSingleAgents(in folder: URL, session: SessionInfo?, sessionId: String, now: Date) {
-        for name in FileInfo.names(in: folder) where name.hasPrefix("agent-") && name.hasSuffix(".meta.json") {
-            let id = String(name.dropFirst("agent-".count).dropLast(".meta.json".count))
+        for name in FileInfo.names(in: folder) where name.hasPrefix("agent-") && name.hasSuffix(".jsonl") {
+            let id = String(name.dropFirst("agent-".count).dropLast(".jsonl".count))
             guard singleAgents[id] == nil else { continue }
             let file = folder.appendingPathComponent("agent-\(id).jsonl")
             guard let modified = FileInfo.modified(file), now.timeIntervalSince(modified) <= config.window else { continue }
@@ -501,14 +502,15 @@ public actor RunScanner {
                 let tail = TranscriptReader.tail(agent.file)
                 agent.checked = now
                 agent.readAt = modified
-                agent.turnEnded = tail.turnEnded
+                // An error from the API ends an agent as surely as a finished turn: nothing comes after it.
+                agent.turnEnded = tail.turnEnded || tail.lastMessage?.isApiError == true
                 agent.step = tail.running
                 if let usage = tail.usage { agent.contextTokens = usage.context }
                 agent.model = tail.model ?? agent.model
             }
             // Without a mark, a finished turn followed by silence is the end. An answer from the file read earlier says nothing about newer writes.
             let finished = marked || (agent.turnEnded && agent.readAt == modified && now.timeIntervalSince(modified) >= config.agentSettle)
-            if finished, !agent.finished, let last = TranscriptReader.tail(agent.file).last, last.isApiError {
+            if finished, !agent.finished, let last = TranscriptReader.tail(agent.file).lastMessage, last.isApiError {
                 agent.failure = FailureClassifier.classify(last)
             } else if !finished {
                 agent.failure = nil
@@ -593,7 +595,8 @@ public actor RunScanner {
             switch agent.state {
             case .failed where cache.failures[id] == nil:
                 let tail = TranscriptReader.tail(file)
-                cache.failures[id] = FailureClassifier.classify(tail.last)
+                // Only an error message of Claude Code's can be trusted to say why, as on the Losses page: whatever else came last may be a result.
+                cache.failures[id] = FailureClassifier.classify(tail.last?.isApiError == true ? tail.last : nil)
                 if let usage = tail.usage { cache.tokens[id] = (now, usage.context, tail.model) }
             case .running:
                 let interval = focusRuns.contains(cache.runId) ? config.focusRefreshInterval : config.tokensRefreshInterval

@@ -67,9 +67,9 @@ public struct SessionInfo: Sendable, Equatable, Identifiable {
     }
 
     /// Cowork's folder is a made-up name inside a virtual machine, and no project of the person's.
+    /// By the Projects page's rule: a separate copy of a project goes by its main copy's name.
     public var projectName: String? {
-        guard let cwd, !cwd.isEmpty, environment != .cowork else { return nil }
-        return URL(fileURLWithPath: cwd).lastPathComponent
+        GitPlace.projectPath(cwd: cwd, environment: environment).map { URL(fileURLWithPath: $0).lastPathComponent }
     }
 
     /// True when the session belongs to an editor extension rather than a terminal.

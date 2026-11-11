@@ -71,16 +71,8 @@ public actor SessionHistory {
         info.title = cowork?.name ?? TranscriptReader.title(in: file)
         info.contextTokens = tail.usage?.context
         info.model = tail.model ?? cowork?.model
-        let ended = outcome(tail)
+        let ended = tail.ending
         return Known(modified: modified, info: info, outcome: ended, failure: ended == .failed ? FailureClassifier.classify(tail.lastMessage) : nil, place: GitPlaceReader.place(folder: origin.cwd, branch: tail.gitBranch ?? origin.gitBranch))
-    }
-
-    /// How the session ended, from its last message. Claude's own records come after it, and a log without any message has nothing to say.
-    private static func outcome(_ tail: TranscriptReader.Tail) -> WorkState {
-        guard let last = tail.lastMessage else { return .finished }
-        if last.isApiError { return .failed }
-        if tail.turnEnded || tail.spokeToPerson { return .finished }
-        return last.text?.hasPrefix("[Request interrupted") == true ? .stopped : .interrupted
     }
 
     /// Whatever had not finished when its session ended will never finish now.

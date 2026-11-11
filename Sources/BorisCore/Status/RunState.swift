@@ -38,6 +38,14 @@ public struct RunState: Sendable, Equatable, Identifiable {
     public var errorFirstLine: String?
     public var stoppedByClaude: Bool
     public var totalTokens: Int?
+    /// The agents the Losses page counts as fallen: failed, and not stopped together with the run.
+    public var fallenAgents: [String] = []
+    /// Agents still at work when the run was cut off, which will never finish.
+    public var closedAgents: [String] = []
+    /// The run's own error, when it is a failure of its own and not just its agents'.
+    public var scriptFailure: LossReason?
+    /// When it ended, by the same rule as the Losses page.
+    public var endedAt: Date?
     public var startedAt: Date?
     public var entrypoint: String?
 
@@ -50,9 +58,12 @@ public struct RunState: Sendable, Equatable, Identifiable {
         return Int(max(0, (status.isActive ? now : lastWrite).timeIntervalSince(startedAt)) * 1000)
     }
 
+    /// What the Losses page counts for it: each fallen agent, each agent left at work when it was cut off, and its own error.
+    public var lost: Int { fallenAgents.count + closedAgents.count + (scriptFailure == nil ? 0 : 1) }
+
+    /// The project's folder by the Projects page's rule: a separate copy belongs to its main copy.
     public var projectName: String? {
-        guard let cwd, !cwd.isEmpty, environment != .cowork else { return nil }
-        return URL(fileURLWithPath: cwd).lastPathComponent
+        GitPlace.projectPath(cwd: cwd, environment: environment).map { URL(fileURLWithPath: $0).lastPathComponent }
     }
 
     public init(
@@ -91,6 +102,8 @@ public struct RunState: Sendable, Equatable, Identifiable {
         self.done = agents.filter { $0.state == .done }.count
         self.running = agents.filter { $0.state == .running }.count
         self.failed = agents.filter { $0.state == .failed }.count
+        // A killed run is the only one whose status is stopped.
+        self.fallenAgents = agents.filter { RunLoss.fell($0, runKilled: status == .stopped) }.map { RunLoss.nodeId($0, runId: runId) }
         self.topFailure = topFailure
         self.durationMs = durationMs
         self.errorFirstLine = errorFirstLine

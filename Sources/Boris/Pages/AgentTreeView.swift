@@ -88,11 +88,11 @@ private struct AgentLine: View {
 
     private var mode: DisplayMode { model.settings.displayMode }
     private var selected: Bool { model.feedAgent == node.id }
-    private var tokens: Int? { node.contextTokens ?? spent }
+    /// The number in the row is always what the agent spent, like the workflow's line above it. How full its context is goes to the details, named.
     private var spent: Int? {
         // A session's root holds the whole session, and this row is about the main agent alone.
         if node.kind == .main { return model.usage.book?.spent(mainAgentOf: node.id)?.total }
-        return model.usage.book?.spent(agent: node.id)?.total ?? node.tokens?.total
+        return model.usage.book?.spent(node: node)?.total ?? node.tokens?.total
     }
     private var activity: String {
         // Only the main agent asks the person, and the session knows what for.
@@ -104,9 +104,8 @@ private struct AgentLine: View {
     private var details: String {
         var parts = [node.id]
         if let model = node.model { parts.append(model) }
-        // The number in the row is the context when that is known, so what was spent gets told apart here.
-        if let context = node.contextTokens { parts.append(L("context %@", WorkFormat.tokens(context))) }
         if let spent = self.spent { parts.append(L("spent %@", WorkFormat.tokens(spent))) }
+        if let context = node.contextTokens { parts.append(L("context %@", WorkFormat.tokens(context))) }
         if node.attempts > 1 { parts.append(L("attempt %lld", node.attempts)) }
         return parts.joined(separator: " · ")
     }
@@ -127,8 +126,8 @@ private struct AgentLine: View {
                             .help(WorkPhrases.agentName(node))
                         if let place = node.place, place.isSeparateCopy { CopyBadge(place: place, mode: mode) }
                         Spacer(minLength: 4)
-                        if let tokens {
-                            Text(WorkFormat.tokens(tokens))
+                        if let spent {
+                            Text(WorkFormat.tokens(spent))
                                 .font(.system(size: 11).monospacedDigit())
                                 .foregroundStyle(Palette.text2)
                                 .lineLimit(1)
@@ -169,9 +168,9 @@ private struct WorkflowLine: View {
 
     private var mode: DisplayMode { model.settings.displayMode }
 
-    /// The meter counts what a live run has spent since Boris started, the logs and the final file what it has spent in all, so the largest is the truth.
+    /// The sum of its agents' lines, from the logs. Before the logs are read, the live meter and then the final file are all there is.
     private var spent: Int? {
-        let known = max(node.tokens?.total ?? 0, model.usage.book?.spent(run: node.workflow?.runId ?? node.id)?.total ?? 0, node.workflow?.totalTokens ?? 0)
+        let known = model.usage.book?.spent(node: node)?.total ?? node.tokens?.total ?? node.workflow?.totalTokens ?? 0
         return known > 0 ? known : nil
     }
 
@@ -275,16 +274,29 @@ private struct PhaseLine: View {
     }
 }
 
-/// What has gone wrong in a session. In the simple mode each one says what to do about it.
+/// What has gone wrong in a session: the agents that fell, each saying what to do about it in the simple mode,
+/// and then the failed steps by kind, so that the list agrees with the Losses page and with the red steps in the feed next to it.
 struct SessionFailuresList: View {
     @Bindable var model: AppModel
     var failures: [WorkFailure]
+    /// Nil while the logs are being read: until then nothing can be said to be fine.
+    var steps: [LossKind: Int]?
 
     private var mode: DisplayMode { model.settings.displayMode }
+    private var kinds: [(LossKind, Int)] {
+        // The API error a session ended on has a line of its own above, which says what to do about it.
+        let told = failures.filter { $0.source == .sessionError }.count
+        return LossKind.allCases.compactMap { kind in
+            (steps?[kind]).flatMap { count in
+                let left = kind == .apiError ? count - told : count
+                return left > 0 ? (kind, left) : nil
+            }
+        }
+    }
 
     var body: some View {
-        if failures.isEmpty {
-            Text(mode == .simple ? L("Nothing broke.") : L("No failures in this session."))
+        if failures.isEmpty, kinds.isEmpty {
+            Text(steps == nil ? L("Reading Claude's logs…") : mode == .simple ? L("Nothing broke.") : L("No failures in this session."))
                 .font(.system(size: 12))
                 .foregroundStyle(Palette.text2)
         } else {
@@ -299,6 +311,14 @@ struct SessionFailuresList: View {
                                 .foregroundStyle(Palette.redText)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
+                    }
+                }
+                ForEach(kinds, id: \.0) { kind, count in
+                    HStack(alignment: .top, spacing: 8) {
+                        StatusGlyph(kind: .failed, size: 14)
+                        Text(verbatim: "\(LossPhrases.kindInFull(kind)) · \(count)")
+                            .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
                     }
                 }
             }

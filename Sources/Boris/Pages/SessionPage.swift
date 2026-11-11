@@ -30,6 +30,12 @@ struct SessionPage: View {
 private struct SessionContent: View {
     @Bindable var model: AppModel
     var session: WorkSession
+    /// What else went wrong in it, by kind, from the same logs and by the same count as the Losses page. Nil until they have been read.
+    @State private var steps: [LossKind: Int]?
+
+    private var failureTotal: Int {
+        session.failureCount + (steps ?? [:]).values.reduce(0, +)
+    }
 
     private var mode: DisplayMode { model.settings.displayMode }
 
@@ -47,6 +53,20 @@ private struct SessionContent: View {
         }
         .onChange(of: focus, initial: true) { _, runs in model.focus(on: runs) }
         .onDisappear { model.focus(on: []) }
+        .task(id: session.id) { await followSteps() }
+    }
+
+    /// A remote machine keeps its logs, so only its fallen agents are known here.
+    private func followSteps() async {
+        steps = nil
+        guard session.environment?.isRemote != true else {
+            steps = [:]
+            return
+        }
+        while !Task.isCancelled {
+            if model.mainWindowIsOpen, let found = await model.losses.steps(of: session.id, model: model), !Task.isCancelled { steps = found }
+            try? await Task.sleep(for: .seconds(10))
+        }
     }
 
     // MARK: - Header
@@ -135,8 +155,8 @@ private struct SessionContent: View {
                         .padding(.leading, 6)
                         .padding(.top, 14)
                 }
-                heading(L("Failures · %lld", failures.count)).padding(.top, 14)
-                SessionFailuresList(model: model, failures: failures).padding(.horizontal, 8)
+                heading(L("Failures · %lld", failureTotal)).padding(.top, 14)
+                SessionFailuresList(model: model, failures: failures, steps: steps).padding(.horizontal, 8)
                 SessionTokensCard(model: model, session: session)
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: DesignMetrics.radiusLarge).fill(Palette.fill1))
@@ -181,7 +201,7 @@ private struct SessionContent: View {
                     card { SessionChangesView(model: model, session: session) }
                     card {
                         Text(L("Failures")).font(.system(size: 13, weight: .semibold))
-                        SessionFailuresList(model: model, failures: failures)
+                        SessionFailuresList(model: model, failures: failures, steps: steps)
                     }
                     card { SessionTokensCard(model: model, session: session) }
                 }

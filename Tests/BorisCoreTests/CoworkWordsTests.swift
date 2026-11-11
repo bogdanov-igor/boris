@@ -36,7 +36,7 @@ struct CoworkWordsTests {
     @Test("В потерях придуманная папка Cowork не считается проектом")
     func noProjectInLosses() {
         #expect(LossEntry(id: "l", at: t0, kind: .crash, sessionId: "s", cwd: "/sessions/made-up-name", entrypoint: "local-agent").project == nil)
-        #expect(LossEntry(id: "l", at: t0, kind: .crash, sessionId: "s", cwd: "/x/shop", entrypoint: "cli").project == "shop")
+        #expect(LossEntry(id: "l", at: t0, kind: .crash, sessionId: "s", cwd: "/x/shop", entrypoint: "cli").project == "/x/shop")
     }
 
     @Test("Фильтр «Активность» по проекту не путает Cowork с папкой")

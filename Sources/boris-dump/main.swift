@@ -331,7 +331,17 @@ func past(only: String?) async {
     }
 }
 
-if arguments.first == "sources" {
+#if DEBUG
+let checksNumbers = arguments.first == "numbers"
+#else
+let checksNumbers = false
+#endif
+
+if checksNumbers {
+    #if DEBUG
+    await NumbersDump.run(paths: paths, others: others)
+    #endif
+} else if arguments.first == "sources" {
     await sources()
 } else if arguments.first == "tokens" {
     await tokens()

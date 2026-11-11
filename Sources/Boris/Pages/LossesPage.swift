@@ -85,7 +85,7 @@ struct LossesPage: View {
 
     @ViewBuilder private func menus(_ book: LossBook) -> some View {
         @Bindable var store = model.losses
-        LossMenu(label: L("Project"), allTitle: L("All projects"), options: book.projects.map { ($0, $0) }, selection: $store.project)
+        LossMenu(label: L("Project"), allTitle: L("All projects"), options: book.projects.map { ($0, ProjectWords.name($0)) }, selection: $store.project)
         LossMenu(label: L("Environment"), allTitle: L("All environments"), options: book.environments.map { ($0, WorkPhrases.environment($0)) }, selection: $store.environment)
     }
 
@@ -459,7 +459,7 @@ private struct LossRow: View {
                     .foregroundStyle(kindColor)
                     .lineLimit(1)
                     .frame(width: 130, alignment: .leading)
-                Text(entry.project ?? "—")
+                Text(entry.project.map(ProjectWords.name) ?? "—")
                     .font(.system(size: 11.5, design: .monospaced))
                     .lineLimit(1)
                     .truncationMode(.middle)
