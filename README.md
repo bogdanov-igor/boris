@@ -10,24 +10,40 @@
 
 Boris показывает это в одном месте.
 
-**Приложение ещё в разработке, устанавливать пока нечего.** Сейчас здесь только требования (`openspec/`) и макеты (`design/`), код появится следом.
+### Что он делает
 
-### Что он будет делать
+- Показывает проекты, сессии и агентов и то, чем они заняты прямо сейчас: в терминале, в VS Code и Cursor, в Claude Desktop и Cowork, а также на других машинах через SSH.
+- Считает токены, лимиты плана и доплаты.
+- Объясняет, что упало и почему. Например, когда workflow пишет `completed`, а все его агенты на самом деле упали из-за лимита.
+- Даёт ответить на запросы Claude, не переключая окно: разрешения, вопросы, планы.
+- Сообщает о важном через уведомления Mac, звук и Telegram.
+- Показывает, сколько всё это занимает процессора и памяти.
 
-- Показывать проекты, сессии и агентов и то, чем они заняты прямо сейчас.
-- Считать токены, лимиты плана и доплаты.
-- Объяснять, что упало и почему. Например, когда workflow пишет `completed`, а все его агенты на самом деле упали из-за лимита.
-- Давать ответить на запросы Claude, не переключая окно: разрешения, вопросы, планы.
-- Сообщать о важном через уведомления Mac, звук и Telegram.
-- Показывать, сколько всё это занимает процессора и памяти.
+Живёт он там, где вам удобно: в строке меню, в чёлке, в маленьком окне или в обычном. Режимов два: простой, чтобы понять, нужны ли вы, и технический, чтобы разобраться в деталях.
 
-Жить он будет там, где вам удобно: в строке меню, в чёлке, в маленьком окне или в обычном. Режимов два: простой, чтобы понять, нужны ли вы, и технический, чтобы разобраться в деталях.
+### Как установить
+
+Готовых выпусков пока нет, приложение собирается из исходников. Нужны macOS 14 или новее и Xcode с Swift 6.
+
+```sh
+git clone <адрес этого репозитория>
+cd boris
+scripts/install.sh
+```
+
+Скрипт собирает приложение, кладёт его в `~/Applications/Boris.app` и запускает. Тем же скриптом приложение обновляется после `git pull`. Если на Mac нет сертификата разработчика Apple, сборка подписывается без него, и тогда macOS может заново спрашивать разрешения после каждой сборки.
+
+Подписанные выпуски и автоматические обновления появятся позже.
+
+### Хуки необязательны
+
+Без них Boris читает только файлы, которые Claude и так пишет на диск, и уже показывает почти всё. Хуки нужны, чтобы отвечать на запросы Claude прямо из Boris и узнавать о событиях быстрее. Их подключают в настройках, и перед этим Boris показывает, что именно изменится в настройках Claude. Отключаются они там же.
 
 ### Что с данными
 
-Boris работает на вашем Mac, без аккаунта и своего сервера. Он читает файлы, которые Claude и так пишет на диск, и никуда не отправляет промпты, команды и код. Настройки Claude он меняет, только если вы сами подключите ответы на запросы.
+Boris работает на вашем Mac, без аккаунта и своего сервера. Он не отправляет промпты, команды и код никуда. Настройки Claude он меняет, только если вы сами подключите хуки.
 
-Интернет нужен для обновлений и лимитов, а ещё для Telegram, если вы его включите.
+Интернет нужен для лимитов, а ещё для Telegram, если вы его включите.
 
 ### Откуда морж
 
@@ -47,24 +63,40 @@ When you work with Claude in several places at once, it gets hard to keep track.
 
 Boris shows all of this in one place.
 
-**The app is still in development, so there is nothing to install yet.** For now this repository only has the requirements (`openspec/`, in Russian) and the mockups (`design/`). The code comes next.
+### What it does
 
-### What it will do
+- Shows your projects, sessions and agents, and what they are doing right now: in the terminal, in VS Code and Cursor, in Claude Desktop and Cowork, and on other machines over SSH.
+- Counts tokens, plan limits and extra spend.
+- Explains what failed and why. For example, when a workflow says `completed` but all of its agents actually died on a usage limit.
+- Lets you answer Claude's requests without switching windows: permissions, questions and plans.
+- Tells you what matters through Mac notifications, sound and Telegram.
+- Shows how much CPU and memory all of this is taking.
 
-- Show your projects, sessions and agents, and what they are doing right now.
-- Count tokens, plan limits and extra spend.
-- Explain what failed and why. For example, when a workflow says `completed` but all of its agents actually died on a usage limit.
-- Let you answer Claude's requests without switching windows: permissions, questions and plans.
-- Tell you what matters through Mac notifications, sound and Telegram.
-- Show how much CPU and memory all of this is taking.
+It lives wherever suits you: in the menu bar, in the notch, in a small window or a regular one. There are two modes: a simple one to see whether you are needed, and a technical one for the details.
 
-It will live wherever suits you: in the menu bar, in the notch, in a small window or a regular one. There are two modes: a simple one to see whether you are needed, and a technical one for the details.
+### How to install
+
+There are no ready-made releases yet, so you build the app from source. You need macOS 14 or later and Xcode with Swift 6.
+
+```sh
+git clone <this repository's address>
+cd boris
+scripts/install.sh
+```
+
+The script builds the app, puts it in `~/Applications/Boris.app` and starts it. Run it again after `git pull` to update. Without an Apple Development certificate on your Mac the build is signed without one, and macOS may then ask for permissions again after every build.
+
+Signed releases and automatic updates will come later.
+
+### Hooks are optional
+
+Without them Boris reads only the files Claude already writes to disk, and that shows almost everything. Hooks let you answer Claude's requests right from Boris and make events show up sooner. You connect them in the settings, and Boris first shows exactly what will change in Claude's settings. You disconnect them in the same place.
 
 ### What happens to your data
 
-Boris runs on your Mac, with no account and no server of its own. It reads the files Claude already writes to disk and does not send your prompts, commands or code anywhere. It only changes Claude's settings if you choose to connect request answering.
+Boris runs on your Mac, with no account and no server of its own. It does not send your prompts, commands or code anywhere. It only changes Claude's settings if you choose to connect the hooks.
 
-It needs the internet for updates and limits, and for Telegram if you turn it on.
+It needs the internet for limits, and for Telegram if you turn it on.
 
 ### About the walrus
 

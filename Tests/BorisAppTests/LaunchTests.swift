@@ -172,6 +172,20 @@ struct AutostartTests {
         #expect(script.contains("Contents/Library/LaunchAgents"), "сборка кладёт задание туда, где его ищет SMAppService")
     }
 
+    @Test("README на обоих языках говорит, как поставить Boris, и не называет его недоделанным")
+    func readmeSaysHowToInstall() throws {
+        let readme = try String(contentsOf: packageRoot.appendingPathComponent("README.md"), encoding: .utf8)
+        let russian = try #require(readme.range(of: "## Русский"))
+        let english = try #require(readme.range(of: "## English"))
+        #expect(russian.lowerBound < english.lowerBound)
+        for part in [String(readme[russian.lowerBound..<english.lowerBound]), String(readme[english.lowerBound...])] {
+            #expect(part.contains("scripts/install.sh"))
+            #expect(part.contains("macOS 14"))
+        }
+        #expect(!readme.contains("в разработке") && !readme.contains("in development"))
+        #expect(FileManager.default.isExecutableFile(atPath: packageRoot.appendingPathComponent("scripts/install.sh").path))
+    }
+
     @Test("Состояние автозапуска берётся у системы", arguments: [
         (SMAppService.Status.enabled, AutostartState.on),
         (.notRegistered, .off),
