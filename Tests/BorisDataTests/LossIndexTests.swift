@@ -53,10 +53,11 @@ struct LossIndexTests {
         return await index.history(live: live)
     }
 
+    /// One piece of a session's log, while the session is at work: a piece that stops in the middle of a turn is not a session cut off.
     private func entries(_ log: String) async -> [LossEntry] {
         let folder = TempFolder()
         folder.write("projects/p/s1.jsonl", log)
-        return await history(folder).entries
+        return await history(folder, live: ["s1"]).entries
     }
 
     // MARK: Types
@@ -71,7 +72,7 @@ struct LossIndexTests {
         #expect(found.resetsAt == Date(timeIntervalSince1970: 1_793_900_000))
         #expect(found.sessionId == "s1")
         #expect(found.agentId == nil)
-        #expect(found.project == "shop-api")
+        #expect(found.project == "/x/shop-api")
         #expect(found.environment == .terminal)
         #expect(found.at == ISO8601DateFormatter().date(from: "2026-11-05T12:00:00Z"))
     }
@@ -127,7 +128,7 @@ struct LossIndexTests {
     func failedFetchCountsTwice() async throws {
         let folder = TempFolder()
         folder.write("projects/p/s1.jsonl", Log.toolUse("t1", name: "WebFetch") + Log.result("t1", "Request failed with status code 403", error: true))
-        let found = await history(folder)
+        let found = await history(folder, live: ["s1"])
         #expect(found.entries.map(\.kind) == [.toolError])
         #expect(found.calls.first?.calls == 1)
     }
@@ -288,7 +289,7 @@ struct LossIndexTests {
         #expect(limitRow.title == "Миграция данных")
         #expect(Set(limitRow.agents) == ["a1", "a2", "a3"])
         #expect(limitRow.resets == "2pm")
-        #expect(limitRow.project == "shop-api")
+        #expect(limitRow.project == "/x/shop-api")
         #expect(limitRow.at == Date(timeIntervalSince1970: 1_793_900_005))
         #expect(found.first { $0.kind == .crash && $0.reason == .network }?.count == 1)
         #expect(!found.contains { $0.kind == .apiError })
@@ -390,7 +391,7 @@ struct LossIndexTests {
         folder.write("projects/p/s1/subagents/workflows/wf_1/journal.jsonl", #"{"type":"started","key":"k1","agentId":"a1"}"# + "\n")
         let found = try #require(await history(folder).entries.first { $0.reason == .closed })
         #expect(found.title == "Миграция данных")
-        #expect(found.project == "shop-api")
+        #expect(found.project == "/x/shop-api")
         #expect(found.environment == .terminal)
     }
 
@@ -612,7 +613,7 @@ struct LossIndexTests {
         let file = folder.write("projects/p/s1.jsonl", Log.apiError(text: "API Error: x") + Log.toolUse("f1", name: "WebFetch"))
         let index = LossIndex(cacheFile: nil, timeZone: utc)
         await index.update(roots: [ClaudePaths(root: folder.url)])
-        #expect(await index.history(live: []).entries.count == 1)
+        #expect(await index.history(live: ["s1"]).entries.count == 1)
 
         try FileManager.default.removeItem(at: file)
         await index.update(roots: [ClaudePaths(root: folder.url)])
@@ -706,7 +707,7 @@ struct LossIndexTests {
         longest = max(longest, Date().timeIntervalSince(last))
         let reading = Date().timeIntervalSince(began)
         #expect(finished.isSet)
-        #expect(await index.history(live: []).entries.count == 30 * 1000)
+        #expect(await index.history(live: Set((0..<30).map { "s\($0)" })).entries.count == 30 * 1000)
         #expect(ticks > 1)
         #expect(longest < max(1.5, reading / 2), "главный поток простаивал \(longest) с из \(reading) с чтения")
     }
@@ -720,7 +721,9 @@ struct LossFixtureTests {
         let paths = try Fixtures.world(into: folder)
         let index = LossIndex(cacheFile: nil)
         await index.update(roots: [paths])
-        return await index.book(period: .all, tokens: [], live: [], now: Date())
+        // The fixture keeps only the first lines of each session's own log, so how those logs end says nothing here: only the runs are compared.
+        let history = await index.history(live: [])
+        return LossBook(history: LossHistory(entries: history.entries.filter { !$0.id.hasPrefix("session/") }, calls: history.calls), period: .all, agentTokens: [:], now: Date())
     }
 
     @Test("Причины падений совпадают с независимым подсчётом и с эталоном всего приложения, главная это лимит")

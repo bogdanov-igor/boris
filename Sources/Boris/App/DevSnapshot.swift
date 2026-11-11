@@ -286,11 +286,11 @@ enum DevSnapshot {
             case .lossesFiltered:
                 model.page = .losses
                 model.losses.kind = .toolError
-                model.losses.project = "boris"
+                model.losses.project = "/x/boris"
             case .lossesNothingMatches:
                 model.page = .losses
                 model.losses.kind = .denied
-                model.losses.project = "shop-api"
+                model.losses.project = "/x/shop-api"
             case .project:
                 model.openProject("/x/shop-api")
                 if data == .long { model.openProject(model.work.projects.first?.path) }

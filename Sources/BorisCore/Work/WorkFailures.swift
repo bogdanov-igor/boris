@@ -23,8 +23,11 @@ public struct WorkFailure: Sendable, Equatable, Identifiable {
     public var problem: ApiProblem?
     public var resets: String?
     public var at: Date?
+    /// How many fallen agents it stands for, as the Losses page counts them: a workflow's fallen agents, those left at work when it was cut off, and its own error.
+    /// None for a session that ended on an error from the API: it can be continued, and the Losses page has it as an API error, not a fallen agent.
+    public var count: Int
 
-    public init(id: String, sessionId: String, project: String? = nil, name: String? = nil, agentType: String? = nil, source: Source, cause: FailureClass? = nil, problem: ApiProblem? = nil, resets: String? = nil, at: Date? = nil) {
+    public init(id: String, sessionId: String, project: String? = nil, name: String? = nil, agentType: String? = nil, source: Source, cause: FailureClass? = nil, problem: ApiProblem? = nil, resets: String? = nil, at: Date? = nil, count: Int = 1) {
         self.id = id
         self.sessionId = sessionId
         self.project = project
@@ -35,6 +38,7 @@ public struct WorkFailure: Sendable, Equatable, Identifiable {
         self.problem = problem
         self.resets = resets
         self.at = at
+        self.count = count
     }
 }
 
@@ -50,50 +54,55 @@ extension WorkSession {
         projectPath.map { URL(fileURLWithPath: $0).lastPathComponent }
     }
 
+    /// Every agent that fell, by the rule of the Losses page: a workflow's agents through the workflow, and every other agent by itself.
     public var failures: [WorkFailure] {
         var result: [WorkFailure] = []
         if state == .interrupted {
             result.append(WorkFailure(id: id, sessionId: id, project: projectName, name: hasName ? displayName : nil, source: .session, at: lastActivity))
         }
         if state == .failed {
-            result.append(WorkFailure(id: id, sessionId: id, project: projectName, name: hasName ? displayName : nil, source: .sessionError, cause: root.failure?.failureClass, problem: root.failure?.apiProblem, resets: root.failure?.resets, at: lastActivity))
+            result.append(WorkFailure(id: id, sessionId: id, project: projectName, name: hasName ? displayName : nil, source: .sessionError, cause: root.failure?.failureClass, problem: root.failure?.apiProblem, resets: root.failure?.resets, at: lastActivity, count: 0))
         }
         var stack = Array(root.children.reversed())
         while let node = stack.popLast() {
+            stack.append(contentsOf: node.children.reversed())
             if let details = node.workflow {
-                guard details.status.isFailure else {
-                    stack.append(contentsOf: node.children.reversed())
-                    continue
-                }
-                let failed = node.children.flatMap(\.flattened).filter { $0.state == .failed }
+                let agents = node.children.flatMap(\.flattened).filter { $0.kind == .workflowAgent }
+                // An agent that went on after its workflow ended is told by its own end.
+                let continued = Set(agents.filter(\.continued).map(\.id))
+                let fallen = agents.filter { !$0.continued && RunLoss.fell($0, in: details) }.map(\.id)
+                // While the session is at work, what it left unfinished is not over yet, as on the Losses page.
+                let closed = state.isCurrent ? [] : details.closedAgents.filter { !continued.contains($0) }
+                let lost = fallen.count + closed.count + (details.scriptFailure == nil ? 0 : 1)
+                guard lost > 0 else { continue }
+                let failed = agents.filter { fallen.contains($0.id) }
                 result.append(WorkFailure(
                     id: node.id,
                     sessionId: id,
                     project: projectName,
                     name: node.title,
-                    source: .workflow(details.status, failed: failed.count, total: details.total),
+                    source: .workflow(details.status, failed: fallen.count, total: details.total),
                     cause: details.topFailure,
                     problem: failed.lazy.compactMap { $0.failure?.apiProblem }.first,
                     resets: failed.lazy.compactMap { $0.failure?.resets }.first,
-                    at: node.lastActivity
+                    at: details.endedAt ?? node.lastActivity,
+                    count: lost
                 ))
                 continue
             }
-            if node.state == .failed {
-                result.append(WorkFailure(
-                    id: node.id,
-                    sessionId: id,
-                    project: projectName,
-                    name: node.title,
-                    agentType: node.agentType,
-                    source: .agent(node.kind),
-                    cause: node.failure?.failureClass,
-                    problem: node.failure?.apiProblem,
-                    resets: node.failure?.resets,
-                    at: node.lastActivity
-                ))
-            }
-            stack.append(contentsOf: node.children.reversed())
+            guard node.state == .failed, node.kind != .workflowAgent || node.continued else { continue }
+            result.append(WorkFailure(
+                id: node.id,
+                sessionId: id,
+                project: projectName,
+                name: node.title,
+                agentType: node.agentType,
+                source: .agent(node.kind),
+                cause: node.failure?.failureClass,
+                problem: node.failure?.apiProblem,
+                resets: node.failure?.resets,
+                at: node.lastActivity
+            ))
         }
         return result
     }
@@ -103,12 +112,14 @@ extension WorkSession {
         root.flattened.filter { $0.kind != .workflow }.count
     }
 
-    /// How many agents fell. A workflow that broke without any failed agent, and a session cut off, count as one each.
+    /// How many agents fell, the same number the Losses page gives for this session.
     public var failureCount: Int {
-        failures.reduce(0) { total, failure in
-            if case .workflow(_, let failed, _) = failure.source { return total + max(failed, 1) }
-            return total + 1
-        }
+        failures.reduce(0) { $0 + $1.count }
+    }
+
+    /// The fallen agents of a stretch of time, by when each one fell.
+    public func failureCount(in days: ClosedRange<Date>) -> Int {
+        failures.filter { days.contains($0.at ?? lastActivity ?? .distantPast) }.reduce(0) { $0 + $1.count }
     }
 }
 

@@ -31,6 +31,10 @@ public actor LossIndex {
         var recentToolErrors: [String] = []
         var lastApiError: String?
         var endsWithApiError = false
+        /// For a session's own transcript: the folder it started in, and how it ended when last read.
+        var origin: String?
+        var ending: String?
+        var endedAt: Date?
     }
 
     private struct Cache: Codable {
@@ -64,7 +68,8 @@ public actor LossIndex {
 
     /// Where it goes among Boris's own files. Only a cache: it is built again if it goes away.
     public static let cacheName = "loss-index.json"
-    private static let version = 1
+    /// 2: a session's own transcript keeps the folder it started in and how it ended.
+    private static let version = 2
     private static let chunk = 1024 * 1024
     private static let recentTools = 32
     private static let rawTextLimit = 300
@@ -140,45 +145,75 @@ public actor LossIndex {
         return changed
     }
 
+    /// Brings one session up to date and reads nothing else, for the page of that session.
+    @discardableResult
+    public func update(session id: String, roots: [ClaudePaths], filter: SourceFilter = SourceFilter()) async -> Bool {
+        loadCache()
+        self.filter = filter
+        let roots = roots.filter(filter.reads(root:))
+        var changed = false
+        for file in TokenIndex.transcripts(in: roots, filter: filter) where TokenIndex.owner(ofTranscript: file.path).session == id {
+            if Task.isCancelled { return changed }
+            if autoreleasepool(invoking: { read(file) }) { changed = true }
+            await Task.yield()
+        }
+        saveWhenDue(changed: changed)
+        if readRuns(roots, only: id) { changed = true }
+        return changed
+    }
+
+    /// What went wrong in one session, as the Losses page lists it for all time.
+    public func history(session id: String, live: Set<String>) -> [LossEntry] {
+        history(live: live).entries.filter { $0.sessionId == id }
+    }
+
     /// A session that was idle or waiting lost nothing when it went away.
     private static func diedAtWork(_ session: SessionInfo) -> Bool {
         guard let status = session.status, status != "idle", status != "waiting" else { return false }
         return !SessionReader.isLive(session)
     }
 
-    /// - Parameter live: sessions at work now. Whatever belongs to them is not over yet, unless it says so itself.
+    /// - Parameter live: sessions at work now, as the pages tell them. Whatever belongs to them is not over yet, unless it says so itself.
     public func history(live: Set<String>) -> LossHistory {
         loadCache()
         var entries: [LossEntry] = []
         var calls: [LossCalls] = []
         var labels: [String: String] = [:]
         var failed: Set<String> = []
+        // An agent that went on after its workflow ended has a file of its own next to the session's: it was not left behind.
+        let continued = Set(transcripts.keys.compactMap { path -> String? in
+            let owner = TokenIndex.owner(ofTranscript: path)
+            return owner.run == nil ? owner.agent : nil
+        })
         for run in runs.values {
             labels.merge(run.labels) { first, _ in first }
             failed.formUnion(run.failed)
             entries += run.rows
-            if !run.unfinished.isEmpty, !live.contains(run.sessionId) {
+            let unfinished = run.unfinished.filter { !continued.contains($0) }
+            if !unfinished.isEmpty, !live.contains(run.sessionId) {
                 var closed = run.template
                 closed.id += "/closed"
-                closed.count = run.unfinished.count
-                closed.agents = run.unfinished
+                closed.count = unfinished.count
+                closed.agents = unfinished
                 closed.reason = .closed
                 entries.append(closed)
             }
         }
 
+        var origins: [String: String] = [:]
         for (path, transcript) in transcripts {
             let owner = TokenIndex.owner(ofTranscript: path)
             calls += transcript.calls
+            if owner.agent == nil, let origin = transcript.origin { origins[owner.session] = origin }
             for var entry in transcript.entries {
                 let isTheEnd = transcript.endsWithApiError && entry.id == transcript.lastApiError
                 if let agent = owner.agent {
+                    // The workflow's own row already tells this agent's end, even from the file it went on in after the workflow.
+                    if isTheEnd, failed.contains(agent) { continue }
                     if owner.run != nil {
-                        // The workflow's own row already tells this agent's end.
-                        if isTheEnd, failed.contains(agent) { continue }
                         entry.title = labels[agent]
                     } else {
-                        entry.title = title(ofAgent: agent, transcript: path)
+                        entry.title = labels[agent] ?? title(ofAgent: agent, transcript: path)
                         if isTheEnd {
                             entry.kind = .crash
                             entry.agents = [agent]
@@ -189,7 +224,8 @@ public actor LossIndex {
             }
         }
 
-        for session in diedSessions where !live.contains(session.sessionId) {
+        let died = diedSessions.filter { !live.contains($0.sessionId) }
+        for session in died {
             entries.append(LossEntry(
                 id: "session/\(session.sessionId)/\(session.pid)",
                 at: session.statusUpdatedAt ?? session.startedAt ?? .distantPast,
@@ -199,6 +235,25 @@ public actor LossIndex {
                 entrypoint: session.entrypoint,
                 reason: .closed
             ))
+        }
+        // A log that stops in the middle of Claude's turn was cut off, as the session's page says.
+        let diedIds = Set(died.map(\.sessionId))
+        for (path, transcript) in transcripts where transcript.ending == WorkState.interrupted.rawValue {
+            let owner = TokenIndex.owner(ofTranscript: path)
+            guard owner.agent == nil, !live.contains(owner.session), !diedIds.contains(owner.session) else { continue }
+            entries.append(LossEntry(
+                id: "session/\(owner.session)/cut",
+                at: transcript.endedAt ?? .distantPast,
+                kind: .crash,
+                sessionId: owner.session,
+                cwd: transcript.origin ?? transcript.cwd,
+                entrypoint: transcript.entrypoint,
+                reason: .closed
+            ))
+        }
+        // Every row goes under the project of its session, by the Projects page's rule, whatever folder its agent worked in.
+        for index in entries.indices {
+            if let origin = origins[entries[index].sessionId] { entries[index].cwd = origin }
         }
 
         // Boris's own hidden sessions are not the person's work.
@@ -258,6 +313,12 @@ public actor LossIndex {
             return true
         }) {}
         transcript.size = size
+        if owner.agent == nil {
+            // The same folder and the same ending as the Projects page reads.
+            if transcript.origin == nil { transcript.origin = TranscriptReader.origin(in: url).cwd }
+            transcript.ending = TranscriptReader.tail(url).ending.rawValue
+            transcript.endedAt = modified
+        }
         if Date().timeIntervalSince(modified) > Self.settledAfter {
             transcript.tools = [:]
             transcript.toolOrder = []
@@ -424,6 +485,8 @@ public actor LossIndex {
             let broken = Set(transcript.recentToolErrors)
             transcript.entries.removeAll { broken.contains($0.id) }
             transcript.recentToolErrors = []
+            // The person ended it after the error, so it did not fall: its page says it was stopped.
+            transcript.endsWithApiError = false
         }
 
         for block in blocks where block["type"] as? String == "tool_result" {
@@ -515,13 +578,14 @@ public actor LossIndex {
 
     // MARK: - Workflows
 
-    private func readRuns(_ roots: [ClaudePaths]) -> Bool {
+    /// - Parameter only: one session to read, leaving every other run as it is.
+    private func readRuns(_ roots: [ClaudePaths], only: String? = nil) -> Bool {
         var changed = false
         var present: Set<String> = []
         for root in roots {
             for project in FileInfo.names(in: root.projects) where !project.hasPrefix(".") {
                 let projectDir = root.projects.appendingPathComponent(project)
-                for session in FileInfo.names(in: projectDir) where !session.hasSuffix(".jsonl") && !session.hasPrefix(".") {
+                for session in FileInfo.names(in: projectDir) where !session.hasSuffix(".jsonl") && !session.hasPrefix(".") && (only == nil || session == only) {
                     guard filter.allows(transcript: projectDir.appendingPathComponent("\(session).jsonl")) else { continue }
                     let sessionDir = projectDir.appendingPathComponent(session)
                     let finals = sessionDir.appendingPathComponent("workflows")
@@ -535,7 +599,7 @@ public actor LossIndex {
                 }
             }
         }
-        for id in runs.keys where !present.contains(id) {
+        for id in runs.keys where !present.contains(id) && (only == nil || runs[id]?.sessionId == only) {
             runs[id] = nil
             changed = true
         }
@@ -557,13 +621,7 @@ public actor LossIndex {
         journal.read(journalURL)
         var agents: [AgentRecord]
         if let final, !final.entries.isEmpty {
-            agents = final.entries.map(\.record)
-            // The result lists only the attempts it kept, so an agent that fell in an earlier one is left in the journal alone.
-            // One that never got to start has an empty id in the journal and is listed in the result without one.
-            let listed = Set(agents.compactMap(\.agentId))
-            agents += journal.tally.agents.filter { agent in
-                agent.state == .failed && agent.agentId.map { !$0.isEmpty && !listed.contains($0) } == true
-            }
+            agents = RunLoss.agents(final: final, journal: journal.tally.agents)
         } else {
             agents = journal.tally.agents
         }
@@ -574,7 +632,7 @@ public actor LossIndex {
             agents[index].failure = FailureClassifier.classify(last?.isApiError == true ? last : nil)
         }
 
-        let ended = finalEnd(final) ?? finalModified ?? journalModified ?? Date()
+        let ended = RunLoss.endedAt(final: final, finalModified: finalModified, journalModified: journalModified) ?? Date()
         let needsOrigin = final == nil || final?.status == "failed" || agents.contains { $0.state == .failed }
         let origin = needsOrigin ? TranscriptReader.origin(in: parent) : (cwd: nil, entrypoint: nil, gitBranch: nil)
         // A run started from a file has no script copy here, and only its launch in the parent transcript names it.
@@ -588,11 +646,8 @@ public actor LossIndex {
         for agent in agents {
             if let agentId = agent.agentId, let label = agent.label { run.labels[agentId] = label }
         }
-        // Agents at work when a run was stopped were stopped with it. An abort is that same stop as told by the agent, and an agent with no error of its own has nothing else to tell.
         let wasStopped = final?.status == "killed"
-        let fallen = agents.filter { agent in
-            agent.state == .failed && !Self.isRunStop(agent.failure?.text) && !(wasStopped && agent.failure?.text == nil)
-        }
+        let fallen = agents.filter { RunLoss.fell($0, runKilled: wasStopped) }
         run.failed = Set(fallen.compactMap(\.agentId))
         let byReason = Dictionary(grouping: fallen) { LossReason($0.failure?.failureClass ?? .unknown) }
         for reason in LossReason.allCases {
@@ -608,32 +663,20 @@ public actor LossIndex {
             run.rows.append(row)
         }
         if let row = scriptRow(final, template: template, anyFallen: !fallen.isEmpty) { run.rows.append(row) }
-        if final == nil { run.unfinished = agents.filter { $0.state == .running }.map { $0.agentId ?? $0.key } }
+        if final == nil { run.unfinished = agents.filter { $0.state == .running }.map { RunLoss.nodeId($0, runId: id) } }
         runs[id] = run
         return true
     }
 
-    /// Only these words mean the run was stopped. Something else that was aborted, such as a request on a timeout, is a real failure.
-    private static func isRunStop(_ text: String?) -> Bool {
-        text?.lowercased().contains("workflow aborted") == true
-    }
-
-    /// A failed run's own error. When its agents failed, that error is usually just theirs, and only something else is worth a row.
+    /// A failed run's own error, when it is a failure of its own and not just its agents'.
     private func scriptRow(_ final: FinalReport?, template: LossEntry, anyFallen: Bool) -> LossEntry? {
-        guard let final, final.status == "failed", !Self.isRunStop(final.errorFirstLine) else { return nil }
-        let failure = FailureClassifier.classify(nil, reason: final.errorFirstLine).failureClass
-        guard failure == .unknown || !anyFallen else { return nil }
+        guard let reason = RunLoss.scriptFailure(status: final?.status, error: final?.errorFirstLine, anyFallen: anyFallen) else { return nil }
         var row = template
         row.id += "/run"
-        row.reason = failure == .unknown ? .script : LossReason(failure)
-        row.rawText = Self.firstLine(final.errorFirstLine)
+        row.reason = reason
+        row.rawText = Self.firstLine(final?.errorFirstLine)
         row.total = nil
         return row
-    }
-
-    private func finalEnd(_ final: FinalReport?) -> Date? {
-        guard let start = final?.startTime, let duration = final?.durationMs else { return nil }
-        return start.addingTimeInterval(Double(duration) / 1000)
     }
 
     private static func firstLine(_ text: String?) -> String? {

@@ -69,9 +69,27 @@ final class LossStore {
         progress = nil
     }
 
+    /// What went wrong in one session besides its fallen agents, by kind and counted as the Losses page counts it. Only that session's files are read.
+    /// Nil only while it is being read for the first time. A snapshot has no logs, and nothing in them.
+    func steps(of session: String, model: AppModel) async -> [LossKind: Int]? {
+        guard !frozen else { return [:] }
+        let folder = model.settings.claudeFolder
+        let index = index
+        let filter = model.sourceFilter
+        let live = model.sessionsAtWork
+        let entries = await Task.detached(priority: .utility) {
+            let paths = ClaudePaths.resolve(custom: folder)
+            await index.update(session: session, roots: [paths] + ClaudeFolders.others(besides: paths), filter: filter)
+            return await index.history(session: session, live: live)
+        }.value
+        var kinds: [LossKind: Int] = [:]
+        for entry in entries where entry.kind != .crash { kinds[entry.kind, default: 0] += entry.count }
+        return kinds
+    }
+
     private func publish(_ model: AppModel) async {
         let chosen = period
-        let live = Set(model.world.sessions.map(\.sessionId))
+        let live = model.sessionsAtWork
         let fresh = await index.book(period: chosen, tokens: model.usage.records, live: live, now: Date())
         if chosen == period, fresh != book { book = fresh }
     }

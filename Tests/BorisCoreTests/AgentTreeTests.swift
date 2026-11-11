@@ -205,7 +205,8 @@ struct NowDigestTests {
         broken.root.failure = FailureInfo(failureClass: .limit, resets: "18:40")
         let failure = try #require(digest(broken).failures.first)
         #expect(failure.source == .sessionError)
-        #expect(broken.failureCount == 1)
+        // It is told, but no agent fell: the session can be continued, and the Losses page has it as an API error.
+        #expect(broken.failureCount == 0)
         #expect(WorkPhrases.failureName(failure, mode: .simple) == "Перенос базы")
         #expect(WorkPhrases.failure(failure, mode: .simple) == "The limit ran out, it resets at 18:40")
         #expect(WorkPhrases.failure(failure, mode: .technical) == "Limit, resets at 18:40")

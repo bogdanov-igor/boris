@@ -147,9 +147,9 @@ public struct LossEntry: Codable, Sendable, Equatable, Identifiable {
         self.rawText = rawText
     }
 
+    /// The project's folder by the Projects page's rule: a separate copy belongs to its main copy, and Cowork has none.
     public var project: String? {
-        guard let cwd, !cwd.isEmpty, environment != .cowork else { return nil }
-        return URL(fileURLWithPath: cwd).lastPathComponent
+        GitPlace.projectPath(cwd: cwd, environment: environment)
     }
 
     public var environment: WorkEnvironment? {

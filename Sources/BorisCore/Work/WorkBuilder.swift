@@ -96,6 +96,36 @@ public enum WorkBuilder {
         )
     }
 
+    /// A session at work as the live scan sees it, with what its log holds from before the scan's last day.
+    /// What the scan knows wins, and older agents, workflows and their failures keep their places instead of vanishing while it works.
+    public static func merged(live: WorkSession, logged: WorkSession) -> WorkSession {
+        func bare(_ node: WorkNode) -> WorkNode {
+            var node = node
+            node.children = []
+            return node
+        }
+        let fresh = live.root.children.flatMap(\.flattened).map(bare)
+        let byId = Dictionary(fresh.map { ($0.id, $0) }) { first, _ in first }
+        var used: Set<String> = []
+        var nodes: [WorkNode] = []
+        for old in logged.root.children.flatMap(\.flattened).map(bare) where used.insert(old.id).inserted {
+            guard let new = byId[old.id] else {
+                nodes.append(old)
+                continue
+            }
+            if old.kind == .workflowAgent, new.kind == .subagent || new.kind == .fork {
+                nodes += joiningContinued([old, new])
+            } else {
+                nodes.append(new)
+            }
+        }
+        nodes += fresh.filter { used.insert($0.id).inserted }
+        var session = live
+        session.root.children = tree(nodes, rootId: live.id)
+        session.startedAt = [live.startedAt, logged.startedAt].compactMap { $0 }.min()
+        return session
+    }
+
     /// An agent that goes on after its workflow has ended writes a second file under the same id, and the scan finds it as an ordinary agent.
     /// It is still one agent: it keeps its place and its name in the workflow, so the run's counts stay right, and the newer file says how it is doing.
     private static func joiningContinued(_ nodes: [WorkNode]) -> [WorkNode] {
@@ -113,6 +143,7 @@ public enum WorkBuilder {
             joined.model = newer.model ?? node.model
             joined.failure = newer.failure
             joined.lastActivity = newer.lastActivity ?? node.lastActivity
+            joined.continued = true
             return joined
         }
     }
@@ -179,8 +210,8 @@ public enum WorkBuilder {
             lastActivity: run.lastWrite
         )]
         for agent in run.agents {
-            nodes.append(WorkNode(
-                id: agent.agentId ?? "\(run.runId)/\(agent.key)",
+            var node = WorkNode(
+                id: RunLoss.nodeId(agent, runId: run.runId),
                 kind: .workflowAgent,
                 parentId: agent.parentAgentId ?? run.runId,
                 title: agent.label,
@@ -190,10 +221,12 @@ public enum WorkBuilder {
                 contextTokens: agent.contextTokens,
                 model: agent.model,
                 failure: agent.failure,
-                attempts: agent.attempts,
+                attempts: max(agent.attempts, agent.earlierAgentIds.count + 1),
                 phase: agent.phase,
                 lastActivity: run.lastWrite
-            ))
+            )
+            node.attemptIds = agent.earlierAgentIds
+            nodes.append(node)
         }
         return nodes
     }

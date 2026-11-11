@@ -53,6 +53,8 @@ public struct AgentRecord: Sendable, Equatable, Identifiable {
     public var parentAgentId: String?
     /// The kind of agent it was started as, such as `scout`. Empty for the general kinds.
     public var agentType: String?
+    /// The ids of its earlier attempts. Each wrote a file of its own, and what they spent is this agent's too.
+    public var earlierAgentIds: [String] = []
 
     public init(
         key: String,
@@ -103,7 +105,13 @@ public struct AgentTally: Sendable, Equatable {
         guard let key = event.key else { return }
         var record = records[key] ?? AgentRecord(key: key, attempts: 0)
         if records[key] == nil { order.append(key) }
-        if let agentId = event.agentId { record.agentId = agentId }
+        if let agentId = event.agentId {
+            if let earlier = record.agentId, earlier != agentId, !earlier.isEmpty {
+                record.earlierAgentIds.removeAll { $0 == earlier || $0 == agentId }
+                record.earlierAgentIds.append(earlier)
+            }
+            record.agentId = agentId
+        }
         if let label = event.label { record.label = label }
         if let phase = event.phase { record.phase = phase }
         switch event.kind {

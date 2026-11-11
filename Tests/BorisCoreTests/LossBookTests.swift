@@ -80,7 +80,8 @@ struct LossBookTests {
     func filters() {
         let entries = [entry(cwd: "/x/shop-api", entrypoint: "cli"), entry(cwd: "/y/boris", entrypoint: "claude-vscode"), entry(cwd: "/z/shop-api", entrypoint: "cli"), entry(cwd: nil, entrypoint: nil), entry(ago: 40, cwd: "/x/old")]
         let result = book(entries, period: .week)
-        #expect(result.projects == ["boris", "shop-api"])
+        // A project is its folder, as on the Projects page: two folders of one name are two projects.
+        #expect(result.projects == ["/x/shop-api", "/y/boris", "/z/shop-api"])
         #expect(result.environments.contains(.terminal))
         #expect(result.environments.contains(.vsCode))
         #expect(result.environments.count == 2)
@@ -97,10 +98,10 @@ struct LossBookTests {
         let result = book(entries)
         #expect(result.entries(kind: nil, project: nil, environment: nil).map(\.id) == ["a", "b", "c", "d"])
         #expect(result.entries(kind: .toolError, project: nil, environment: nil).map(\.id) == ["b", "c"])
-        #expect(result.entries(kind: nil, project: "shop-api", environment: nil).map(\.id) == ["a", "b"])
+        #expect(result.entries(kind: nil, project: "/x/shop-api", environment: nil).map(\.id) == ["a", "b"])
         #expect(result.entries(kind: nil, project: nil, environment: .vsCode).map(\.id) == ["b"])
-        #expect(result.entries(kind: .toolError, project: "boris", environment: .terminal).map(\.id) == ["c"])
-        #expect(result.entries(kind: .denied, project: "boris", environment: nil).isEmpty)
+        #expect(result.entries(kind: .toolError, project: "/y/boris", environment: .terminal).map(\.id) == ["c"])
+        #expect(result.entries(kind: .denied, project: "/y/boris", environment: nil).isEmpty)
         #expect(result.kinds[.toolError] == 2)
         #expect(result.crashed == 1)
     }
@@ -109,10 +110,10 @@ struct LossBookTests {
     func filterGoneFromThePeriod() {
         let entries = [entry("fresh", cwd: "/x/shop-api", entrypoint: "cli"), entry("old", ago: 40, cwd: "/y/boris", entrypoint: "claude-vscode")]
         let week = book(entries, period: .week)
-        #expect(week.entries(kind: nil, project: "boris", environment: nil).map(\.id) == ["fresh"])
+        #expect(week.entries(kind: nil, project: "/y/boris", environment: nil).map(\.id) == ["fresh"])
         #expect(week.entries(kind: nil, project: nil, environment: .vsCode).map(\.id) == ["fresh"])
         // In a period that has it, the same choice works again.
-        #expect(book(entries).entries(kind: nil, project: "boris", environment: nil).map(\.id) == ["old"])
+        #expect(book(entries).entries(kind: nil, project: "/y/boris", environment: nil).map(\.id) == ["old"])
     }
 
     @Test("Новые записи идут первыми")

@@ -155,8 +155,9 @@ public struct TokenBook: Sendable {
             let keys = [
                 (TokenBreakdown.days, TokenLine.Key.day(record.day)),
                 (.environments, .environment(environment)),
-                // The same rule as the Projects page, so that a separate copy of a project is not a project of its own here either.
-                (.projects, .project(GitPlace.projectPath(cwd: record.cwd ?? cwds[record.sessionId], environment: environment))),
+                // The same rule as the Projects page: everything a session spent goes to its project, whatever folder an agent of it worked in,
+                // and a separate copy of a project is not a project of its own.
+                (.projects, .project(GitPlace.projectPath(cwd: cwds[record.sessionId] ?? record.cwd, environment: environment))),
                 // The logs may spell one model in several ways, and its price does not depend on that.
                 (.models, .model(record.model.map { ModelName.canonical($0) ?? $0 })),
                 (.agents, .agents(record.agentId == nil ? .main : record.runId == nil ? .subagents : .workflow)),
@@ -249,6 +250,21 @@ public struct TokenBook: Sendable {
         runs[id]
     }
 
+    /// What one line of the tree spent: an agent with every file it wrote, earlier attempts and a continuation after its workflow included,
+    /// and a workflow the sum of its agents, so that its line adds up to the lines under it. Nil when the logs know nothing of it yet.
+    public func spent(node: WorkNode) -> TokenUsage? {
+        switch node.kind {
+        case .main:
+            return mainAgents[node.id]
+        case .workflow:
+            let agents = node.children.flatMap(\.flattened).filter { $0.kind == .workflowAgent }.compactMap { spent(node: $0) }
+            return agents.isEmpty ? runs[node.workflow?.runId ?? node.id] : agents.reduce(TokenUsage(), +)
+        default:
+            let parts = ([node.id] + node.attemptIds).compactMap { agents[$0] }
+            return parts.isEmpty ? nil : parts.reduce(TokenUsage(), +)
+        }
+    }
+
     /// Lays the exact numbers over the live model. The root of a session gets the whole session, every other node what it spent itself.
     public func applied(to model: WorkModel) -> WorkModel {
         var result = model
@@ -266,9 +282,8 @@ public struct TokenBook: Sendable {
     /// What was only metered live, so that the book has not seen it yet, keeps its live number.
     private func lay(on nodes: inout [WorkNode]) {
         for index in nodes.indices {
-            let exact = nodes[index].kind == .workflow ? runs[nodes[index].workflow?.runId ?? nodes[index].id] : agents[nodes[index].id]
-            if let exact { nodes[index].tokens = exact }
             lay(on: &nodes[index].children)
+            if let exact = spent(node: nodes[index]) { nodes[index].tokens = exact }
         }
     }
 }
