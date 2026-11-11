@@ -14,6 +14,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     private let model: AppModel
     private let connect: ConnectFlow
     private var window: NSWindow?
+    private lazy var walrusKeys = WalrusKeyWatch(window: { [weak self] in self?.window }) { [weak self] key in self?.model.typedToWalrus(key) }
     var onOpenSettings: ((SettingsSection) -> Void)?
 
     init(model: AppModel, connect: ConnectFlow) {
@@ -47,6 +48,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         if window?.isVisible != true { AppLog.note(.windowOpened, .word(.mainWindow)) }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+        walrusKeys.start()
         model.setLookingClosely(true, from: .mainWindow)
     }
 

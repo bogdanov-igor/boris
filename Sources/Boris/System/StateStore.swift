@@ -13,6 +13,8 @@ struct AppState: Codable, Sendable, Equatable {
     var connectOfferDismissed = false
     /// The notice about the icon behind the notch was seen.
     var iconNoticeSeen = false
+    /// Which of the walrus's surprises have had their day. Optional, so a file from before them still reads.
+    var eggs: EggDiary?
 }
 
 /// Reads and writes `~/Library/Application Support/Boris`. Writes are atomic and off the main thread.

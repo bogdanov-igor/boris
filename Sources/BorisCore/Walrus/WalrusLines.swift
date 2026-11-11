@@ -93,6 +93,25 @@ public enum WalrusLines {
         }
     }
 
+    /// What he says to a trick typed at him.
+    public static func trick(_ trick: KeyTrick) -> String {
+        switch trick {
+        case .konami: return L("I do not surrender to codes. For one minute I shall make an exception.")
+        case .name: return L("You called? I am here, and I am staying.")
+        case .hoot: return L("Ahem.")
+        }
+    }
+
+    /// What he says when a surprise comes. Figures only, never anyone's work.
+    public static func surprise(_ surprise: Surprise) -> String {
+        switch surprise {
+        case .birthday: return L("My birthday. I am ready to meet my Maker. Whether he is ready for me is another matter.")
+        case .nightShift: return L("Night shift. I shall sleep in the afternoon, as is my habit.")
+        case .weekSpent: return L("The week's limit is spent. I shall take a nap until it returns.")
+        case .roundTokens(let figure): return L("%@ tokens today. I do like a round figure.", WorkFormat.tokens(figure))
+        }
+    }
+
     public static func lateNight() -> String {
         L("It is night. I should be asleep by now.")
     }

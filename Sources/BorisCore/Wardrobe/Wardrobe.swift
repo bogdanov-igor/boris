@@ -65,6 +65,8 @@ public enum Wardrobe {
         case (2, 14): return .hearts
         case (3, 8): return .flower
         case (9, 1): return .scholar
+        // Churchill's birthday. The shelf says only "birthdays", which is true.
+        case (11, 30): return .party
         default:
             return calendar.ordinality(of: .day, in: .year, for: date) == 256 ? .pixel : nil
         }
