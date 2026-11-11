@@ -31,6 +31,8 @@ struct ChatSessionView: View {
                 }
             }
             .padding(EdgeInsets(top: 12, leading: 24, bottom: 12, trailing: 20))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(WindowDragArea())
             Rectangle().fill(Palette.separator).frame(height: 1)
             PageEmpty(title: WorkPhrases.line(session, mode: mode), text: L("For a chat in Claude Desktop, only whether an answer is ready can be known. Its tokens and actions are not available, and its text is never read."))
         }

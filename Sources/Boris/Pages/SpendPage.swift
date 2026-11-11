@@ -5,6 +5,14 @@ import SwiftUI
 /// What the work with Claude costs: tokens, limits, money and the load on this Mac.
 struct SpendPage: View {
     @Bindable var model: AppModel
+    @State private var width: CGFloat = 1000
+
+    /// The room for the column of tokens, the cards beside it and the margins.
+    static let twoColumnsFrom: CGFloat = 500 + 22 + 320 + 48
+
+    /// Decided by the room there is, not by how long the names in the table happen to be:
+    /// otherwise a new period, breakdown or project could rearrange the page under the person, at the same window size.
+    static func hasTwoColumns(_ width: CGFloat) -> Bool { width >= twoColumnsFrom }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -12,18 +20,22 @@ struct SpendPage: View {
                 SpendFillingBanner(progress: model.usage.progress)
             }
             ScrollView {
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .top, spacing: 22) {
-                        SpendTokensColumn(model: model).frame(minWidth: 500, maxWidth: .infinity)
-                        SpendCardsColumn(model: model).frame(width: 320)
-                    }
-                    VStack(alignment: .leading, spacing: 18) {
-                        SpendTokensColumn(model: model)
-                        SpendCardsColumn(model: model)
+                Group {
+                    if Self.hasTwoColumns(width) {
+                        HStack(alignment: .top, spacing: 22) {
+                            SpendTokensColumn(model: model).frame(maxWidth: .infinity)
+                            SpendCardsColumn(model: model).frame(width: 320)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 18) {
+                            SpendTokensColumn(model: model)
+                            SpendCardsColumn(model: model)
+                        }
                     }
                 }
                 .padding(EdgeInsets(top: 16, leading: 24, bottom: 24, trailing: 24))
             }
+            .onGeometryChange(for: CGFloat.self, of: { $0.size.width }, action: { width = $0 })
         }
     }
 }

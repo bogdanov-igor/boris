@@ -12,6 +12,9 @@ final class SettingsWindowController {
     private var window: NSWindow?
     private var closing: NSObjectProtocol?
 
+    /// Every section fits from this size up, in both modes and languages: checked by laying them out at each width.
+    static let minimum = NSSize(width: 680, height: 520)
+
     init(model: AppModel, connect: ConnectFlow, actions: SettingsActions) {
         self.model = model
         self.connect = connect
@@ -22,18 +25,9 @@ final class SettingsWindowController {
         model.settingsSection = section
         if window == nil {
             let host = WindowFit.host(SettingsView(model: model, connect: connect, actions: actions))
-            let created = NSWindow(contentViewController: host)
-            created.title = L("Settings")
-            created.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-            created.titlebarAppearsTransparent = true
-            created.titleVisibility = .hidden
-            created.isReleasedWhenClosed = false
-            created.setContentSize(NSSize(width: 760, height: 720))
-            created.minSize = NSSize(width: 680, height: 520)
+            let created = WindowFit.window(host, title: L("Settings"), size: NSSize(width: 760, height: 720), minimum: Self.minimum)
             created.center()
-            if let visible = (created.screen ?? NSScreen.main)?.visibleFrame {
-                created.setFrame(WindowFit.fitted(created.frame, in: visible), display: false)
-            }
+            WindowFit.keepOnScreen(created, minimum: Self.minimum)
             closing = NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: created, queue: .main) { _ in
                 AppLog.note(.windowClosed, .word(.settingsWindow))
             }
@@ -66,7 +60,7 @@ struct SettingsView: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 2) {
-                Color.clear.frame(height: 34)
+                WindowDragArea().frame(height: 34)
                 ForEach(SettingsSection.allCases) { section in
                     Button {
                         model.settingsSection = section

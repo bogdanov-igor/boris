@@ -7,6 +7,11 @@ struct SessionPage: View {
     @Bindable var model: AppModel
     var id: String
 
+    /// The column of agents grows with the window little by little. Jumping from one width to another, it pulled the feed along in the middle of a resize.
+    static func asideWidth(for width: CGFloat) -> CGFloat {
+        min(380, max(300, 300 + (width - 700) * 0.4))
+    }
+
     var body: some View {
         if id == ChatTracker.sessionId {
             ChatSessionView(model: model, session: model.session(id) ?? ChatTracker.seenSession)
@@ -16,6 +21,8 @@ struct SessionPage: View {
             VStack(alignment: .leading, spacing: 0) {
                 Crumbs(model: model)
                     .padding(EdgeInsets(top: 12, leading: 24, bottom: 12, trailing: 24))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(WindowDragArea())
                 Rectangle().fill(Palette.separator).frame(height: 1)
                 if model.pastLoaded {
                     PageEmpty(title: L("This session is gone"), text: L("Claude has deleted its log, so there is nothing left to show."))
@@ -79,6 +86,7 @@ private struct SessionContent: View {
         }
         .padding(EdgeInsets(top: 12, leading: 24, bottom: 12, trailing: 20))
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(WindowDragArea())
     }
 
     // MARK: - Technical
@@ -86,7 +94,7 @@ private struct SessionContent: View {
     private var technical: some View {
         GeometryReader { frame in
             HStack(spacing: 0) {
-                aside.frame(width: frame.size.width < 800 ? 300 : 380)
+                aside.frame(width: SessionPage.asideWidth(for: frame.size.width))
                 Rectangle().fill(Palette.separator).frame(width: 1)
                 feed.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
