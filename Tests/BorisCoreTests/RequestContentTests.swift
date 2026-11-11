@@ -229,12 +229,36 @@ struct RequestContentTests {
         #expect(result["updatedPermissions"] == nil)
     }
 
-    @Test("Отказ несёт причину, а без неё обычные слова") func denyOutput() throws {
+    @Test("Отказ несёт причину словами человека, а без неё обычные слова") func denyOutput() throws {
         let given = try decision(HookAnswer.deny(reason: "  сначала копию \n").output(tool: "Bash", input: nil))
         #expect(given["behavior"] as? String == "deny")
-        #expect(given["message"] as? String == "сначала копию")
+        #expect(given["message"] as? String == "The user denied this in Boris and said: сначала копию")
         let none = try decision(HookAnswer.deny(reason: " ").output(tool: "Bash", input: nil))
         #expect(none["message"] as? String == "Denied in Boris")
+    }
+
+    /// Exactly what Claude Code 2.1.319 sent for two questions in one call and accepted back: it told the model
+    /// `"Which fruit do you want?"="Pear", "Which colors do you like?"="Red, Blue"`.
+    @Test("Несколько вопросов и множественный выбор в том виде, который принял настоящий Claude") func realAnswers() throws {
+        let input: [String: Any] = ["questions": [
+            ["question": "Which fruit do you want?", "header": "Fruit", "multiSelect": false, "options": [["label": "Apple", "description": "Apple"], ["label": "Pear", "description": "Pear"]]],
+            ["question": "Which colors do you like?", "header": "Colors", "multiSelect": true, "options": [["label": "Red", "description": "Red"], ["label": "Green", "description": "Green"], ["label": "Blue", "description": "Blue"]]],
+        ]]
+        guard case .questions(let questions) = RequestContent.parse(tool: "AskUserQuestion", input: input, flat: "") else {
+            Issue.record("это вопросы")
+            return
+        }
+        var draft = RequestDraft()
+        draft.toggle("Pear", in: questions[0])
+        draft.toggle("Blue", in: questions[1])
+        draft.toggle("Red", in: questions[1])
+        let answers = try #require(draft.answers(to: questions))
+        #expect(answers == ["Which fruit do you want?": "Pear", "Which colors do you like?": "Red, Blue"])
+        let result = try decision(HookAnswer.answers(answers).output(tool: "AskUserQuestion", input: input))
+        #expect(result["behavior"] as? String == "allow")
+        let updated = try #require(result["updatedInput"] as? [String: Any])
+        #expect(updated["answers"] as? [String: String] == answers)
+        #expect((updated["questions"] as? [[String: Any]])?.count == 2)
     }
 
     @Test("Вопрос: разрешение плюс исходные вопросы и ответы") func answersOutput() throws {
@@ -263,7 +287,8 @@ struct RequestContentTests {
         #expect((approved["updatedInput"] as? [String: String])?["planFilePath"] == "/p/plan.md")
         let denied = try decision(HookAnswer.deny(reason: "не трогай orders").output(tool: "ExitPlanMode", input: input))
         #expect(denied["behavior"] as? String == "deny")
-        #expect(denied["message"] as? String == "не трогай orders")
+        // Claude Code 2.1.319 took a bare comment for a failed call and offered the same plan again.
+        #expect(denied["message"] as? String == "The user did not approve this plan in Boris and said: не трогай orders")
     }
 
     // MARK: The waiting overlay

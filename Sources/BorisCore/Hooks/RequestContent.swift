@@ -232,8 +232,7 @@ public enum HookAnswer: Sendable, Equatable {
                 break
             }
         case .deny(let reason):
-            let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
-            decision = ["behavior": "deny", "message": reason.isEmpty ? "Denied in Boris" : reason]
+            decision = ["behavior": "deny", "message": Self.denial(reason, tool: tool)]
         case .answers(let answers):
             guard tool == "AskUserQuestion", var updated = input, updated["questions"] != nil else { return nil }
             updated["answers"] = answers
@@ -242,5 +241,15 @@ public enum HookAnswer: Sendable, Equatable {
         let wrapped: [String: Any] = ["hookSpecificOutput": ["hookEventName": "PermissionRequest", "decision": decision]]
         guard JSONSerialization.isValidJSONObject(wrapped) else { return nil }
         return try? JSONSerialization.data(withJSONObject: wrapped)
+    }
+
+    /// What Claude reads on a refusal. Claude Code 2.1.319 hands the message to the model as `Error: <message>`,
+    /// and a plan refused with the bare comment was taken for a failed call and offered again unchanged. So the words say who refused.
+    static func denial(_ reason: String, tool: String?) -> String {
+        let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !reason.isEmpty else { return "Denied in Boris" }
+        return tool == "ExitPlanMode"
+            ? "The user did not approve this plan in Boris and said: \(reason)"
+            : "The user denied this in Boris and said: \(reason)"
     }
 }

@@ -316,7 +316,7 @@ struct HookRelayTests {
         server.answer(try #require(received.firstRequest).id, .deny(reason: "сначала сделай резервную копию"))
         let answer = try decision(try await task.value)
         #expect(answer["behavior"] as? String == "deny")
-        #expect(answer["message"] as? String == "сначала сделай резервную копию")
+        #expect(answer["message"] as? String == "The user denied this in Boris and said: сначала сделай резервную копию")
     }
 
     @Test("Ответ на один запрос не трогает другие: у каждого своё соединение")
@@ -337,7 +337,7 @@ struct HookRelayTests {
             #expect(held.command == "команда \(session)")
             server.answer(held.id, .deny(reason: "причина \(session)"))
             let hook = try #require(tasks[session])
-            #expect(try decision(try await hook.value)["message"] as? String == "причина \(session)")
+            #expect(try decision(try await hook.value)["message"] as? String == "The user denied this in Boris and said: причина \(session)")
         }
     }
 
@@ -491,7 +491,7 @@ struct HookRelayTests {
         server.answer(try #require(received.firstRequest).id, .deny(reason: "сначала резервная копия"))
         let answer = try decision(try await task.value)
         #expect(answer["behavior"] as? String == "deny")
-        #expect(answer["message"] as? String == "сначала резервная копия")
+        #expect(answer["message"] as? String == "The user did not approve this plan in Boris and said: сначала резервная копия")
     }
 
     @Test("Время на ответ задаёт приложение: посредник уходит без решения, запрос остаётся в Claude")
