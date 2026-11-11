@@ -131,6 +131,7 @@
   "plan rejected": "план отклонён",
   "answered in Claude after the time ran out": "отвечен в Claude после конца ожидания",
   "closed in Claude": "закрыт в Claude",
+  "answered in Claude": "отвечен в Claude",
   "on the Requests page": "на странице «Запросы»",
   "mini window": "мини-окно",
   "panel": "панель",

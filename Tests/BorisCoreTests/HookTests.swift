@@ -99,6 +99,20 @@ struct HookTests {
         #expect(WaitingReason(shown[0].waitingFor) == .permission(tool: "Bash"))
     }
 
+    @Test("Файл сказал, что сессия ждёт, а потом перестал: в Claude ответили, хотя хук ещё ждёт конца инструмента") func fileEndsTheWait() {
+        var hooks = HookState()
+        hooks.apply(.permissionAsked(session: "s1", tool: "Bash"), now: t0)
+        hooks.noteFiles([session(status: "waiting", waitingFor: "permission prompt")], takenAt: at(-1))
+        hooks.noteFiles([session(status: "busy")], takenAt: at(1))
+        #expect(hooks.overlay(sessions: [session(status: "busy")])[0].status == "waiting", "чтение старше вопроса и файл, ещё не сказавший «ждёт», ничего не значат")
+
+        hooks.noteFiles([session(status: "waiting", waitingFor: "permission prompt")], takenAt: at(2))
+        #expect(hooks.overlay(sessions: [session(status: "waiting", waitingFor: "permission prompt")])[0].status == "waiting")
+        hooks.noteFiles([session(status: "busy")], takenAt: at(3))
+        #expect(hooks.overlay(sessions: [session(status: "busy")])[0].status == "busy")
+        #expect(hooks.waiting["s1"] == nil)
+    }
+
     @Test("Оба источника дают одно событие на эпизод") func oneEventFromBothSources() {
         var hooks = HookState()
         var detector = EventDetector()

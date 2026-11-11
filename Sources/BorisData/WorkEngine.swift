@@ -356,7 +356,9 @@ public actor WorkEngine {
         let runs = tracker.resolve(world) { ProcessInspector.startTime(pid: $0) }
         scanned = (world, runs)
         hooks.expire(now: now)
-        let events = detector.detect(runs: hooks.overlay(runs: runs), sessions: hooks.overlay(sessions: withRemote(world).sessions), usage: world.usage, now: now, failures: hooks.drainFailures(), endedSessions: world.endedSessions, agents: world.agents)
+        let sessions = withRemote(world).sessions
+        hooks.noteFiles(sessions, takenAt: world.takenAt)
+        let events = detector.detect(runs: hooks.overlay(runs: runs), sessions: hooks.overlay(sessions: sessions), usage: world.usage, now: now, failures: hooks.drainFailures(), endedSessions: world.endedSessions, agents: world.agents)
         // Just assigned, so it is always there.
         return assemble(now: now, events: events) ?? emptyOutput(now: now, world: world, runs: runs, events: events)
     }
@@ -370,6 +372,7 @@ public actor WorkEngine {
         guard var (world, runs) = scanned else { return nil }
         world = withRemote(world)
         hooks.expire(now: now)
+        hooks.noteFiles(world.sessions, takenAt: world.takenAt)
         runs = hooks.overlay(runs: runs)
         world.sessions = hooks.overlay(sessions: world.sessions)
         world.agents = hooks.overlay(agents: world.agents)

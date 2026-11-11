@@ -68,6 +68,7 @@ enum RequestWords {
         case .planDenied: return L("Plan denied")
         case .expired: return L("Time ran out")
         case .closedInClaude: return L("Closed in Claude")
+        case .answeredInClaude: return L("Answered in Claude")
         }
     }
 

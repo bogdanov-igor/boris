@@ -135,6 +135,8 @@ public struct HookState: Sendable, Equatable {
     public private(set) var sessionTool: [String: String] = [:]
     public private(set) var waiting: [String: Date] = [:]
     public private(set) var waitingTool: [String: String] = [:]
+    /// Sessions whose own file has said they wait, read after the hooks said so. When the file then says otherwise, the dialog in Claude was answered.
+    private var fileWaited: Set<String> = []
     public private(set) var sessionEnd: [String: String] = [:]
     public private(set) var successor: [String: String] = [:]
     private var failures: [Failure] = []
@@ -189,6 +191,22 @@ public struct HookState: Sendable, Equatable {
     private mutating func clearWaiting(_ session: String) {
         waiting[session] = nil
         waitingTool[session] = nil
+        fileWaited.remove(session)
+    }
+
+    /// The session files as read at `takenAt`. Claude writes `waiting` while its own dialog is open and changes it once the person answers there,
+    /// while the hook goes on waiting until the tool is done. So once the file has said it waits and then says it no longer does, it does not wait.
+    /// A reading older than what the hooks said proves nothing either way.
+    public mutating func noteFiles(_ sessions: [SessionInfo], takenAt: Date) {
+        guard !waiting.isEmpty else { return }
+        for session in sessions {
+            guard let since = waiting[session.sessionId], since <= takenAt, session.status != SessionInfo.noConnectionStatus else { continue }
+            if session.status == "waiting", WaitingReason(session.waitingFor) != .dialog {
+                fileWaited.insert(session.sessionId)
+            } else if fileWaited.contains(session.sessionId) {
+                clearWaiting(session.sessionId)
+            }
+        }
     }
 
     /// What was said about a session no longer holds: there is no connection to it, and when there is one again the machine will say what is true by then.

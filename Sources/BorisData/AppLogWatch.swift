@@ -64,6 +64,7 @@ public extension RequestOutcome {
         case .planDenied: return .planDenied
         case .expired: return .expiredThenAnswered
         case .closedInClaude: return .closedInClaude
+        case .answeredInClaude: return .answeredInClaude
         }
     }
 }

@@ -272,7 +272,7 @@ final class HookController {
     func note(work: WorkModel, now: Date = Date()) {
         admissions.note(sessions: work.sessions)
         let before = queue.decisions.last?.id
-        queue.note(work: work, now: now)
+        release(queue.note(work: work, now: now))
         if queue.decisions.last?.id != before { settle(savingFrom: before) }
     }
 

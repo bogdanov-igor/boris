@@ -160,7 +160,7 @@ public enum LogWord: String, Sendable, CaseIterable {
     // Format problems
     case unknownJournalEvent, unreadableFinal, unreadableSessions
     // How a request ended
-    case allowed, denied, answered, planApproved, planDenied, expiredThenAnswered, closedInClaude
+    case allowed, denied, answered, planApproved, planDenied, expiredThenAnswered, closedInClaude, answeredInClaude
     // Where
     case requestsPage, miniWindow, panel, hotKey, inClaude, mainWindow, settingsWindow
     // Why an answer did not count
@@ -211,6 +211,7 @@ public enum LogWord: String, Sendable, CaseIterable {
         case .planDenied: return L("plan rejected")
         case .expiredThenAnswered: return L("answered in Claude after the time ran out")
         case .closedInClaude: return L("closed in Claude")
+        case .answeredInClaude: return L("answered in Claude")
         case .requestsPage: return L("on the Requests page")
         case .miniWindow: return L("mini window")
         case .panel: return L("panel")

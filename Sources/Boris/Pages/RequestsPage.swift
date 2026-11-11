@@ -334,7 +334,7 @@ private struct RequestHistory: View {
         case .allowed, .answered, .planApproved: return (.done, Palette.done)
         case .denied, .planDenied: return (.failed, Palette.redText)
         case .expired: return (.stopped, Palette.text2)
-        case .closedInClaude: return (.idle, Palette.text2)
+        case .closedInClaude, .answeredInClaude: return (.idle, Palette.text2)
         }
     }
 

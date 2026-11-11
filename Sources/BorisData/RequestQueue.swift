@@ -12,6 +12,8 @@ public enum RequestOutcome: String, Codable, Sendable {
     case expired
     /// The request went away in Claude, and Boris cannot know how it was answered.
     case closedInClaude
+    /// The person answered in Claude's own dialog while the request was still open here. Boris did not decide it.
+    case answeredInClaude
 }
 
 /// What a request was about, in words that hold no text of it: a list shows this, and it may be kept.
@@ -147,6 +149,8 @@ public struct RequestQueue: Sendable, Equatable {
     public private(set) var decisions: [RequestDecision] = []
     public private(set) var work = WorkModel()
     private var answeredAt: [String: Date] = [:]
+    /// Open requests whose session has been seen waiting since they were asked. Before that, a session that does not wait yet proves nothing.
+    private var seenWaiting: Set<UUID> = []
 
     /// The files catch up with an answer within a few seconds. Until then the session should not look like it asks again.
     static let settling: TimeInterval = 5
@@ -263,8 +267,22 @@ public struct RequestQueue: Sendable, Equatable {
     }
 
     /// The freshest picture of the work. Over-time requests of a session that no longer waits were answered in Claude.
-    public mutating func note(work: WorkModel, now: Date) {
+    /// So were open ones: the hook goes on waiting until the tool is done, but Claude has its answer, and one from here would be ignored.
+    /// Returns the held hooks to let go.
+    @discardableResult
+    public mutating func note(work: WorkModel, now: Date) -> [UUID] {
         self.work = work
+        var released: [UUID] = []
+        for request in open {
+            guard let session = session(request.session) else { continue }
+            if session.state == .waiting {
+                // A picture from before the request was asked may still be on its way.
+                if now >= request.askedAt { seenWaiting.insert(request.id) }
+            } else if seenWaiting.contains(request.id), let taken = take(request.id) {
+                released.append(taken.id)
+                record(taken, outcome: .answeredInClaude, place: .session, waited: now.timeIntervalSince(taken.askedAt), now: now)
+            }
+        }
         for request in expired {
             guard let session = session(request.session) else {
                 if now.timeIntervalSince(request.deadline) > HookState.waitingExpiry { removeExpired(request, outcome: .expired, now: now) }
@@ -273,6 +291,7 @@ public struct RequestQueue: Sendable, Equatable {
             if session.state != .waiting { removeExpired(request, outcome: .expired, now: now) }
         }
         answeredAt = answeredAt.filter { now.timeIntervalSince($0.value) < Self.settling }
+        return released
     }
 
     /// The person no longer wants Boris to deal with this source. Nothing was decided, so no history stays, and neither does its text.
@@ -283,6 +302,7 @@ public struct RequestQueue: Sendable, Equatable {
 
     private mutating func take(_ id: UUID) -> PendingPermission? {
         guard let index = open.firstIndex(where: { $0.id == id }) else { return nil }
+        seenWaiting.remove(id)
         return open.remove(at: index)
     }
 

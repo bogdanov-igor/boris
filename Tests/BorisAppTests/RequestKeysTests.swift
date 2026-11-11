@@ -104,6 +104,30 @@ struct RequestKeysTests {
         #expect(isFree(rareDeny))
     }
 
+    @Test("Ответили в окне Claude: карточка уходит, клавиши свободны, а отказ из Boris после этого не записан")
+    func answeredInClaudeFreesTheKeys() {
+        let (hooks, _) = controller(keys: RequestHotKeys())
+        let asked = command("s1")
+        hooks.add(asked)
+        hooks.noteCard(UUID(), request: asked.id, windowShows: true)
+        #expect(!isFree(rareDeny))
+
+        func work(_ state: WorkState) -> WorkModel {
+            let session = WorkSession(id: "s1", environment: .terminal, cwd: "/x/s1", state: state, root: WorkNode(id: "s1", kind: .main, state: state))
+            return WorkModel(projects: [WorkProject(path: "/x/s1", sessions: [session])])
+        }
+        hooks.note(work: work(.waiting))
+        #expect(hooks.pending.count == 1, "диалог Claude ещё открыт")
+        hooks.note(work: work(.running))
+        #expect(hooks.pending.isEmpty)
+        #expect(isFree(rareAllow))
+        #expect(isFree(rareDeny))
+        #expect(hooks.queue.decisions.map(\.outcome) == [.answeredInClaude])
+
+        hooks.answer(asked.id, .deny(reason: ""), via: .window)
+        #expect(hooks.queue.decisions.map(\.outcome) == [.answeredInClaude], "ответ Boris не записан как данный")
+    }
+
     @Test("Нажатие разрешает запрос именно в этой карточке, а другая клавиша приложения его не трогает")
     func pressReachesItsOwnAction() async throws {
         let keys = RequestHotKeys()

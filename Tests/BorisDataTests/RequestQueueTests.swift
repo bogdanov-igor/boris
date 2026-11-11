@@ -111,6 +111,40 @@ struct RequestQueueTests {
         #expect(queue.rows(now: t0.addingTimeInterval(RequestQueue.settling + 1)).count == 1, "если сессия всё ещё ждёт, это уже новый вопрос")
     }
 
+    @Test("Ответили в окне самого Claude: карточка уходит, в истории ответ в Claude, а поздний отказ из Boris не записывается") func answeredInClaudesDialog() {
+        var queue = RequestQueue()
+        let asked = request("s1", at: 0)
+        queue.add(asked)
+        #expect(queue.note(work: work(session("s1", .running)), now: t0.addingTimeInterval(1)).isEmpty, "файл ещё не успел сказать, что сессия ждёт: это ничего не значит")
+        #expect(queue.open == [asked])
+        #expect(queue.note(work: work(session("s1", .waiting)), now: t0.addingTimeInterval(2)).isEmpty, "диалог Claude открыт")
+
+        let released = queue.note(work: work(session("s1", .running)), now: t0.addingTimeInterval(9))
+        #expect(released == [asked.id], "хук отпускается, ждать ему больше нечего")
+        #expect(queue.open.isEmpty)
+        #expect(queue.decisions.map(\.outcome) == [.answeredInClaude])
+        #expect(queue.decisions.first?.place == .session)
+        #expect(queue.decisions.first?.waited == 9)
+        #expect(queue.rows(now: t0.addingTimeInterval(10)).isEmpty)
+
+        let late = queue.answered(asked.id, with: .deny(reason: ""), place: .window, now: t0.addingTimeInterval(10))
+        #expect(!late)
+        #expect(queue.decisions.count == 1, "отказ из Boris после ответа в Claude не записан")
+    }
+
+    @Test("Картинка работы старше запроса не закрывает его, и чужая сессия тоже") func answeredInClaudeNeedsItsOwnWait() {
+        var queue = RequestQueue()
+        let asked = request("s1", at: 10)
+        queue.add(asked)
+        queue.note(work: work(session("s1", .waiting), session("s2", .waiting)), now: t0.addingTimeInterval(5))
+        queue.note(work: work(session("s1", .running), session("s2", .running)), now: t0.addingTimeInterval(11))
+        #expect(queue.open == [asked], "ожидание было увидено до самого запроса")
+        queue.note(work: work(session("s2", .waiting)), now: t0.addingTimeInterval(12))
+        queue.note(work: work(session("s2", .running)), now: t0.addingTimeInterval(13))
+        #expect(queue.open == [asked])
+        #expect(queue.decisions.isEmpty)
+    }
+
     @Test("Время истекло: запрос остаётся на виду, без своего текста") func expiry() {
         var queue = RequestQueue()
         let asked = request()
