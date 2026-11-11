@@ -94,6 +94,10 @@ struct AgentCountTests {
             for session in found.values {
                 let line = WorkPhrases.lineParts(session, mode: mode)
                 #expect(WorkPhrases.line(session, mode: mode) == line.agents.map { "\(line.doing) · \($0)" } ?? line.doing)
+                // The rows of the opened notch keep the same number apart from what is being done, so it is not cut there either.
+                let notchRow = SurfaceWords.sessionDetailParts(session, mode: mode)
+                #expect(notchRow.agents == line.agents)
+                #expect(SurfaceWords.sessionDetail(session, mode: mode) == notchRow.agents.map { "\(notchRow.detail) · \($0)" } ?? notchRow.detail)
                 guard let agents = line.agents else {
                     // A row without a number has one agent at most, or says it waits for you or how it ended.
                     #expect(session.workingAgents <= 1 || session.state != .running)

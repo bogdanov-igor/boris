@@ -163,12 +163,20 @@ public enum SurfaceWords {
 
     /// `VS Code · ждёт вас`: where the session runs and what it does, after its name on one line.
     public static func sessionDetail(_ session: WorkSession, mode: DisplayMode) -> String {
+        let parts = sessionDetailParts(session, mode: mode)
+        return parts.agents.map { "\(parts.detail) · \($0)" } ?? parts.detail
+    }
+
+    /// The same in two parts, so that a narrow row cuts what is being done and keeps the number of agents whole.
+    public static func sessionDetailParts(_ session: WorkSession, mode: DisplayMode) -> (detail: String, agents: String?) {
         let place = WorkPhrases.environment(session.environment)
         // The card above says what exactly it wants.
-        let doing = session.state == .waiting && mode == .simple ? WorkPhrases.state(.waiting, mode: .simple) : WorkPhrases.line(session, mode: mode)
+        let line: (doing: String, agents: String?) = session.state == .waiting && mode == .simple
+            ? (WorkPhrases.state(.waiting, mode: .simple), nil)
+            : WorkPhrases.lineParts(session, mode: mode)
         // In the technical mode a line starts with the name of a tool, which keeps its capital.
-        guard mode == .simple, let first = doing.first else { return "\(place) · \(doing)" }
-        return "\(place) · \(first.lowercased())\(doing.dropFirst())"
+        guard mode == .simple, let first = line.doing.first else { return ("\(place) · \(line.doing)", line.agents) }
+        return ("\(place) · \(first.lowercased())\(line.doing.dropFirst())", line.agents)
     }
 
     /// How long a session has waited, and in the technical mode what a working one has spent.
