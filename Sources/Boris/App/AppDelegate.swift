@@ -43,7 +43,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(2)
         }
         startLog()
-        registerAutostartOnce()
+        if managesAutostart {
+            launch.noteRunStarted()
+            launch.keepAgentRegistered()
+        }
         if managesAutostart, launch.handOverToAgentIfNeeded() {
             AppLog.note(.handedToAgent)
             NSApp.terminate(nil)
@@ -117,6 +120,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        // A copy that handed over to the agent never started, and its mark keeps the agent's copy from taking this for a login.
+        if managesAutostart, model != nil { launch.noteQuitNormally() }
         model?.remote.quit()
         model?.hooks.quit()
         model?.chat.quit()
@@ -136,18 +141,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #else
         AppLog.note(.appStarted, .version(version), .word(.releaseBuild))
         #endif
-    }
-
-    private func registerAutostartOnce() {
-        let key = "autostartConfigured"
-        guard managesAutostart, !UserDefaults.standard.bool(forKey: key) else { return }
-        do {
-            try launch.agent.register()
-            AppLog.note(.autostartChanged, .flag(true))
-        } catch {
-            AppLog.note(.autostartFailed, .failure(error))
-        }
-        UserDefaults.standard.set(true, forKey: key)
     }
 
     private func startTicking() {

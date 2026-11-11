@@ -28,6 +28,19 @@ private final class FakeAgent: LoginAgent {
     }
 }
 
+/// Defaults that live only in memory, so that no check touches the app's own.
+private final class MemoryDefaults: UserDefaults, @unchecked Sendable {
+    private var values: [String: Any] = [:]
+
+    override func set(_ value: Any?, forKey key: String) { values[key] = value }
+    override func set(_ value: Bool, forKey key: String) { values[key] = value }
+    override func set(_ value: Int, forKey key: String) { values[key] = value }
+    override func removeObject(forKey key: String) { values[key] = nil }
+    override func object(forKey key: String) -> Any? { values[key] }
+    override func bool(forKey key: String) -> Bool { values[key] as? Bool ?? false }
+    override func integer(forKey key: String) -> Int { values[key] as? Int ?? 0 }
+}
+
 /// The debug build started as a real process. It is told not to show anything, in case the guard fails, and has a home of its own, so nothing real can be reached.
 @Suite("Отладочный запуск")
 struct DebugLaunchTests {
@@ -69,20 +82,80 @@ struct DebugLaunchTests {
 @Suite("Автозапуск и другие копии")
 struct AutostartTests {
     @Test("Что делает новая копия, когда другие уже идут", arguments: [
-        // othersRun, isAgent, takesOver, isDebug
-        (false, false, false, false, LaunchClaim.run),
-        (false, true, false, false, .run),
-        (true, false, false, false, .askOtherAndLeave),
-        (true, true, false, false, .takeOverFromHandOpened),
-        (true, false, true, false, .takeOverFromAgent),
-        (false, false, true, false, .takeOverFromAgent),
-        (true, true, false, true, .leaveQuietly),
-        (true, false, false, true, .leaveQuietly),
-        (true, false, true, true, .leaveQuietly),
-        (false, false, false, true, .run),
+        // othersRun, isAgent, isDebug
+        (false, false, false, LaunchClaim.run),
+        (false, true, false, .run),
+        (true, false, false, .askOtherAndLeave),
+        (true, true, false, .takeOverFromHandOpened),
+        (true, true, true, .leaveQuietly),
+        (true, false, true, .leaveQuietly),
+        (false, false, true, .run),
     ])
-    func claims(others: Bool, agent: Bool, takesOver: Bool, debug: Bool, expected: LaunchClaim) {
-        #expect(LaunchCoordinator.claim(othersRun: others, isAgent: agent, takesOverFromAgent: takesOver, isDebug: debug) == expected)
+    func claims(others: Bool, agent: Bool, debug: Bool, expected: LaunchClaim) {
+        #expect(LaunchCoordinator.claim(othersRun: others, isAgent: agent, isDebug: debug) == expected)
+    }
+
+    @Test("Копия от launchd уходит сразу, только если автозапуск выключен и прошлый раз Boris закрыли как обычно", arguments: [
+        // isAgent, autostartOff, lastRunEndedNormally, leaves
+        (true, true, true, true),
+        (true, true, false, false),
+        (true, false, true, false),
+        (true, false, false, false),
+        (false, true, true, false),
+        (false, true, false, false),
+        (false, false, true, false),
+    ])
+    func leavesAtLogin(agent: Bool, off: Bool, normal: Bool, leaves: Bool) {
+        #expect(LaunchCoordinator.leavesAtStart(isAgent: agent, autostartOff: off, lastRunEndedNormally: normal) == leaves)
+    }
+
+    @Test("Автозапуск выключен: после обычного выхода копия от launchd уходит, после падения остаётся")
+    func agentCopyAtLogin() {
+        let defaults = MemoryDefaults()
+        let agent = FakeAgent()
+        agent.status = .enabled
+        let running = LaunchCoordinator(agent: agent, environment: ["BORIS_LAUNCHD": "1"], isDebug: false, defaults: defaults, pid: 100)
+        #expect(running.setAutostart(false) {})
+        running.noteRunStarted()
+
+        let afterCrash = LaunchCoordinator(agent: agent, environment: ["BORIS_LAUNCHD": "1"], isDebug: false, defaults: defaults, pid: 101)
+        #expect(afterCrash.claimInstance(others: []), "метка работающей копии осталась: это падение")
+
+        afterCrash.noteRunStarted()
+        running.noteQuitNormally()
+        #expect(defaults.integer(forKey: LaunchCoordinator.runningKey) == 101, "чужую метку копия не снимает")
+        afterCrash.noteQuitNormally()
+        let atLogin = LaunchCoordinator(agent: agent, environment: ["BORIS_LAUNCHD": "1"], isDebug: false, defaults: defaults, pid: 102)
+        #expect(!atLogin.claimInstance(others: []), "закрыли как обычно: при входе Boris не запускается")
+        let byHand = LaunchCoordinator(agent: agent, environment: [:], isDebug: false, defaults: defaults, pid: 103)
+        #expect(byHand.claimInstance(others: []), "открытый вручную запускается всегда")
+
+        #expect(atLogin.setAutostart(true) {})
+        #expect(atLogin.claimInstance(others: []), "автозапуск включён")
+        #expect(agent.unregistered == 0, "задание launchd остаётся в обоих случаях")
+    }
+
+    @Test("Задание launchd возвращается, если его нет, а прежнее выключение автозапуска сохраняется")
+    func agentKeptRegistered() {
+        let first = FakeAgent()
+        let fresh = MemoryDefaults()
+        let launch = LaunchCoordinator(agent: first, environment: [:], defaults: fresh)
+        launch.keepAgentRegistered()
+        #expect(first.registered == 1)
+        #expect(launch.autostartState == .on, "при первом запуске автозапуск включён")
+
+        let removed = FakeAgent()
+        let earlier = MemoryDefaults()
+        earlier.set(true, forKey: LaunchCoordinator.configuredKey)
+        let upgraded = LaunchCoordinator(agent: removed, environment: [:], defaults: earlier)
+        upgraded.keepAgentRegistered()
+        #expect(removed.registered == 1, "прежняя версия убирала задание, когда автозапуск выключали")
+        #expect(upgraded.autostartState == .off)
+
+        let refused = FakeAgent()
+        refused.status = .requiresApproval
+        LaunchCoordinator(agent: refused, environment: [:], defaults: MemoryDefaults()).keepAgentRegistered()
+        #expect(refused.registered == 0, "выключенное в Системных настройках включает только человек")
     }
 
     @Test("Задание launchd поднимает после падения и не поднимает после выхода")
@@ -111,52 +184,41 @@ struct AutostartTests {
         #expect(LaunchCoordinator(agent: agent, environment: [:]).autostartState == expected)
     }
 
-    @Test("Обычная копия включает и выключает задание, сохранив всё перед этим")
+    @Test("Выключение автозапуска не убирает задание, а включение ставит его, если его нет, сохранив всё перед этим")
     func plainCopy() {
         let agent = FakeAgent()
-        var started = 0
-        let launch = LaunchCoordinator(agent: agent, environment: [:]) { started += 1 }
+        let launch = LaunchCoordinator(agent: agent, environment: [:], defaults: MemoryDefaults())
         var saved = 0
         #expect(launch.setAutostart(true) { saved += 1 })
         #expect(agent.registered == 1)
+        #expect(launch.autostartState == .on)
+        #expect(launch.shouldReopenSettings(), "копия задания откроет настройки снова")
         #expect(launch.setAutostart(false) { saved += 1 })
-        #expect(agent.unregistered == 1)
-        #expect(saved == 2)
-        #expect(started == 0)
-    }
-
-    @Test("Копия, которая сама и есть задание, не убирает его из-под себя: это делает новая копия и остаётся")
-    func agentCopyHandsOver() {
-        let agent = FakeAgent()
-        agent.status = .enabled
-        var started = 0
-        var saved = 0
-        let launch = LaunchCoordinator(agent: agent, environment: ["BORIS_LAUNCHD": "1"]) { started += 1 }
-        #expect(launch.setAutostart(false) { saved += 1 })
-        #expect(started == 1)
-        #expect(saved == 1, "launchd убьёт эту копию без предупреждения")
         #expect(agent.unregistered == 0)
+        #expect(agent.registered == 1)
+        #expect(launch.autostartState == .off)
+        #expect(saved == 2)
     }
 
-    @Test("Новая копия убирает задание и работает, а настройки снова открыты")
-    func plainCopyTakesOver() {
+    @Test("Копия, которая сама и есть задание, выключает автозапуск и остаётся")
+    func agentCopyStays() {
         let agent = FakeAgent()
         agent.status = .enabled
-        // As a release build would. With no other copies listed, nothing is said to anybody.
-        let launch = LaunchCoordinator(agent: agent, environment: ["BORIS_TAKE_OVER_FROM_AGENT": "1"], isDebug: false)
-        #expect(launch.handOverToAgentIfNeeded() == false, "она не отдаёт работу заданию, которое сейчас уберёт")
-        #expect(launch.claimInstance(others: []))
-        #expect(agent.unregistered == 1)
-        #expect(launch.shouldReopenSettings())
+        let launch = LaunchCoordinator(agent: agent, environment: ["BORIS_LAUNCHD": "1"], defaults: MemoryDefaults())
+        #expect(launch.setAutostart(false) {})
+        #expect(agent.unregistered == 0)
+        #expect(launch.autostartState == .off)
+        #expect(!launch.shouldReopenSettings(), "ничья копия не сменилась")
     }
 
     @Test("Система отказала: об этом сказано")
     func refused() {
         let agent = FakeAgent()
         agent.refuses = true
-        let launch = LaunchCoordinator(agent: agent, environment: [:])
+        let launch = LaunchCoordinator(agent: agent, environment: [:], defaults: MemoryDefaults())
         #expect(!launch.setAutostart(true) {})
         #expect(!launch.setAutostart(false) {})
+        #expect(launch.autostartState == .off)
     }
 
     @Test("Обычному запуску открывать настройки незачем")

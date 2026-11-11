@@ -91,7 +91,7 @@ public enum ClaudeFolders {
 }
 
 public enum BorisPaths {
-    /// What a release build itself is started with: launchd's mark, and the one a copy leaves for the plain copy that takes over from it when autostart goes off.
+    /// What a release build itself is started with: launchd's mark, and the one an earlier version left for the plain copy that took over from it when autostart went off.
     private static let ownMarks: Set<String> = ["BORIS_LAUNCHD", "BORIS_TAKE_OVER_FROM_AGENT"]
 
     /// A variable meant for a check. A release build has no check modes, so anything but its own marks stops it.

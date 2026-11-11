@@ -17,7 +17,7 @@ struct ReleaseGuardTests {
         #expect(BorisPaths.checkVariable(in: ["BORIS_SNAPSHOT": "/x"]) == "BORIS_SNAPSHOT")
         #expect(BorisPaths.checkVariable(in: ["BORIS_FUTURE_MODE": "1", "HOME": "/x"]) == "BORIS_FUTURE_MODE")
         #expect(BorisPaths.checkVariable(in: ["BORIS_LAUNCHD": "1", "HOME": "/x"]) == nil)
-        // Turning autostart off starts a plain copy with this mark. If it stopped that copy, Boris would be gone with no way back.
+        // An earlier version turned autostart off by starting a plain copy with this mark. If it stopped that copy, Boris would be gone with no way back.
         #expect(BorisPaths.checkVariable(in: ["BORIS_TAKE_OVER_FROM_AGENT": "1", "HOME": "/x"]) == nil)
         #expect(BorisPaths.checkVariable(in: [:]) == nil)
     }
