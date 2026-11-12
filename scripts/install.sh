@@ -15,7 +15,11 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
 done
 
 mkdir -p "$HOME/Applications"
-rm -rf "$DEST"
+# A copy that Apple notarized is protected: macOS lets nothing delete files inside it, so a half-replaced app would be left.
+# The whole folder can still be moved, so the old copy goes to the Trash in one piece.
+if [ -e "$DEST" ]; then
+    mv "$DEST" "$HOME/.Trash/Boris-replaced-$(date +%Y%m%d-%H%M%S).app"
+fi
 ditto build/Boris.app "$DEST"
 
 open "$DEST"

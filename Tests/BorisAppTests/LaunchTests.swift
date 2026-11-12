@@ -14,9 +14,10 @@ private final class FakeAgent: LoginAgent {
     var registered = 0
     var unregistered = 0
     var refuses = false
+    var refusesRegister = false
 
     func register() throws {
-        if refuses { throw CocoaError(.featureUnsupported) }
+        if refuses || refusesRegister { throw CocoaError(.featureUnsupported) }
         registered += 1
         status = .enabled
     }
@@ -24,6 +25,23 @@ private final class FakeAgent: LoginAgent {
     func unregister() throws {
         if refuses { throw CocoaError(.featureUnsupported) }
         unregistered += 1
+        status = .notRegistered
+    }
+}
+
+/// A job whose first registration after removal fails, as a busy system can do.
+@MainActor
+private final class FlakyAgent: LoginAgent {
+    var status = SMAppService.Status.enabled
+    var registerCalls = 0
+
+    func register() throws {
+        registerCalls += 1
+        if registerCalls == 1 { throw CocoaError(.featureUnsupported) }
+        status = .enabled
+    }
+
+    func unregister() throws {
         status = .notRegistered
     }
 }
@@ -190,7 +208,7 @@ struct AutostartTests {
         agent.status = .enabled
         let launch = LaunchCoordinator(agent: agent, environment: [:], isDebug: false, defaults: MemoryDefaults())
         var attempts = 0
-        let quits = launch.handOverToAgentIfNeeded(isBundled: true, start: { true }, cameUp: { attempts += 1; return attempts > 1 })
+        let quits = launch.handOverToAgentIfNeeded(isBundled: true, start: { true }, cameUp: { attempts += 1; return attempts > 1 }, pause: { _ in }, stopForNow: {})
         #expect(quits)
         #expect(agent.unregistered == 1 && agent.registered == 1)
     }
@@ -200,13 +218,15 @@ struct AutostartTests {
         let agent = FakeAgent()
         agent.status = .enabled
         let launch = LaunchCoordinator(agent: agent, environment: [:], isDebug: false, defaults: MemoryDefaults())
-        let quits = launch.handOverToAgentIfNeeded(isBundled: true, start: { true }, cameUp: { false })
+        var stopped = 0
+        let quits = launch.handOverToAgentIfNeeded(isBundled: true, start: { true }, cameUp: { false }, pause: { _ in }, stopForNow: { stopped += 1 })
         #expect(!quits)
+        #expect(stopped == 1, "launchd больше не поднимает копию, которую система тут же убивает")
         let refusing = FakeAgent()
         refusing.status = .enabled
         refusing.refuses = true
         let stuck = LaunchCoordinator(agent: refusing, environment: [:], isDebug: false, defaults: MemoryDefaults())
-        let stuckQuits = stuck.handOverToAgentIfNeeded(isBundled: true, start: { true }, cameUp: { false })
+        let stuckQuits = stuck.handOverToAgentIfNeeded(isBundled: true, start: { true }, cameUp: { false }, pause: { _ in }, stopForNow: {})
         #expect(!stuckQuits)
     }
 
@@ -225,6 +245,44 @@ struct AutostartTests {
             .handOverToAgentIfNeeded(isBundled: true, start: { starts += 1; return true }, cameUp: { true })
         #expect(!fromAgent && !unbundled && !notEnabled)
         #expect(starts == 0)
+    }
+
+    @Test("Процесс автозапуска узнаётся у launchd: только у работающей задачи и только по её собственным строкам")
+    func agentPidFromLaunchctl() {
+        let running = "gui/501/app.boris.Boris.agent = {\n\tactive count = 1\n\ttype = LaunchAgent\n\tstate = running\n\n\tprogram = Contents/MacOS/Boris\n\tpid = 4321\n\tendpoints = {\n\t\tstate = active\n\t\tpid = 99\n\t}\n}\n"
+        #expect(LaunchCoordinator.runningPid(inLaunchctlPrint: running) == 4321)
+        let killed = "gui/501/app.boris.Boris.agent = {\n\tactive count = 0\n\tstate = spawn scheduled\n\tlast exit code = 9: Killed\n\tendpoints = {\n\t\tstate = active\n\t}\n}\n"
+        #expect(LaunchCoordinator.runningPid(inLaunchctlPrint: killed) == nil)
+        #expect(LaunchCoordinator.runningPid(inLaunchctlPrint: "") == nil)
+    }
+
+    @Test("Запись сразу после снятия система может не принять: пробуют ещё, с паузой")
+    func reregisterFailurePutsTheAgentBack() {
+        let agent = FlakyAgent()
+        let launch = LaunchCoordinator(agent: agent, environment: [:], isDebug: false, defaults: MemoryDefaults())
+        var pauses = 0
+        let quits = launch.handOverToAgentIfNeeded(isBundled: true, start: { true }, cameUp: { false }, pause: { _ in pauses += 1 }, stopForNow: {})
+        #expect(!quits)
+        #expect(agent.registerCalls == 2 && pauses == 1, "вторая попытка после паузы")
+        #expect(agent.status == .enabled)
+    }
+
+    @Test("Если запись так и не встала, следующий запуск ставит её заново, а не считает автозапуск выключенным")
+    func registerNeverWorksIsNotTheirChoice() {
+        let agent = FakeAgent()
+        agent.status = .enabled
+        let defaults = MemoryDefaults()
+        defaults.set(true, forKey: LaunchCoordinator.configuredKey)
+        let launch = LaunchCoordinator(agent: agent, environment: [:], isDebug: false, defaults: defaults)
+        var calls = 0
+        let quits = launch.handOverToAgentIfNeeded(isBundled: true, start: { true }, cameUp: { calls += 1; agent.refusesRegister = true; return false }, pause: { _ in }, stopForNow: {})
+        #expect(!quits && calls == 1)
+        #expect(agent.status == .notRegistered)
+        #expect(!defaults.bool(forKey: LaunchCoordinator.configuredKey))
+        agent.refusesRegister = false
+        LaunchCoordinator(agent: agent, environment: [:], isDebug: false, defaults: defaults).keepAgentRegistered()
+        #expect(agent.status == .enabled)
+        #expect(!defaults.bool(forKey: LaunchCoordinator.autostartOffKey))
     }
 
     @Test("README на обоих языках говорит, как поставить Boris, и не называет его недоделанным")

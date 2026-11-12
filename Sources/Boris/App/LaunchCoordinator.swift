@@ -158,20 +158,56 @@ final class LaunchCoordinator {
     func handOverToAgentIfNeeded(
         isBundled: Bool = Bundle.main.bundleURL.pathExtension == "app",
         start: @MainActor () -> Bool = { LaunchCoordinator.kickstartAgent() },
-        cameUp: @MainActor () -> Bool = { LaunchCoordinator.waitForAgentCopy() }
+        cameUp: @MainActor () -> Bool = { LaunchCoordinator.waitForAgentCopy() },
+        pause: @MainActor (TimeInterval) -> Void = { RunLoop.current.run(until: Date().addingTimeInterval($0)) },
+        stopForNow: @MainActor () -> Void = { LaunchCoordinator.bootOutAgent() }
     ) -> Bool {
         guard !isAgentInstance, isBundled, agent.status == .enabled else { return false }
         if start(), cameUp() { return true }
         do {
             try agent.unregister()
-            try agent.register()
-            AppLog.note(.agentReregistered)
         } catch {
             AppLog.note(.autostartFailed, .failure(error))
+            stopForNow()
             return false
         }
-        guard agent.status == .enabled else { return false }
-        return start() && cameUp()
+        // The system may refuse a registration that follows a removal too closely: the old copy is not gone yet.
+        var lastError: Error?
+        for attempt in 0..<Self.registerAttempts {
+            if attempt > 0 { pause(Self.registerPause) }
+            do {
+                try agent.register()
+                lastError = nil
+                break
+            } catch {
+                lastError = error
+            }
+        }
+        if let lastError {
+            AppLog.note(.autostartFailed, .failure(lastError))
+            // Not the person's choice: the next start registers it again instead of taking the missing agent for autostart turned off.
+            defaults?.set(false, forKey: Self.configuredKey)
+            return false
+        }
+        AppLog.note(.agentReregistered)
+        if agent.status == .enabled, start(), cameUp() { return true }
+        // macOS may hold on to the old signature's record. This copy goes on, and launchd stops starting a copy the system kills
+        // at once, again and again, until the next login.
+        stopForNow()
+        return false
+    }
+
+    static let registerAttempts = 8
+    static let registerPause: TimeInterval = 0.4
+
+    /// Stops launchd from starting the agent until the next login. The registration stays.
+    static func bootOutAgent() {
+        let bootOut = Process()
+        bootOut.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        bootOut.arguments = ["bootout", "gui/\(getuid())/\(agentLabel)"]
+        bootOut.standardError = FileHandle.nullDevice
+        try? bootOut.run()
+        bootOut.waitUntilExit()
     }
 
     /// Asks launchd to start the agent now. True means only that launchd took the request.
@@ -189,14 +225,53 @@ final class LaunchCoordinator {
         }
     }
 
-    /// Whether another copy of Boris, the agent's, shows up within a few seconds.
-    static func waitForAgentCopy(seconds: TimeInterval = 5) -> Bool {
+    /// Whether the agent's process is up and stays up for a second. It is asked of launchd, not of the list of running apps:
+    /// the agent's copy waits for this one to leave before it joins that list, so looking there the two would wait for each other.
+    /// A copy the system kills at start never lasts a second.
+    static func waitForAgentCopy(seconds: TimeInterval = 5, settle: TimeInterval = 1) -> Bool {
         let until = Date().addingTimeInterval(seconds)
+        var first: (pid: Int32, at: Date)?
         while Date() < until {
-            if !otherCopies().isEmpty { return true }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+            if let pid = agentPid(), kill(pid, 0) == 0 {
+                if let first, first.pid == pid, Date().timeIntervalSince(first.at) >= settle { return true }
+                if first?.pid != pid { first = (pid, Date()) }
+            } else {
+                first = nil
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
         }
-        return !otherCopies().isEmpty
+        return false
+    }
+
+    /// The agent's process id, while launchd says it is running.
+    static func agentPid() -> Int32? {
+        let print = Process()
+        print.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        print.arguments = ["print", "gui/\(getuid())/\(agentLabel)"]
+        let output = Pipe()
+        print.standardOutput = output
+        print.standardError = FileHandle.nullDevice
+        do {
+            try print.run()
+        } catch {
+            return nil
+        }
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        print.waitUntilExit()
+        guard print.terminationStatus == 0 else { return nil }
+        return runningPid(inLaunchctlPrint: String(decoding: data, as: UTF8.self))
+    }
+
+    /// `state = running` and `pid = …` among the job's own lines, which have one tab in front. Deeper lines belong to its parts.
+    nonisolated static func runningPid(inLaunchctlPrint text: String) -> Int32? {
+        var running = false
+        var pid: Int32?
+        for line in text.split(separator: "\n") where line.hasPrefix("\t") && !line.hasPrefix("\t\t") {
+            let field = line.trimmingCharacters(in: .whitespaces)
+            if field == "state = running" { running = true }
+            if field.hasPrefix("pid = ") { pid = Int32(field.dropFirst(6)) }
+        }
+        return running ? pid : nil
     }
 
     func listen(openMenu: @escaping @MainActor () -> Void) {
