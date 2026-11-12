@@ -172,6 +172,61 @@ struct AutostartTests {
         #expect(script.contains("Contents/Library/LaunchAgents"), "сборка кладёт задание туда, где его ищет SMAppService")
     }
 
+    @Test("Открытая вручную копия уходит, только когда копия автозапуска правда поднялась")
+    func handOverWaitsForTheAgent() {
+        let agent = FakeAgent()
+        agent.status = .enabled
+        let launch = LaunchCoordinator(agent: agent, environment: [:], isDebug: false, defaults: MemoryDefaults())
+        var starts = 0
+        let quits = launch.handOverToAgentIfNeeded(isBundled: true, start: { starts += 1; return true }, cameUp: { true })
+        #expect(quits)
+        #expect(starts == 1)
+        #expect(agent.registered == 0 && agent.unregistered == 0, "работающую запись не трогают")
+    }
+
+    @Test("Копию автозапуска система убила при старте: запись делается заново от этой копии, и тогда передача удаётся")
+    func handOverReregistersAnAgentThatCannotStart() {
+        let agent = FakeAgent()
+        agent.status = .enabled
+        let launch = LaunchCoordinator(agent: agent, environment: [:], isDebug: false, defaults: MemoryDefaults())
+        var attempts = 0
+        let quits = launch.handOverToAgentIfNeeded(isBundled: true, start: { true }, cameUp: { attempts += 1; return attempts > 1 })
+        #expect(quits)
+        #expect(agent.unregistered == 1 && agent.registered == 1)
+    }
+
+    @Test("Если копия автозапуска не поднялась и после новой записи, эта копия остаётся работать")
+    func handOverGivesUpAndStays() {
+        let agent = FakeAgent()
+        agent.status = .enabled
+        let launch = LaunchCoordinator(agent: agent, environment: [:], isDebug: false, defaults: MemoryDefaults())
+        let quits = launch.handOverToAgentIfNeeded(isBundled: true, start: { true }, cameUp: { false })
+        #expect(!quits)
+        let refusing = FakeAgent()
+        refusing.status = .enabled
+        refusing.refuses = true
+        let stuck = LaunchCoordinator(agent: refusing, environment: [:], isDebug: false, defaults: MemoryDefaults())
+        let stuckQuits = stuck.handOverToAgentIfNeeded(isBundled: true, start: { true }, cameUp: { false })
+        #expect(!stuckQuits)
+    }
+
+    @Test("Сама копия автозапуска, копия не из приложения и выключенная запись ничего никому не передают")
+    func handOverOnlyFromABundledHandOpenedCopy() {
+        let agent = FakeAgent()
+        agent.status = .enabled
+        var starts = 0
+        let fromAgent = LaunchCoordinator(agent: agent, environment: ["BORIS_LAUNCHD": "1"], isDebug: false, defaults: MemoryDefaults())
+            .handOverToAgentIfNeeded(isBundled: true, start: { starts += 1; return true }, cameUp: { true })
+        let unbundled = LaunchCoordinator(agent: agent, environment: [:], isDebug: false, defaults: MemoryDefaults())
+            .handOverToAgentIfNeeded(isBundled: false, start: { starts += 1; return true }, cameUp: { true })
+        let off = FakeAgent()
+        off.status = .requiresApproval
+        let notEnabled = LaunchCoordinator(agent: off, environment: [:], isDebug: false, defaults: MemoryDefaults())
+            .handOverToAgentIfNeeded(isBundled: true, start: { starts += 1; return true }, cameUp: { true })
+        #expect(!fromAgent && !unbundled && !notEnabled)
+        #expect(starts == 0)
+    }
+
     @Test("README на обоих языках говорит, как поставить Boris, и не называет его недоделанным")
     func readmeSaysHowToInstall() throws {
         let english = try String(contentsOf: packageRoot.appendingPathComponent("README.md"), encoding: .utf8)

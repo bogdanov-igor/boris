@@ -151,12 +151,34 @@ final class LaunchCoordinator {
     }
 
     /// Hands over from a manually opened copy to the launchd agent, whether autostart is on or off: only the agent's copy comes back after a crash.
-    /// Returns true when this copy should quit.
-    func handOverToAgentIfNeeded() -> Bool {
-        guard !isAgentInstance, Bundle.main.bundleURL.pathExtension == "app", agent.status == .enabled else { return false }
+    /// This copy quits only once the agent's copy is really running. launchd accepting the start is not enough: an agent registered
+    /// by a copy signed otherwise, one built from source before a release say, is killed by the system the moment it starts.
+    /// Registering it again from this copy makes the system's record match. Should that not help either, this copy simply goes on.
+    /// - Returns: true when this copy should quit.
+    func handOverToAgentIfNeeded(
+        isBundled: Bool = Bundle.main.bundleURL.pathExtension == "app",
+        start: @MainActor () -> Bool = { LaunchCoordinator.kickstartAgent() },
+        cameUp: @MainActor () -> Bool = { LaunchCoordinator.waitForAgentCopy() }
+    ) -> Bool {
+        guard !isAgentInstance, isBundled, agent.status == .enabled else { return false }
+        if start(), cameUp() { return true }
+        do {
+            try agent.unregister()
+            try agent.register()
+            AppLog.note(.agentReregistered)
+        } catch {
+            AppLog.note(.autostartFailed, .failure(error))
+            return false
+        }
+        guard agent.status == .enabled else { return false }
+        return start() && cameUp()
+    }
+
+    /// Asks launchd to start the agent now. True means only that launchd took the request.
+    static func kickstartAgent() -> Bool {
         let kick = Process()
         kick.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-        kick.arguments = ["kickstart", "gui/\(getuid())/\(Self.agentLabel)"]
+        kick.arguments = ["kickstart", "gui/\(getuid())/\(agentLabel)"]
         do {
             try kick.run()
             kick.waitUntilExit()
@@ -165,6 +187,16 @@ final class LaunchCoordinator {
             AppLog.note(.autostartFailed, .failure(error))
             return false
         }
+    }
+
+    /// Whether another copy of Boris, the agent's, shows up within a few seconds.
+    static func waitForAgentCopy(seconds: TimeInterval = 5) -> Bool {
+        let until = Date().addingTimeInterval(seconds)
+        while Date() < until {
+            if !otherCopies().isEmpty { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        return !otherCopies().isEmpty
     }
 
     func listen(openMenu: @escaping @MainActor () -> Void) {

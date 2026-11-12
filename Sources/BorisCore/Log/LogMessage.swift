@@ -4,7 +4,7 @@ import Foundation
 /// The case name is what the file keeps, so a line can be shown in whatever language the interface is in later.
 public enum LogMessage: String, Sendable, CaseIterable {
     // App
-    case appStarted, appQuit, handedToAgent, autostartChanged, autostartFailed
+    case appStarted, appQuit, handedToAgent, autostartChanged, autostartFailed, agentReregistered
     // Reading Claude's files
     case firstRead, tokensCounted, formatIssue, formatFine, claudeFolderMissing, claudeFolderFound, fileWriteFailed, fileBroken
     // Hooks and Claude's settings
@@ -34,7 +34,7 @@ public enum LogMessage: String, Sendable, CaseIterable {
         switch self {
         case .autostartFailed, .fileWriteFailed, .hooksChangeFailed, .hookServerFailed, .bannerFailed, .keychainFailed, .soundFailed, .keepAwakeFailed:
             return .error
-        case .formatIssue, .claudeFolderMissing, .fileBroken, .hooksChangeRefused, .hooksLost, .claudeSettingsUnreadable, .claudeSettingsModeLost, .hookMessageUnreadable, .hookForeignCaller,
+        case .agentReregistered, .formatIssue, .claudeFolderMissing, .fileBroken, .hooksChangeRefused, .hooksLost, .claudeSettingsUnreadable, .claudeSettingsModeLost, .hookMessageUnreadable, .hookForeignCaller,
              .requestOverflow, .requestAnswerRefused, .bannersDenied, .telegramFailed, .telegramConnectFailed, .limitsRefreshFailed, .limitsRefreshProblem, .hotKeyTaken, .answerKeysTaken:
             return .warning
         default:
@@ -44,7 +44,7 @@ public enum LogMessage: String, Sendable, CaseIterable {
 
     public var area: LogArea {
         switch self {
-        case .appStarted, .appQuit, .handedToAgent, .autostartChanged, .autostartFailed: return .app
+        case .appStarted, .appQuit, .handedToAgent, .autostartChanged, .autostartFailed, .agentReregistered: return .app
         case .firstRead, .tokensCounted, .formatIssue, .formatFine, .claudeFolderMissing, .claudeFolderFound, .fileWriteFailed, .fileBroken: return .data
         case .hooksConnected, .hooksRepaired, .hooksDisconnected, .hooksChangeFailed, .hooksChangeRefused, .hooksStatus, .hooksLost,
              .claudeSettingsWritten, .claudeSettingsBackup, .claudeSettingsUnreadable, .claudeSettingsModeLost,
@@ -69,6 +69,7 @@ public enum LogMessage: String, Sendable, CaseIterable {
         case .appStarted: return L("Boris %@ started, %@")
         case .appQuit: return L("Boris quit")
         case .handedToAgent: return L("Handing over to the login agent")
+        case .agentReregistered: return L("The login agent did not start, so it was registered again for this copy")
         case .autostartChanged: return L("Open at login: %@")
         case .autostartFailed: return L("Could not change open at login: %@")
         case .firstRead: return L("First read of Claude's files: %@, sessions: %@")

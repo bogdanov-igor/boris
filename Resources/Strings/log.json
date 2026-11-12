@@ -174,5 +174,6 @@
  "%@ took %@ until drawn, on %@": "%@: до кадра %@, на %@",
  "%@ read in %@, items: %@, on the main thread: %@": "%@: прочитано за %@, элементов: %@, в главном потоке: %@",
  "Main thread busy for %@, on %@, after %@": "Главный поток занят %@, на %@, после %@",
- "a secret word's own sound": "свой звук секретного слова"
+ "a secret word's own sound": "свой звук секретного слова",
+ "The login agent did not start, so it was registered again for this copy": "Копия автозапуска не запустилась, поэтому автозапуск зарегистрирован заново для этой копии"
 }
