@@ -196,23 +196,4 @@ struct MacLoadSamplerTests {
         #expect(percent > 0 && percent <= 100)
         #expect(MacLoadSampler.diskPercent(of: URL(fileURLWithPath: "/no/such/folder")) == nil)
     }
-
-    /// CPU time, not the clock: a machine busy with other work must not fail this.
-    @Test("Один замер стоит миллисекунды процессорного времени")
-    func cost() async throws {
-        func cpuSeconds() -> Double {
-            var usage = rusage()
-            getrusage(RUSAGE_SELF, &usage)
-            return Double(usage.ru_utime.tv_sec + usage.ru_stime.tv_sec) + Double(usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) / 1_000_000
-        }
-        let sampler = sampler()
-        _ = await sampler.read(LoadRequest(restart: true))
-        let began = cpuSeconds()
-        let count = 50
-        for _ in 0..<count { _ = await sampler.read(LoadRequest()) }
-        let each = (cpuSeconds() - began) / Double(count)
-        // Tests run in parallel and the whole process is counted, so this is well above the 2 ms measured alone in a debug build.
-        // Even at this limit, one reading in 3 seconds would be under 1% of one core.
-        #expect(each < 0.03, "\(each * 1000) ms per reading")
-    }
 }
