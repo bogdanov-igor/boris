@@ -63,7 +63,11 @@ A walrus with a bowler hat, a monocle and a cigar. He's a bit of a Churchill: he
 
 ## Install
 
-There are no ready-made releases yet, so Boris is built from source. You need macOS 14 or later and Xcode with Swift 6.
+Download **Boris-x.y.z.zip** from the [latest release](https://github.com/bogdanov-igor/boris/releases/latest), unzip it, move Boris to Applications and open it. You need macOS 14 or later. Boris is signed with Developer ID and notarized by Apple, and new versions arrive on their own.
+
+### Build from source
+
+You need Xcode with Swift 6.
 
 ```sh
 git clone https://github.com/bogdanov-igor/boris.git
@@ -71,7 +75,7 @@ cd boris
 scripts/install.sh
 ```
 
-The script builds the app, puts it in `~/Applications/Boris.app` and starts it. Run it again after `git pull` to update. Without an Apple developer certificate the build is signed ad hoc, so macOS may ask for permissions again after each build. Signed releases with automatic updates are coming.
+The script builds the app, puts it in `~/Applications/Boris.app` and starts it. Run it again after `git pull` to update. Without an Apple developer certificate the build is signed ad hoc, so macOS may ask for permissions again after each build. A copy built this way does not check for updates.
 
 ## Hooks are optional
 
