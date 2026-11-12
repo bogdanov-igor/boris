@@ -291,6 +291,8 @@ final class WalrusCanvasView: NSView {
     /// The picture to show, drawn upright, and how far to turn it.
     private func source(for look: Look, at now: Date) -> (WalrusArt.Source, CGFloat) {
         let elapsed = max(0, now.timeIntervalSince(since))
+        // The person's own picture, after one of their secret words. It stands upright and still.
+        if let picture = stage?.picture { return (.file(picture), 0) }
         let moving = WalrusMotion.nextFrame(moves: moves(look), visible: isSeen, reduceMotion: Self.reduceMotion) != nil
         if let pack = look.pack {
             let frames = pack.frames(for: look.pose.packPose)

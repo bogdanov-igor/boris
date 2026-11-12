@@ -132,4 +132,52 @@ struct EggTests {
         let back = try JSONDecoder().decode(EggDiary.self, from: JSONEncoder().encode(diary))
         #expect(back == diary)
     }
+
+    @Test("Сценки: «очевидно», «логично» и «колдун» в обоих языках и любой раскладке", arguments: [
+        ("очевидно", KeyTrick.obviously), ("Obviously", .obviously), ("логично", .logically), ("logically", .logically), ("КОЛДУН", .wizard), ("wizard", .wizard),
+    ])
+    func scenes(word: String, trick: KeyTrick) {
+        var play = Play()
+        var tricks: [KeyTrick?] = []
+        for letter in word { tricks.append(play.key(.character(String(letter)), now: t0)) }
+        #expect(tricks.last == trick)
+        #expect(tricks.dropLast().allSatisfy { $0 == nil })
+        #expect(WalrusLines.scene(trick).count >= 2)
+    }
+
+    @Test("Своё секретное слово находится, даже длинное, и важнее встроенного")
+    func secretWord() {
+        var play = Play()
+        let long = String(repeating: "я", count: SecretWordsReader.longestWord)
+        var last: KeyTrick?
+        for letter in "ну " + long { last = play.key(.character(String(letter)), now: t0, secrets: [long, "борис"]) }
+        #expect(last == .secret(long))
+        for letter in "борис" { last = play.key(.character(String(letter)), now: t0, secrets: [long, "борис"]) }
+        #expect(last == .secret("борис"))
+    }
+
+    @Test("Папка секретных слов: берётся годное, остальное молча пропускается, за пределы папки не выходит")
+    func secretWordsFolder() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("boris-secrets-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try Data([0x89, 0x50, 0x4E, 0x47]).write(to: folder.appendingPathComponent("face.png"))
+        let words = """
+        [
+          {"word": " Очевидно ", "picture": "face.png", "lines": ["Раз.", "", "Два."], "seconds": 100},
+          {"word": "очевидно", "lines": ["Второй раз то же слово."]},
+          {"word": "я", "lines": ["Слишком коротко."]},
+          {"word": "два слова", "lines": ["С пробелом."]},
+          {"word": "наружу", "picture": "../face.png"},
+          {"word": "пусто"}
+        ]
+        """
+        try Data(words.utf8).write(to: folder.appendingPathComponent(SecretWordsReader.fileName))
+        let read = SecretWordsReader.read(folder)
+        #expect(read.map(\.word) == ["очевидно"])
+        #expect(read.first?.lines == ["Раз.", "Два."])
+        #expect(read.first?.picture?.lastPathComponent == "face.png")
+        #expect(read.first?.seconds == 30)
+        #expect(SecretWordsReader.read(folder.appendingPathComponent("нет такой")).isEmpty)
+    }
 }

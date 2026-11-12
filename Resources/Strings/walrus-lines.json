@@ -49,5 +49,11 @@
  "My birthday. I am ready to meet my Maker. Whether he is ready for me is another matter.": "Сегодня мой день рождения. Я готов к встрече с Создателем. Готов ли он ко мне, другой вопрос.",
  "Night shift. I shall sleep in the afternoon, as is my habit.": "Ночная смена. Высплюсь днём, как привык.",
  "The week's limit is spent. I shall take a nap until it returns.": "Недельный лимит исчерпан. Вздремну, пока он не вернётся.",
- "%@ tokens today. I do like a round figure.": "%@ токенов за сегодня. Люблю круглые цифры."
+ "%@ tokens today. I do like a round figure.": "%@ токенов за сегодня. Люблю круглые цифры.",
+ "Obviously.": "Очевидно.",
+ "Obviously, nobody has read the logs.": "Очевидно, что логи никто не читал.",
+ "Logically.": "Логично.",
+ "Logically, it broke on a Friday.": "Логично, что упало в пятницу.",
+ "Casting a spell…": "Колдую…",
+ "It did not work. Blast.": "Не вышло. Зараза."
 }

@@ -7,6 +7,10 @@ import Foundation
 // - "угу" or "ugu" typed in the main window: a bellow.
 // - His name, "boris" or "борис", typed in the main window: a wink and a word.
 // - The Konami code typed in the main window: a minute in the pixel outfit and a refusal to surrender to codes.
+// - "очевидно" or "obviously": three lines in a row, the last one irritated.
+// - "логично" or "logically": three lines in a row and a wink.
+// - "колдун" or "wizard": the witch's hat, a full turn, a spell that fails, a dizzy head and the "hmm" sound.
+// - The person's own secret words, from a folder of theirs (`SecretWords.swift`): their picture in his place, their lines, their sound.
 // Once a day at most, on their own (`EggDiary`):
 // - 30 November, Churchill's birthday: the party hat by the calendar, and a line on the first click of the day.
 // - Night shift: work running between midnight and five, one line a night.
@@ -14,12 +18,35 @@ import Foundation
 // - The weekly limit spent: a yawn and a line.
 // By the calendar: upside down on 1 April, a crow on Friday the 13th, pixels on the 256th day, a party after ten clean runs, a fish after a hundred.
 //
-// None of them blocks anything, plays a sound or shows anything of the person's work: only figures and dates.
+// None of them blocks anything or shows anything of the person's work: only figures and dates.
+// Only the spell and the person's own words make a sound, and only with the walrus's voice on and outside quiet hours.
 // Nothing runs for them between events: the keys are looked at only when pressed, the rest only when a scan brings news.
 
 /// A trick typed at the walrus.
 public enum KeyTrick: Sendable, Equatable {
     case konami, name, hoot
+    /// A little scene of a few lines, one after another.
+    case obviously, logically, wizard
+    /// One of the person's own secret words, as `SecretWord.word` has it.
+    case secret(String)
+
+    /// The scenes and the words that start them, in either language.
+    static let scenes: [(trick: KeyTrick, words: [String])] = [
+        (.obviously, ["очевидно", "obviously"]),
+        (.logically, ["логично", "logically"]),
+        (.wizard, ["колдун", "wizard"]),
+    ]
+}
+
+/// One line of a scene, and what he does as he says it.
+public struct SceneStep: Sendable, Equatable {
+    public var text: String
+    public var act: Act?
+
+    public init(_ text: String, _ act: Act? = nil) {
+        self.text = text
+        self.act = act
+    }
 }
 
 /// A hidden thing that comes on its own, at most once a day.

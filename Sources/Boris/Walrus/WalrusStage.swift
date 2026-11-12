@@ -15,10 +15,19 @@ final class WalrusStage {
     var upsideDown = false
     /// Worn for a while over the outfit of the day, after a trick.
     private(set) var costume: Outfit?
+    /// The person's own picture, shown in his place for a while after one of their secret words.
+    private(set) var picture: URL?
 
     @ObservationIgnored private var speech = WalrusSpeech()
     @ObservationIgnored private var lineEnd: Task<Void, Never>?
     @ObservationIgnored private var costumeEnd: Task<Void, Never>?
+    @ObservationIgnored private var pictureEnd: Task<Void, Never>?
+    @ObservationIgnored private var sceneRest: Task<Void, Never>?
+
+    /// Seconds between the lines of a scene: long enough to read one, short enough to wait for the next.
+    static let sceneGap: TimeInterval = 1.6
+    /// How long the witch's hat stays after the spell.
+    static let wizardFor: TimeInterval = 8
     private let isPreview: Bool
 
     /// - Parameter isPreview: on the Walrus page any reaction may play over any state, because the person asked to see it.
@@ -54,13 +63,63 @@ final class WalrusStage {
     }
 
     /// A key typed in the main window. Only a finished trick does anything. In alarm or waiting he has better things to say.
-    func key(_ key: PlayKey, pose: PoseName, now: Date = Date()) {
-        guard !isRestricted(pose), let trick = play.key(key, now: now) else { return }
+    /// - Parameter secrets: the person's own words. They work with a pack too: they are the person's, not the walrus's.
+    /// - Returns: the trick, so the caller can play its sound.
+    @discardableResult
+    func key(_ key: PlayKey, pose: PoseName, secrets: [SecretWord] = [], now: Date = Date()) -> KeyTrick? {
+        guard !isRestricted(pose), let trick = play.key(key, now: now, secrets: secrets.map(\.word)) else { return nil }
         revision += 1
-        if trick == .konami { wear(.pixel, for: Play.glassesFor) }
-        guard WalrusArt.shared.pack == nil else { return }
-        speech.poked(now: now, fixed: WalrusLines.trick(trick), lines: [])
+        switch trick {
+        case .secret(let word):
+            guard let secret = secrets.first(where: { $0.word == word }) else { return trick }
+            if let url = secret.picture { show(url, for: secret.seconds) }
+            act(secret.lines.map { SceneStep($0) }, now: now)
+            return trick
+        case .konami:
+            wear(.pixel, for: Play.glassesFor)
+        case .wizard:
+            wear(.witch, for: Self.wizardFor)
+        case .name, .hoot, .obviously, .logically:
+            break
+        }
+        // A pack speaks only its own lines.
+        guard WalrusArt.shared.pack == nil else { return trick }
+        act(WalrusLines.scene(trick), now: now)
+        return trick
+    }
+
+    /// Says the lines one after another. A new scene cuts the old one short.
+    private func act(_ steps: [SceneStep], now: Date) {
+        sceneRest?.cancel()
+        guard let first = steps.first else { return }
+        say(first, now: now)
+        let rest = steps.dropFirst()
+        guard !rest.isEmpty else { return }
+        sceneRest = Task { [weak self] in
+            for step in rest {
+                try? await Task.sleep(for: .seconds(Self.sceneGap))
+                guard !Task.isCancelled, let self else { return }
+                self.say(step, now: Date())
+            }
+        }
+    }
+
+    private func say(_ step: SceneStep, now: Date) {
+        speech.poked(now: now, fixed: step.text, lines: [])
+        if let act = step.act { perform(act, now: now) }
         showLine(now: now)
+    }
+
+    private func show(_ url: URL, for seconds: TimeInterval) {
+        picture = url
+        revision += 1
+        pictureEnd?.cancel()
+        pictureEnd = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled, let self else { return }
+            self.picture = nil
+            self.revision += 1
+        }
     }
 
     /// Something he says on his own, with a reaction he already has. A line about the work always comes first.

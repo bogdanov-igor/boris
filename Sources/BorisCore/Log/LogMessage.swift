@@ -157,6 +157,8 @@ public enum LogWord: String, Sendable, CaseIterable {
     case hooksAdded, originalRestored, hooksRemoved, fileRemoved
     // Files of Boris's own
     case stateFile, decisionsFile, tokenCache, lossCache, ownFolder, packFolder
+    // A sound of the person's own, for a secret word. Its name stays out of the log.
+    case secretWordSound
     // Format problems
     case unknownJournalEvent, unreadableFinal, unreadableSessions
     // How a request ended
@@ -201,6 +203,7 @@ public enum LogWord: String, Sendable, CaseIterable {
         case .lossCache: return L("loss cache")
         case .ownFolder: return L("Boris's folder")
         case .packFolder: return L("walrus pack")
+        case .secretWordSound: return L("a secret word's own sound")
         case .unknownJournalEvent: return L("unknown journal event")
         case .unreadableFinal: return L("unreadable final file")
         case .unreadableSessions: return L("unreadable session files")

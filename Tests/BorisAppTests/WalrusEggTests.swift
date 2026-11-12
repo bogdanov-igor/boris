@@ -106,4 +106,32 @@ struct WalrusEggTests {
         #expect(model.eggs.due(now: scan.at, working: true, tokensToday: 0, weekSpent: false) == .nightShift)
         model.stopQuiet()
     }
+
+    @Test("«Очевидно»: первая реплика сразу, остальные следом; «колдун» надевает ведьминскую шляпу")
+    func scenes() {
+        let stage = WalrusStage()
+        type(letters("очевидно"), on: stage)
+        #expect(stage.line?.text == WalrusLines.scene(.obviously).first?.text)
+        let wizard = WalrusStage()
+        type(letters("wizard"), on: wizard)
+        #expect(wizard.costume == .witch)
+        #expect(wizard.line?.text == WalrusLines.scene(.wizard).first?.text)
+    }
+
+    @Test("Своё слово: картинка человека на месте моржа и его первая реплика")
+    func secretWord() {
+        let stage = WalrusStage()
+        let picture = URL(fileURLWithPath: "/x/face.png")
+        let secret = SecretWord(word: "гоблин", lines: ["Первая.", "Вторая."], picture: picture)
+        var last: KeyTrick?
+        for key in letters("гоблин") { last = stage.key(key, pose: .watch, secrets: [secret], now: t) }
+        #expect(last == .secret("гоблин"))
+        #expect(stage.picture == picture)
+        #expect(stage.line?.text == "Первая.")
+    }
+
+    @Test("В проверке папка секретных слов не читается")
+    func checkReadsNoSecrets() {
+        #expect(model().secretWords.current().isEmpty)
+    }
 }

@@ -19,7 +19,16 @@ extension AppModel {
 
     /// A key typed in the main window, for his tricks. See `Eggs.swift`.
     func typedToWalrus(_ key: PlayKey, now: Date = Date()) {
-        walrus.key(key, pose: PoseName(mood: mood), now: now)
+        let secrets = secretWords.current()
+        guard let trick = walrus.key(key, pose: PoseName(mood: mood), secrets: secrets, now: now), !quiet.isOn(now: now) else { return }
+        switch trick {
+        case .wizard:
+            notifications.playTrick(.hmm)
+        case .secret(let word):
+            if let sound = secrets.first(where: { $0.word == word })?.sound { notifications.playTrick(file: sound) }
+        case .konami, .name, .hoot, .obviously, .logically:
+            break
+        }
     }
 
     /// The surprises that come on their own. Looked at only when a scan brings news, so between scans they cost nothing.

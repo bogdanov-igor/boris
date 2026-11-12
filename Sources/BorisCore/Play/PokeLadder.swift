@@ -161,17 +161,25 @@ public struct Play: Sendable, Equatable {
         return false
     }
 
+    /// How many keys are kept: enough for the longest secret word.
+    static let keyMemory = SecretWordsReader.longestWord
+
+    /// - Parameter secrets: the person's own words. They come first, so a word of theirs can even take over a built-in one.
     /// - Returns: the trick the key completed, if it did.
     @discardableResult
-    public mutating func key(_ key: PlayKey, now: Date) -> KeyTrick? {
+    public mutating func key(_ key: PlayKey, now: Date, secrets: [String] = []) -> KeyTrick? {
         keys.append(Self.normalized(key))
-        if keys.count > Self.konami.count { keys.removeFirst(keys.count - Self.konami.count) }
-        if keys == Self.konami {
+        if keys.count > Self.keyMemory { keys.removeFirst(keys.count - Self.keyMemory) }
+        if let word = secrets.first(where: { typed(Self.word($0)) }) {
+            keys = []
+            return .secret(word)
+        }
+        if typed(Self.konami) {
             glassesEnd = now.addingTimeInterval(Self.glassesFor)
             keys = []
             return .konami
         }
-        if Self.names.contains(where: { keys.suffix($0.count) == $0 }) {
+        if Self.names.contains(where: typed) {
             start(.wink, now: now)
             keys = []
             return .name
@@ -182,11 +190,25 @@ public struct Play: Sendable, Equatable {
             keys = []
             return .hoot
         }
+        if let scene = KeyTrick.scenes.first(where: { $0.words.contains { typed(Self.word($0)) } }) {
+            keys = []
+            return scene.trick
+        }
         return nil
     }
 
+    /// Whether the last keys spell this out.
+    private func typed(_ word: [PlayKey]) -> Bool {
+        !word.isEmpty && keys.count >= word.count && Array(keys.suffix(word.count)) == word
+    }
+
+    /// A word as `normalized` leaves its letters, so it is found in either layout.
+    static func word(_ text: String) -> [PlayKey] {
+        text.map { normalized(.character(String($0))) }
+    }
+
     /// His name in either layout, as `normalized` leaves it.
-    private static let names: [[PlayKey]] = ["boris", "борис"].map { word in word.map { normalized(.character(String($0))) } }
+    private static let names: [[PlayKey]] = ["boris", "борис"].map(word)
 
     public mutating func yawn(now: Date) {
         start(.yawn, now: now)

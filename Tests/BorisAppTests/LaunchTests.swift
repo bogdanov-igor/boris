@@ -174,15 +174,14 @@ struct AutostartTests {
 
     @Test("README на обоих языках говорит, как поставить Boris, и не называет его недоделанным")
     func readmeSaysHowToInstall() throws {
-        let readme = try String(contentsOf: packageRoot.appendingPathComponent("README.md"), encoding: .utf8)
-        let russian = try #require(readme.range(of: "## Русский"))
-        let english = try #require(readme.range(of: "## English"))
-        #expect(russian.lowerBound < english.lowerBound)
-        for part in [String(readme[russian.lowerBound..<english.lowerBound]), String(readme[english.lowerBound...])] {
+        let english = try String(contentsOf: packageRoot.appendingPathComponent("README.md"), encoding: .utf8)
+        let russian = try String(contentsOf: packageRoot.appendingPathComponent("README.ru.md"), encoding: .utf8)
+        #expect(english.contains("README.ru.md") && russian.contains("README.md"), "каждый ведёт на другой язык")
+        for part in [english, russian] {
             #expect(part.contains("scripts/install.sh"))
             #expect(part.contains("macOS 14"))
         }
-        #expect(!readme.contains("в разработке") && !readme.contains("in development"))
+        #expect(!russian.contains("в разработке") && !english.contains("in development"))
         #expect(FileManager.default.isExecutableFile(atPath: packageRoot.appendingPathComponent("scripts/install.sh").path))
     }
 

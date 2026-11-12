@@ -99,6 +99,24 @@ public enum WalrusLines {
         case .konami: return L("I do not surrender to codes. For one minute I shall make an exception.")
         case .name: return L("You called? I am here, and I am staying.")
         case .hoot: return L("Ahem.")
+        case .obviously, .logically, .wizard: return scene(trick).first?.text ?? ""
+        case .secret: return ""
+        }
+    }
+
+    /// A scene of a few lines, said one after another. The other tricks have one line, the person's own words their own lines.
+    public static func scene(_ trick: KeyTrick) -> [SceneStep] {
+        switch trick {
+        case .obviously:
+            return [SceneStep(L("Obviously."), .poke), SceneStep(L("Obviously."), .poke), SceneStep(L("Obviously, nobody has read the logs."), .annoyed)]
+        case .logically:
+            return [SceneStep(L("Logically."), .poke), SceneStep(L("Logically."), .poke), SceneStep(L("Logically, it broke on a Friday."), .wink)]
+        case .wizard:
+            return [SceneStep(L("Casting a spell…"), .spin), SceneStep(L("It did not work. Blast."), .dizzy)]
+        case .konami, .name, .hoot:
+            return [SceneStep(Self.trick(trick))]
+        case .secret:
+            return []
         }
     }
 

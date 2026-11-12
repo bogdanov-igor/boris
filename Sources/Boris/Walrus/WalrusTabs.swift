@@ -391,7 +391,27 @@ struct WalrusPacksTab: View {
                 .frame(maxWidth: .infinity)
                 .padding(24)
             }
+            secretWords
         }
+    }
+
+    /// The person's own words for the walrus. They live in a folder on this Mac and work with any pack.
+    private var secretWords: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L("Your secret words")).font(.system(size: 13, weight: .semibold))
+            Text(L("Type a word of your own in the main window, and your picture, lines and sound take his place for a moment. They stay on this Mac."))
+                .font(.system(size: 11.5))
+                .foregroundStyle(Palette.text2)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                Text(L("Words: %lld", model.secretWords.current().count)).font(.system(size: 12)).foregroundStyle(Palette.text2).fixedSize()
+                Spacer(minLength: 0)
+                Button(L("Open folder")) { model.secretWords.open() }.buttonStyle(PlainActionStyle()).fixedSize()
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: DesignMetrics.radiusLarge).fill(Palette.fill1))
     }
 
     private func details(_ pack: WalrusPack) -> [String] {

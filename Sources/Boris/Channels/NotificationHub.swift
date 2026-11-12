@@ -93,6 +93,16 @@ final class NotificationHub {
         if live { voice.play(.done) }
     }
 
+    /// A sound of one of his tricks, which the person typed. Only with his voice on.
+    func playTrick(_ sound: WalrusSound) {
+        if live, settings.notifications.voiceOn { voice.play(sound) }
+    }
+
+    /// The person's own sound for one of their secret words. Only with his voice on.
+    func playTrick(file: URL) {
+        if live, settings.notifications.voiceOn { voice.play(file: file) }
+    }
+
     /// Checks the bot with a test message, and keeps it only if that worked. Nil means it is connected.
     func connectTelegram(token: String, chat: String) async -> TelegramProblem? {
         guard let telegram else { return .other }

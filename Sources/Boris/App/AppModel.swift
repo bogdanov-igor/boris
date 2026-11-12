@@ -126,6 +126,8 @@ final class AppModel {
     let walrus = WalrusStage()
     let walrusPage = WalrusPageState()
     let packShelf: WalrusPackShelf
+    /// The person's own secret words. A check never reads the real folder.
+    let secretWords: SecretWordsShelf
 
     var onPresenceChange: (() -> Void)?
     /// Brings the main window forward, from wherever a session is being opened.
@@ -142,6 +144,7 @@ final class AppModel {
         chat = ChatWatch(probe: live ? AccessibilityChatProbe() : NoChatProbe())
         remote = RemoteHub(hooks: hooks, store: live ? store.map { RemoteStore(folder: $0.folder) } : nil, tool: live ? .system() : nil)
         // Without a store nothing may touch Boris's real folder.
+        secretWords = SecretWordsShelf(folder: live ? BorisPaths.support.appendingPathComponent("Secret words", isDirectory: true) : nil)
         packShelf = WalrusPackShelf(folder: (store?.folder ?? FileManager.default.temporaryDirectory.appendingPathComponent("boris-memory")).appendingPathComponent("Packs", isDirectory: true))
         // The walrus is one for the whole process, and a model made for a check must not change him under whoever is looking.
         if live { WalrusArt.shared.pack = packShelf.pack(id: settings.wardrobe.pack) }

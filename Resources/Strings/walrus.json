@@ -109,5 +109,9 @@
   "few": "%lld агента работают",
   "many": "%lld агентов работают",
   "other": "%lld агента работают"
- }
+ },
+ "Your secret words": "Свои секретные слова",
+ "Type a word of your own in the main window, and your picture, lines and sound take his place for a moment. They stay on this Mac.": "Наберите своё слово в главном окне, и на миг вместо моржа появятся ваши картинка, реплики и звук. Всё это остаётся на этом Mac.",
+ "Words: %lld": "Слов: %lld",
+ "Open folder": "Открыть папку"
 }
