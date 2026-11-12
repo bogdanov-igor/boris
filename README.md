@@ -1,109 +1,88 @@
-# Boris
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="Boris — a walrus in your Mac menu bar that keeps an eye on Claude" width="100%">
+</p>
 
-[Русский](#русский) · [English](#english)
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.1.0-4a9fd8?style=flat-square" alt="version 0.1.0">
+  <img src="https://img.shields.io/badge/macOS-14%2B-555?style=flat-square" alt="macOS 14 or later">
+  <img src="https://img.shields.io/badge/Swift-6-e0654a?style=flat-square" alt="Swift 6">
+  <img src="https://img.shields.io/badge/code-MIT-blue?style=flat-square" alt="code under MIT">
+  <img src="https://img.shields.io/badge/account-none-success?style=flat-square" alt="no account">
+  <img src="https://img.shields.io/badge/server-none-success?style=flat-square" alt="no server">
+</p>
 
-## Русский
+<p align="center">
+  <b>English</b> · <a href="README.ru.md">Русский</a>
+</p>
 
-Морж в строке меню Mac, который присматривает за Claude.
+---
 
-Если вы работаете с Claude в нескольких местах сразу, картина быстро теряется. В терминале идёт одна сессия, в VS Code другая, где-то крутится workflow на десяток агентов, а в Cowork готовится отчёт. Что из этого ещё работает, что упало, сколько потрачено и кто сейчас ждёт вашего ответа? Чтобы это понять, приходится открывать всё по очереди.
+Boris is a small Mac app for people who run Claude in more than one place at a time.
 
-Boris показывает это в одном месте.
+One session runs in the terminal, another in VS Code, a workflow with a dozen agents works somewhere in the background, and Cowork is putting a report together. Which of them are still going? What just broke? How much of the weekly limit is left? And who has been waiting ten minutes for you to click "Allow"?
 
-### Что он делает
+Boris answers all of that at a glance. He lives in your menu bar, wears a bowler hat and a monocle, and stays quiet until something needs you.
 
-- Показывает проекты, сессии и агентов и то, чем они заняты прямо сейчас: в терминале, в VS Code и Cursor, в Claude Desktop и Cowork, а также на других машинах через SSH.
-- Считает токены, лимиты плана и доплаты.
-- Объясняет, что упало и почему. Например, когда workflow пишет `completed`, а все его агенты на самом деле упали из-за лимита.
-- Даёт ответить на запросы Claude, не переключая окно: разрешения, вопросы, планы.
-- Сообщает о важном через уведомления Mac, звук и Telegram.
-- Показывает, сколько всё это занимает процессора и памяти.
+<p align="center">
+  <img src="docs/assets/screens/now.png" alt="The Now page: sessions at work, a request waiting, recent failures, tokens and limits" width="100%">
+</p>
 
-Живёт он там, где вам удобно: в строке меню, в чёлке, в маленьком окне или в обычном. Режимов два: простой, чтобы понять, нужны ли вы, и технический, чтобы разобраться в деталях.
+## What he does
 
-### Как установить
+**Sees everything that's running.** Claude Code in the terminal, VS Code, Cursor and the Desktop app, Cowork, and other machines over SSH. You get projects, sessions, every agent and subagent, workflows step by step, and what each of them is doing right now.
 
-Готовых выпусков пока нет, приложение собирается из исходников. Нужны macOS 14 или новее и Xcode с Swift 6.
+<p align="center">
+  <img src="docs/assets/screens/session.png" alt="A session: its agents, a workflow in progress, changed files and the live feed" width="100%">
+</p>
+
+**Lets you answer without switching windows.** Permissions, questions and plans arrive as cards. Allow, deny or send a reason straight from the menu bar, the notch or the mini window.
+
+<p align="center">
+  <img src="docs/assets/screens/requests.png" alt="The panel under the notch with two permission requests and the sessions at work" width="100%">
+</p>
+
+**Counts the cost.** Tokens by day, project, model and agent. Your plan's 5-hour and weekly limits, and the extra spend you actually pay for. Plus how much CPU and memory Claude is taking.
+
+<p align="center">
+  <img src="docs/assets/screens/usage.png" alt="Usage: tokens for 7 days, limits, an estimate at API prices and the load on the Mac" width="100%">
+</p>
+
+**Tells you why things failed.** A workflow says `completed`, but all twelve of its agents hit the usage limit? Boris says so, and tells you when the limit resets.
+
+**Taps you on the shoulder when it matters.** A Mac notification, a sound or a Telegram message when a request is waiting or something has failed.
+
+**Has two modes.** Simple, to see at a glance whether you're needed. Technical, for the full picture: feeds, diffs, commands and token breakdowns.
+
+## Meet Boris
+
+A walrus with a bowler hat, a monocle and a cigar. He's a bit of a Churchill: he delivers bad news with dignity, even when everything is on fire. He dresses for the occasion, with a Santa hat at New Year and a witch's hat at Halloween. Poke him and he reacts. And if you'd rather have someone else, swap him for your own character with a pack of pictures.
+
+<p align="center">
+  <img src="docs/assets/screens/walrus.png" alt="The walrus page: outfits, reactions and a preview" width="100%">
+</p>
+
+## Install
+
+There are no ready-made releases yet, so Boris is built from source. You need macOS 14 or later and Xcode with Swift 6.
 
 ```sh
-git clone <адрес этого репозитория>
+git clone https://github.com/bogdanov-igor/boris.git
 cd boris
 scripts/install.sh
 ```
 
-Скрипт собирает приложение, кладёт его в `~/Applications/Boris.app` и запускает. Тем же скриптом приложение обновляется после `git pull`. Если на Mac нет сертификата разработчика Apple, сборка подписывается без него, и тогда macOS может заново спрашивать разрешения после каждой сборки.
+The script builds the app, puts it in `~/Applications/Boris.app` and starts it. Run it again after `git pull` to update. Without an Apple developer certificate the build is signed ad hoc, so macOS may ask for permissions again after each build. Signed releases with automatic updates are coming.
 
-Подписанные выпуски и автоматические обновления появятся позже.
+## Hooks are optional
 
-### Хуки необязательны
+Out of the box, Boris only reads the files Claude already writes to disk, and that covers almost everything. Hooks add two things: answering requests from Boris, and hearing about events the moment they happen. You turn them on in Settings. Boris first shows exactly what will change in Claude's settings, and turning hooks off takes out only what Boris added.
 
-Без них Boris читает только файлы, которые Claude и так пишет на диск, и уже показывает почти всё. Хуки нужны, чтобы отвечать на запросы Claude прямо из Boris и узнавать о событиях быстрее. Их подключают в настройках, и перед этим Boris показывает, что именно изменится в настройках Claude. Отключаются они там же.
+## Your data stays on your Mac
 
-### Что с данными
+No account and no server. Boris never sends your prompts, commands or code anywhere. It goes online only to refresh your plan limits, and to reach Telegram if you turn that on. It changes Claude's settings only when you connect hooks yourself.
 
-Boris работает на вашем Mac, без аккаунта и своего сервера. Он не отправляет промпты, команды и код никуда. Настройки Claude он меняет, только если вы сами подключите хуки.
+## License
 
-Интернет нужен для лимитов, а ещё для Telegram, если вы его включите.
+The code is under MIT. The walrus, his drawings, lines and sounds are not: see [LICENSE](LICENSE).
 
-### Откуда морж
-
-Это морж Борис: котелок, монокль и сигара. Характером он в Черчилля, так что новости сообщает с достоинством, даже если всё упало.
-
-### Лицензия
-
-Код под MIT. Морж, его реплики и звуки защищены, подробности в [LICENSE](LICENSE).
-
-Это независимый проект, он не связан с Anthropic. Автор: Игорь Богданов.
-
-## English
-
-A walrus in your Mac menu bar that keeps an eye on Claude.
-
-When you work with Claude in several places at once, it gets hard to keep track. One session is running in the terminal, another in VS Code, a workflow with a dozen agents is going somewhere, and Cowork is putting together a report. Which of these are still working, what has failed, how much has it cost, and who is waiting for your answer right now? To find out, you end up opening everything one by one.
-
-Boris shows all of this in one place.
-
-### What it does
-
-- Shows your projects, sessions and agents, and what they are doing right now: in the terminal, in VS Code and Cursor, in Claude Desktop and Cowork, and on other machines over SSH.
-- Counts tokens, plan limits and extra spend.
-- Explains what failed and why. For example, when a workflow says `completed` but all of its agents actually died on a usage limit.
-- Lets you answer Claude's requests without switching windows: permissions, questions and plans.
-- Tells you what matters through Mac notifications, sound and Telegram.
-- Shows how much CPU and memory all of this is taking.
-
-It lives wherever suits you: in the menu bar, in the notch, in a small window or a regular one. There are two modes: a simple one to see whether you are needed, and a technical one for the details.
-
-### How to install
-
-There are no ready-made releases yet, so you build the app from source. You need macOS 14 or later and Xcode with Swift 6.
-
-```sh
-git clone <this repository's address>
-cd boris
-scripts/install.sh
-```
-
-The script builds the app, puts it in `~/Applications/Boris.app` and starts it. Run it again after `git pull` to update. Without an Apple Development certificate on your Mac the build is signed without one, and macOS may then ask for permissions again after every build.
-
-Signed releases and automatic updates will come later.
-
-### Hooks are optional
-
-Without them Boris reads only the files Claude already writes to disk, and that shows almost everything. Hooks let you answer Claude's requests right from Boris and make events show up sooner. You connect them in the settings, and Boris first shows exactly what will change in Claude's settings. You disconnect them in the same place.
-
-### What happens to your data
-
-Boris runs on your Mac, with no account and no server of its own. It does not send your prompts, commands or code anywhere. It only changes Claude's settings if you choose to connect the hooks.
-
-It needs the internet for limits, and for Telegram if you turn it on.
-
-### About the walrus
-
-His name is Boris: bowler hat, monocle and a cigar. He takes after Churchill, so he delivers the news with dignity even when everything has fallen over.
-
-### License
-
-The code is under MIT. The walrus, his lines and his sounds are protected, see [LICENSE](LICENSE) for details.
-
-This is an independent project, not affiliated with Anthropic. Made by Igor Bogdanov.
+Boris is an independent project and is not affiliated with Anthropic.

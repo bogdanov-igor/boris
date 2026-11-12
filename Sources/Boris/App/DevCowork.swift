@@ -16,7 +16,7 @@ enum DevCowork {
             id: session,
             environment: .cowork,
             cwd: "/sessions/made-up-name",
-            title: long ? "Отчёт за квартал со всеми приложениями, сверками и очень подробными пояснениями для всех отделов" : "Отчёт за квартал",
+            title: long ? "Quarterly report with every appendix, reconciliation and very detailed notes for every department" : "Quarterly report",
             state: .waiting,
             waitingFor: .input,
             startedAt: now.addingTimeInterval(-1440),

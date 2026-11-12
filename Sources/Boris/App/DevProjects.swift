@@ -56,20 +56,20 @@ enum DevProjects {
             id: "h2",
             kind: .subagent,
             parentId: "h1",
-            title: long ? "Проверка находки со слишком длинным названием, которое никуда не помещается целиком" : "Проверка находки",
+            title: long ? "Finding check with a name far too long to fit anywhere" : "Finding check",
             state: .running,
             contextTokens: 6_300,
             place: GitPlace(branch: long ? "review/a-very-long-branch-name-that-goes-on-and-on-and-on" : "review/token-expiry", isSeparateCopy: true, folderName: "review")
         )
-        let helper = WorkNode(id: "h1", kind: .subagent, parentId: "b1", title: "Проверка кода", state: .running, step: StepBrief(kind: .read, tool: "Read", fileName: long ? "a-file-with-a-name-so-long-that-it-cannot-possibly-fit-anywhere-on-one-line.swift" : "session.swift"), contextTokens: 21_700, model: "model-name", children: [review])
-        let forked = WorkNode(id: "h3", kind: .fork, parentId: "b1", title: "Поиск примеров", state: .finished, contextTokens: 9_800)
+        let helper = WorkNode(id: "h1", kind: .subagent, parentId: "b1", title: "Code review", state: .running, step: StepBrief(kind: .read, tool: "Read", fileName: long ? "a-file-with-a-name-so-long-that-it-cannot-possibly-fit-anywhere-on-one-line.swift" : "session.swift"), contextTokens: 21_700, model: "model-name", children: [review])
+        let forked = WorkNode(id: "h3", kind: .fork, parentId: "b1", title: "Find examples", state: .finished, contextTokens: 9_800)
         let phases = [
-            PhaseGroup(title: "Поиск", agents: (1...8).map { record("search:\($0)", phase: "Поиск") }),
-            PhaseGroup(title: "Проверка", agents: [record("check:1", phase: "Проверка")] + (2...4).map { record("check:\($0)", phase: "Проверка", state: .running) }, isCurrent: true),
-            PhaseGroup(title: "Итог", agents: []),
+            PhaseGroup(title: "Search", agents: (1...8).map { record("search:\($0)", phase: "Search") }),
+            PhaseGroup(title: "Review", agents: [record("check:1", phase: "Review")] + (2...4).map { record("check:\($0)", phase: "Review", state: .running) }, isCurrent: true),
+            PhaseGroup(title: "Summary", agents: []),
         ]
-        let details = run("wf_deps", name: "Аудит зависимостей", status: .running, phases: phases, plan: ["Поиск", "Проверка", "Итог"], now: now)
-        let flow = node(details, title: "Аудит зависимостей", now: now, tokens: 52_000, children: phases.flatMap(\.agents), parent: "b1")
+        let details = run("wf_deps", name: "Dependency audit", status: .running, phases: phases, plan: ["Search", "Review", "Summary"], now: now)
+        let flow = node(details, title: "Dependency audit", now: now, tokens: 52_000, children: phases.flatMap(\.agents), parent: "b1")
         return WorkSession(
             id: working,
             environment: .terminal,
@@ -85,14 +85,14 @@ enum DevProjects {
     /// A session waiting for the person, in which a run has failed for good and a helper has stumbled.
     static func troubledSession(now: Date, long: Bool) -> WorkSession {
         let limit = FailureInfo(failureClass: .limit, resets: "18:40")
-        let phases = [PhaseGroup(title: "Перенос", agents: (1...12).map { record("move:\($0)", phase: "Перенос", state: .failed, failure: limit) })]
-        let failed = run("wf_move", name: "Миграция данных", status: .allAgentsFailed, phases: phases, topFailure: .limit, now: now.addingTimeInterval(-960))
-        var flow = node(failed, title: "Миграция данных", now: now.addingTimeInterval(-960), tokens: 18_000, children: phases.flatMap(\.agents), parent: troubled)
+        let phases = [PhaseGroup(title: "Move", agents: (1...12).map { record("move:\($0)", phase: "Move", state: .failed, failure: limit) })]
+        let failed = run("wf_move", name: "Data migration", status: .allAgentsFailed, phases: phases, topFailure: .limit, now: now.addingTimeInterval(-960))
+        var flow = node(failed, title: "Data migration", now: now.addingTimeInterval(-960), tokens: 18_000, children: phases.flatMap(\.agents), parent: troubled)
         flow.state = .failed
-        let partPhases = [PhaseGroup(title: "Сбор", agents: (1...5).map { record("part:\($0)", phase: "Сбор") }), PhaseGroup(title: "Сверка", agents: [record("sum:1", phase: "Сверка", state: .failed, failure: FailureInfo(failureClass: .network)), record("sum:2", phase: "Сверка")])]
+        let partPhases = [PhaseGroup(title: "Gather", agents: (1...5).map { record("part:\($0)", phase: "Gather") }), PhaseGroup(title: "Reconcile", agents: [record("sum:1", phase: "Reconcile", state: .failed, failure: FailureInfo(failureClass: .network)), record("sum:2", phase: "Reconcile")])]
         let part = run("wf_part", name: "weekly-report", status: .completedWithErrors, phases: partPhases, topFailure: .network, now: now.addingTimeInterval(-3000))
         let partly = node(part, title: "weekly-report", now: now.addingTimeInterval(-3000), tokens: 41_000, children: partPhases.flatMap(\.agents), parent: troubled)
-        let helper = WorkNode(id: "t1", kind: .subagent, parentId: troubled, title: "Миграции", state: .failed, failure: FailureInfo(failureClass: .api, text: "overloaded"), lastActivity: now.addingTimeInterval(-540))
+        let helper = WorkNode(id: "t1", kind: .subagent, parentId: troubled, title: "Migrations", state: .failed, failure: FailureInfo(failureClass: .api, text: "overloaded"), lastActivity: now.addingTimeInterval(-540))
         return WorkSession(
             id: troubled,
             environment: .vsCode,
@@ -110,11 +110,11 @@ enum DevProjects {
     static func bigSession(now: Date) -> WorkSession {
         let limit = FailureInfo(failureClass: .limit, resets: "18:40")
         let phases = [
-            PhaseGroup(title: "Подготовка", agents: (1...8).map { record("prep:\($0)", phase: "Подготовка") }),
-            PhaseGroup(title: "Аудит", agents: (1...53).map { record("audit:\($0)", phase: "Аудит") } + (54...210).map { record("audit:\($0)", phase: "Аудит", state: .failed, failure: limit) }),
-            PhaseGroup(title: "Итог", agents: [record("sum:1", phase: "Итог", state: .failed, failure: limit)]),
+            PhaseGroup(title: "Prep", agents: (1...8).map { record("prep:\($0)", phase: "Prep") }),
+            PhaseGroup(title: "Audit", agents: (1...53).map { record("audit:\($0)", phase: "Audit") } + (54...210).map { record("audit:\($0)", phase: "Audit", state: .failed, failure: limit) }),
+            PhaseGroup(title: "Summary", agents: [record("sum:1", phase: "Summary", state: .failed, failure: limit)]),
         ]
-        let details = run("wf_big", name: "Большой аудит", status: .completedWithErrors, phases: phases, topFailure: .limit, now: now)
+        let details = run("wf_big", name: "Big audit", status: .completedWithErrors, phases: phases, topFailure: .limit, now: now)
         return WorkSession(
             id: big,
             environment: .terminal,
@@ -122,14 +122,14 @@ enum DevProjects {
             state: .finished,
             startedAt: now.addingTimeInterval(-7200),
             lastActivity: now.addingTimeInterval(-600),
-            root: WorkNode(id: big, kind: .main, state: .finished, children: [node(details, title: "Большой аудит", now: now, tokens: 9_400_000, children: phases.flatMap(\.agents), parent: big)])
+            root: WorkNode(id: big, kind: .main, state: .finished, children: [node(details, title: "Big audit", now: now, tokens: 9_400_000, children: phases.flatMap(\.agents), parent: big)])
         )
     }
 
     /// A session that ended a little while ago.
     static func finishedSession(now: Date) -> WorkSession {
         let last = now.addingTimeInterval(-1500)
-        return WorkSession(id: "e1", environment: .claudeDesktop, cwd: "/x/landing", title: "Новая главная", state: .finished, startedAt: last.addingTimeInterval(-1200), lastActivity: last, root: WorkNode(id: "e1", kind: .main, state: .finished))
+        return WorkSession(id: "e1", environment: .claudeDesktop, cwd: "/x/landing", title: "New landing page", state: .finished, startedAt: last.addingTimeInterval(-1200), lastActivity: last, root: WorkNode(id: "e1", kind: .main, state: .finished))
     }
 
     /// What the logs of past sessions would say.
@@ -139,14 +139,14 @@ enum DevProjects {
             return WorkSession(id: id, environment: environment, cwd: path, title: title, state: state, startedAt: start, lastActivity: start.addingTimeInterval(minutes * 60), root: WorkNode(id: id, kind: .main, state: state, children: children))
         }
         let shop = long ? "/x/a-very-long-project-name-that-nobody-would-ever-want-to-type-by-hand-more-than-once" : "/x/shop-api"
-        var copy = session("p4", shop, .terminal, daysAgo: 3, minutes: 58, state: .stopped, title: long ? "Очень длинное название сессии, которое Claude придумал сам и которое не помещается ни в одну колонку таблицы" : "Починить оплату")
+        var copy = session("p4", shop, .terminal, daysAgo: 3, minutes: 58, state: .stopped, title: long ? "A very long session name that Claude came up with itself and that fits in no column of the table" : "Fix payments")
         copy.place = GitPlace(branch: "fix/payments", isSeparateCopy: true, mainFolder: shop, folderName: "payments")
-        let inner = WorkNode(id: "p7b", kind: .subagent, parentId: "p7a", title: "Проверка схемы", state: .finished, contextTokens: 8_100)
-        var broken = session(pastBroken, shop, .vsCode, daysAgo: 5, minutes: 12, state: .failed, title: "Перенос базы", children: [WorkNode(id: "p7a", kind: .subagent, parentId: pastBroken, title: "Разбор миграций", state: .stopped, contextTokens: 31_000, children: [inner])])
+        let inner = WorkNode(id: "p7b", kind: .subagent, parentId: "p7a", title: "Schema check", state: .finished, contextTokens: 8_100)
+        var broken = session(pastBroken, shop, .vsCode, daysAgo: 5, minutes: 12, state: .failed, title: "Database move", children: [WorkNode(id: "p7a", kind: .subagent, parentId: pastBroken, title: "Migration review", state: .stopped, contextTokens: 31_000, children: [inner])])
         broken.root.failure = FailureInfo(failureClass: .limit, resets: "18:40")
         return [
-            session("p1", shop, .terminal, daysAgo: 1, minutes: 92, title: "Обновить зависимости", children: (1...4).map { WorkNode(id: "p1a\($0)", kind: .subagent, state: .finished) }),
-            session("p2", shop, .vsCode, daysAgo: 2, minutes: 22, title: "Проверка заказов"),
+            session("p1", shop, .terminal, daysAgo: 1, minutes: 92, title: "Update dependencies", children: (1...4).map { WorkNode(id: "p1a\($0)", kind: .subagent, state: .finished) }),
+            session("p2", shop, .vsCode, daysAgo: 2, minutes: 22, title: "Order check"),
             session("p3", shop, .vsCode, daysAgo: 3.2, minutes: 47),
             copy,
             session("p5", shop, .vsCode, daysAgo: 4, minutes: 34, state: .interrupted),

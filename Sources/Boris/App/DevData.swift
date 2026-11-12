@@ -46,7 +46,7 @@ enum DevData: String {
         let cowork = WorkSession(
             id: "c1",
             environment: .cowork,
-            title: long ? "Отчёт за квартал со всеми приложениями, сверками и очень подробными пояснениями для всех отделов" : "Отчёт за квартал",
+            title: long ? "Quarterly report with every appendix, reconciliation and very detailed notes for every department" : "Quarterly report",
             state: .running,
             startedAt: now.addingTimeInterval(-1440),
             root: WorkNode(id: "c1", kind: .main, state: .running, step: StepBrief(kind: .read, tool: "Read"))

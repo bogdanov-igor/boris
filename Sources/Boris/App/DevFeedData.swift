@@ -27,13 +27,13 @@ extension DevData {
 
         let auth = long ? "/x/boris/src/a-folder-with-a-rather-long-name/another-folder-inside-it/a-file-with-a-name-so-long-that-it-cannot-possibly-fit-anywhere-on-one-line.swift" : "/x/boris/src/auth.swift"
         var main = ActivityLog()
-        main.apply(.prompt(long ? String(repeating: "Проверь авторизацию и почини проверку срока токена, а потом пройдись по всем соседним файлам. ", count: 12) : "Проверь авторизацию и почини проверку срока токена.", at: at(300)))
+        main.apply(.prompt(long ? String(repeating: "Check the auth and fix the token expiry check, then go through all the files next to it. ", count: 12) : "Check the auth and fix the token expiry check.", at: at(300)))
         for index in 0..<12 {
             use(&main, "r\(index)", "Read", ToolInput(target: "/x/boris/src/part\(index).swift"), ago: 290 - Double(index), took: 0.4)
         }
         use(&main, "g1", "Grep", ToolInput(target: "isExpired", note: "/x/boris/src", parameters: [ToolParameter(name: "output_mode", value: "content"), ToolParameter(name: "path", value: "/x/boris/src"), ToolParameter(name: "pattern", value: "isExpired")]), ago: 270, took: 0.4)
-        main.apply(.text(long ? String(repeating: "Срок токена проверяется после разбора подписи. ", count: 20) : "Срок токена проверяется после разбора подписи. Переставлю проверку в начало и добавлю тест на **просроченный** токен.", at: at(250)))
-        use(&main, "t1", "Task", ToolInput(note: "Проверка кода", command: "Проверь правку авторизации."), ago: 240, took: nil)
+        main.apply(.text(long ? String(repeating: "The token expiry is checked after the signature is parsed. ", count: 20) : "The token expiry is checked after the signature is parsed. I'll move the check to the top and add a test for an **expired** token.", at: at(250)))
+        use(&main, "t1", "Task", ToolInput(note: "Code review", command: "Review the auth fix."), ago: 240, took: nil)
         use(&main, "e1", "Edit", ToolInput(target: auth, oldText: "old", newText: "new"), ago: 200, took: 2)
         main.apply(.patch(id: "e1", [DiffHunk(oldStart: 40, newStart: 40, lines: [
             "     func check(_ token: Token) throws -> Result {",
@@ -41,14 +41,14 @@ extension DevData {
             "-            guard !token.isExpired else { return .expired }",
             "+        guard !token.isExpired else { return .expired }",
             "+        guard try verifySignature(token) else { return .invalid }",
-        ] + (0..<14).map { "+        log(\"шаг \($0)\")" } + ["     }"])]))
+        ] + (0..<14).map { "+        log(\"step \($0)\")" } + ["     }"])]))
         // A change that failed, in the long data set: it says why, and it has no counts.
         if long { use(&main, "e2", "Edit", ToolInput(target: auth, oldText: "guard token.isValid\nelse", newText: "guard token.isFresh"), ago: 170, took: 0.1, error: true, output: "String to replace not found in file.") }
-        use(&main, "b0", "Bash", ToolInput(note: "Сборка", command: "swift build --product Boris", parameters: [ToolParameter(name: "description", value: "Сборка"), ToolParameter(name: "timeout", value: "120000")]), ago: 150, took: 3, error: true, output: "Exit code 1\nerror: cannot find 'verifySignature' in scope\nerror: fatal error encountered during compilation")
-        use(&main, "b1", "Bash", ToolInput(note: "Запускает тесты", command: long ? "swift test --filter AuthTests --parallel --num-workers 4 --enable-code-coverage --very-long-flag-that-goes-on-and-on-and-on-without-end" : "swift test"), ago: 14, took: nil, output: nil)
+        use(&main, "b0", "Bash", ToolInput(note: "Build", command: "swift build --product Boris", parameters: [ToolParameter(name: "description", value: "Build"), ToolParameter(name: "timeout", value: "120000")]), ago: 150, took: 3, error: true, output: "Exit code 1\nerror: cannot find 'verifySignature' in scope\nerror: fatal error encountered during compilation")
+        use(&main, "b1", "Bash", ToolInput(note: "Runs the tests", command: long ? "swift test --filter AuthTests --parallel --num-workers 4 --enable-code-coverage --very-long-flag-that-goes-on-and-on-and-on-without-end" : "swift test"), ago: 14, took: nil, output: nil)
 
         var review = ActivityLog()
-        review.apply(.prompt("Проверь правку авторизации.", at: at(240)))
+        review.apply(.prompt("Review the auth fix.", at: at(240)))
         use(&review, "h1", "Read", ToolInput(target: "/x/boris/src/session.swift"), ago: 120, took: 0.9)
         var finding = ActivityLog()
         use(&finding, "h2", "Grep", ToolInput(target: "isExpired", note: "/x/boris/src"), ago: 60, took: 0.3)
@@ -60,14 +60,14 @@ extension DevData {
         use(&shop, "s2", "Bash", ToolInput(command: "npm run migrate"), ago: 2500, took: nil)
         var landing = ActivityLog()
         use(&landing, "l1", "Write", ToolInput(target: "/x/landing/index.html", newText: "<html>\n</html>\n"), ago: 2000, took: 0.6)
-        landing.apply(.patch(id: "l1", [DiffHunk(oldStart: 1, newStart: 1, lines: (0..<12).map { "-<div>старое \($0)</div>" } + (0..<48).map { "+<div>новое \($0)</div>" })]))
+        landing.apply(.patch(id: "l1", [DiffHunk(oldStart: 1, newStart: 1, lines: (0..<12).map { "-<div>old \($0)</div>" } + (0..<48).map { "+<div>new \($0)</div>" })]))
         var audit = ActivityLog()
         use(&audit, "w1", "WebSearch", ToolInput(command: "swift-crypto advisories"), ago: 900, took: 2.1)
         use(&audit, "w2", "Skill", ToolInput(target: "swift-testing"), ago: 500, took: nil)
         audit.closeRunning()
-        use(&audit, "w3", "Agent", ToolInput(note: "Проверка находки", command: "Проверь находку."), ago: 100, took: 0.2)
+        use(&audit, "w3", "Agent", ToolInput(note: "Finding check", command: "Check the finding."), ago: 100, took: 0.2)
         var report = ActivityLog()
-        use(&report, "c1", "Read", ToolInput(target: "/x/выручка-Q3.xlsx"), ago: 23, took: nil)
+        use(&report, "c1", "Read", ToolInput(target: "/x/revenue-Q3.xlsx"), ago: 23, took: nil)
 
         let entries = SessionFeed.merged([
             SessionFeed.merged(sessionId: "b1", logs: [AgentLog(agentId: nil, log: main), AgentLog(agentId: "code-review", log: review), AgentLog(agentId: "finding", log: finding), AgentLog(agentId: "audit", log: audit)]),
@@ -78,7 +78,7 @@ extension DevData {
         return DevFeed(
             entries: entries,
             thinking: [FeedStore.Thinker(sessionId: "b1", agentId: "finding")],
-            names: ["code-review": "Проверка кода", "finding": "Проверка находки", "audit": long ? "Аудит зависимостей со всеми подробностями и длинным названием · Поиск" : "Аудит зависимостей · Поиск"],
+            names: ["code-review": "Code review", "finding": "Finding check", "audit": long ? "Dependency audit with every detail and a long name · Search" : "Dependency audit · Search"],
             opened: ["e1"],
             permissionMode: "acceptEdits"
         )
