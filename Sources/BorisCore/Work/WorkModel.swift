@@ -81,6 +81,8 @@ public struct WorkflowDetails: Sendable, Equatable {
     public var closedAgents: [String]
     public var scriptFailure: LossReason?
     public var endedAt: Date?
+    /// The models its agents run on, the most used first. A workflow can run on another model than the session that started it.
+    public var models: [String]
 
     public init(_ run: RunState) {
         runId = run.runId
@@ -101,6 +103,8 @@ public struct WorkflowDetails: Sendable, Equatable {
         closedAgents = run.closedAgents
         scriptFailure = run.scriptFailure
         endedAt = run.endedAt
+        let counts = Dictionary(run.agents.compactMap(\.model).map { (ModelName.canonical($0) ?? $0, 1) }, uniquingKeysWith: +)
+        models = counts.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }.map(\.key)
     }
 }
 

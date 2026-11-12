@@ -97,6 +97,11 @@ public enum WorkPhrases {
     private static func lowercasedStart(_ text: String) -> String {
         text.prefix(1).lowercased() + text.dropFirst()
     }
+    /// A model as a person reads it: `Opus 5.5` for `claude-opus-5-5[1m]`. An id that does not read as a Claude model stays as it is.
+    public static func modelName(_ raw: String?) -> String? {
+        guard let raw, !raw.isEmpty, raw != "<synthetic>" else { return nil }
+        return ModelName.display(raw) ?? raw
+    }
 }
 
 extension WorkSession {

@@ -11,7 +11,7 @@ enum DevCowork {
     /// The Cowork session of the made-up work, asking the person a question that only Claude Desktop can take.
     static func showWaiting(_ model: AppModel, long: Bool) {
         let now = Date()
-        let root = WorkNode(id: session, kind: .main, state: .waiting, step: StepBrief(kind: .other, tool: "AskUserQuestion"), model: "model-name")
+        let root = WorkNode(id: session, kind: .main, state: .waiting, step: StepBrief(kind: .other, tool: "AskUserQuestion"), model: "claude-opus-5-5")
         let waiting = WorkSession(
             id: session,
             environment: .cowork,

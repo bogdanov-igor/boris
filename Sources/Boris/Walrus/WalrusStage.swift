@@ -8,8 +8,18 @@ import Observation
 @Observable
 final class WalrusStage {
     private(set) var play = Play()
-    /// What he is saying right now. Whichever surface is open shows it. The menu bar never does.
-    private(set) var line: WalrusSpeech.Line?
+    /// A line on screen, with a key of its own, so the same words said twice stay two lines.
+    struct ShownLine: Identifiable, Equatable {
+        let id: Int
+        var line: WalrusSpeech.Line
+    }
+
+    /// What he is saying right now, oldest first. Each line leaves on its own time. Whichever surface is open shows them. The menu bar never does.
+    private(set) var lines: [ShownLine] = []
+    /// The newest line.
+    var line: WalrusSpeech.Line? { lines.last?.line }
+    /// More than this at once is a wall of text: the oldest goes early.
+    static let linesAtOnce = 3
     /// Goes up when a reaction starts, which wakes the pictures.
     private(set) var revision = 0
     var upsideDown = false
@@ -19,7 +29,8 @@ final class WalrusStage {
     private(set) var picture: URL?
 
     @ObservationIgnored private var speech = WalrusSpeech()
-    @ObservationIgnored private var lineEnd: Task<Void, Never>?
+    @ObservationIgnored private var lineEnds: [Int: Task<Void, Never>] = [:]
+    @ObservationIgnored private var lastLineId = 0
     @ObservationIgnored private var costumeEnd: Task<Void, Never>?
     @ObservationIgnored private var pictureEnd: Task<Void, Never>?
     @ObservationIgnored private var sceneRest: Task<Void, Never>?
@@ -150,14 +161,30 @@ final class WalrusStage {
         showLine(now: event.at)
     }
 
+    /// A new line goes under the ones on screen. The same line again, or one more of a series, stays where it is.
     private func showLine(now: Date) {
-        line = speech.line(now: now)
-        lineEnd?.cancel()
-        guard let until = line?.until else { return }
-        lineEnd = Task { [weak self] in
+        guard let current = speech.line(now: now) else { return }
+        if let last = lines.last, last.line.cue == current.cue, last.line.text == current.text,
+           current.until == last.line.until || current.count > last.line.count {
+            lines[lines.count - 1].line = current
+            end(last.id, at: current.until, now: now)
+            return
+        }
+        lastLineId += 1
+        lines.append(ShownLine(id: lastLineId, line: current))
+        while lines.count > Self.linesAtOnce {
+            lineEnds.removeValue(forKey: lines.removeFirst().id)?.cancel()
+        }
+        end(lastLineId, at: current.until, now: now)
+    }
+
+    private func end(_ id: Int, at until: Date, now: Date) {
+        lineEnds[id]?.cancel()
+        lineEnds[id] = Task { [weak self] in
             try? await Task.sleep(for: .seconds(until.timeIntervalSince(now)))
-            guard !Task.isCancelled else { return }
-            self?.line = nil
+            guard !Task.isCancelled, let self else { return }
+            self.lines.removeAll { $0.id == id }
+            self.lineEnds[id] = nil
         }
     }
 
@@ -167,7 +194,7 @@ final class WalrusStage {
 
     #if DEBUG
     func sayForSnapshot(_ text: String, count: Int) {
-        line = WalrusSpeech.Line(cue: .failure, text: text, count: count, until: .distantFuture)
+        lines = [ShownLine(id: 0, line: WalrusSpeech.Line(cue: .failure, text: text, count: count, until: .distantFuture))]
     }
     #endif
 }

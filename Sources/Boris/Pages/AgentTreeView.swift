@@ -125,6 +125,7 @@ private struct AgentLine: View {
                             .truncationMode(.tail)
                             .help(WorkPhrases.agentName(node))
                         if let place = node.place, place.isSeparateCopy { CopyBadge(place: place, mode: mode) }
+                        if let name = WorkPhrases.modelName(node.model) { ModelChip(name: name) }
                         Spacer(minLength: 4)
                         if let spent {
                             Text(WorkFormat.tokens(spent))
@@ -203,11 +204,15 @@ private struct WorkflowLine: View {
                 VStack(alignment: .leading, spacing: 4) {
                     let phases = node.phases
                     if !phases.isEmpty { WorkflowRibbon(phases: phases) }
-                    Text(statusLine)
-                        .font(.system(size: 11))
-                        .foregroundStyle(details.status.color)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                    HStack(spacing: 6) {
+                        Text(statusLine)
+                            .font(.system(size: 11))
+                            .foregroundStyle(details.status.color)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        // Its agents' models, beside the status: the name above keeps all the room it can get.
+                        ForEach(details.models.prefix(2).compactMap(WorkPhrases.modelName), id: \.self) { ModelChip(name: $0) }
+                    }
                     if let error = details.errorFirstLine {
                         Text(error)
                             .font(.system(size: 11, design: .monospaced))
@@ -379,5 +384,22 @@ struct SessionTokensCard: View {
                 }
             }
         }
+    }
+}
+
+/// Which model an agent or a workflow runs on. A session on one model often starts agents on another.
+struct ModelChip: View {
+    var name: String
+
+    var body: some View {
+        Text(verbatim: name)
+            .font(.system(size: 10.5, weight: .medium))
+            .foregroundStyle(Palette.text2)
+            .lineLimit(1)
+            .padding(.horizontal, 6)
+            .frame(height: 16)
+            .background(Capsule().fill(Palette.fill2))
+            .fixedSize()
+            .help(name)
     }
 }

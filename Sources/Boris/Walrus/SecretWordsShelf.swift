@@ -9,8 +9,10 @@ final class SecretWordsShelf {
     private var stamp: Date?
     private var words: [SecretWord] = []
 
+    /// The first time, the folder comes with an example, so a word is on the Walrus page from the start.
     init(folder: URL?) {
         self.folder = folder
+        if let folder, !FileManager.default.fileExists(atPath: folder.path) { seed(folder) }
     }
 
     /// Looked at only when a key is pressed in the main window: one look at the file's date, a read only after it changed.
@@ -25,15 +27,15 @@ final class SecretWordsShelf {
         return words
     }
 
-    /// Makes the folder with an example the first time, and shows it in Finder.
+    /// Shows the folder in Finder, with the example back in it if the list is gone.
     func open() {
         guard let folder else { return }
-        let manager = FileManager.default
-        let file = folder.appendingPathComponent(SecretWordsReader.fileName)
-        if !manager.fileExists(atPath: file.path) {
-            try? manager.createDirectory(at: folder, withIntermediateDirectories: true)
-            try? Data(SecretWordsReader.example.utf8).write(to: file, options: .withoutOverwriting)
-        }
+        if !FileManager.default.fileExists(atPath: folder.appendingPathComponent(SecretWordsReader.fileName).path) { seed(folder) }
         NSWorkspace.shared.open(folder)
+    }
+
+    private func seed(_ folder: URL) {
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try? Data(SecretWordsReader.example.utf8).write(to: folder.appendingPathComponent(SecretWordsReader.fileName), options: .withoutOverwriting)
     }
 }

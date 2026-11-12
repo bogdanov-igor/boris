@@ -403,8 +403,42 @@ struct WalrusPacksTab: View {
                 .font(.system(size: 11.5))
                 .foregroundStyle(Palette.text2)
                 .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 8) {
-                Text(L("Words: %lld", model.secretWords.current().count)).font(.system(size: 12)).foregroundStyle(Palette.text2).fixedSize()
+            let words = model.secretWords.current()
+            if words.isEmpty {
+                Text(L("No words yet. Add them to words.json in the folder."))
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Palette.text3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(words, id: \.word) { secret in
+                HStack(spacing: 10) {
+                    Group {
+                        if let url = secret.picture, let image = WalrusArt.shared.still(.file(url), pixels: 64, simple: false) {
+                            Image(decorative: image, scale: 2).resizable().interpolation(.high).aspectRatio(contentMode: .fill)
+                        } else {
+                            Image(systemName: "text.bubble").font(.system(size: 13)).foregroundStyle(Palette.text3)
+                        }
+                    }
+                    .frame(width: 32, height: 32)
+                    .background(Palette.fill2)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(verbatim: secret.word).font(.system(size: 12.5, weight: .semibold, design: .monospaced))
+                            if secret.sound != nil { Image(systemName: "speaker.wave.2.fill").font(.system(size: 10)).foregroundStyle(Palette.text3) }
+                        }
+                        if !secret.lines.isEmpty {
+                            Text(verbatim: secret.lines.joined(separator: " → "))
+                                .font(.system(size: 11.5))
+                                .foregroundStyle(Palette.text2)
+                                .lineLimit(2)
+                                .truncationMode(.tail)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            HStack {
                 Spacer(minLength: 0)
                 Button(L("Open folder")) { model.secretWords.open() }.buttonStyle(PlainActionStyle()).fixedSize()
             }

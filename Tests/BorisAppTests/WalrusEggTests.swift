@@ -134,4 +134,23 @@ struct WalrusEggTests {
     func checkReadsNoSecrets() {
         #expect(model().secretWords.current().isEmpty)
     }
+
+    @Test("Реплики идут стопкой: новая под старой, одинаковые слова подряд остаются двумя репликами, больше трёх не бывает")
+    func linesStack() {
+        let stage = WalrusStage()
+        var second = 0.0
+        func say(_ keys: [PlayKey]) {
+            second += 1
+            for key in keys { stage.key(key, pose: .watch, now: t.addingTimeInterval(second)) }
+        }
+        say(letters("boris"))
+        say(letters("угу"))
+        #expect(stage.lines.map(\.line.text) == [WalrusLines.trick(.name), WalrusLines.trick(.hoot)])
+        say(letters("угу"))
+        #expect(stage.lines.count == 3, "то же «Кхм.» ещё раз это новая реплика")
+        say([.up, .up, .down, .down, .left, .right, .left, .right, .character("b"), .character("a")])
+        #expect(stage.lines.count == WalrusStage.linesAtOnce)
+        #expect(stage.lines.last?.line.text == WalrusLines.trick(.konami))
+        #expect(stage.lines.first?.line.text == WalrusLines.trick(.hoot), "самая старая ушла раньше времени")
+    }
 }

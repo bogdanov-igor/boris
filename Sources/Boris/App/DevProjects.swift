@@ -20,7 +20,9 @@ enum DevProjects {
     }
 
     private static func record(_ key: String, phase: String, state: AgentState = .done, failure: FailureInfo? = nil) -> AgentRecord {
-        AgentRecord(key: key, agentId: key, label: key, phase: phase, state: state, failure: failure)
+        var agent = AgentRecord(key: key, agentId: key, label: key, phase: phase, state: state, failure: failure)
+        agent.model = "claude-sonnet-5-5"
+        return agent
     }
 
     private static func node(_ run: WorkflowDetails, title: String, now: Date, tokens: Int, children: [AgentRecord], parent: String) -> WorkNode {
@@ -61,7 +63,7 @@ enum DevProjects {
             contextTokens: 6_300,
             place: GitPlace(branch: long ? "review/a-very-long-branch-name-that-goes-on-and-on-and-on" : "review/token-expiry", isSeparateCopy: true, folderName: "review")
         )
-        let helper = WorkNode(id: "h1", kind: .subagent, parentId: "b1", title: "Code review", state: .running, step: StepBrief(kind: .read, tool: "Read", fileName: long ? "a-file-with-a-name-so-long-that-it-cannot-possibly-fit-anywhere-on-one-line.swift" : "session.swift"), contextTokens: 21_700, model: "model-name", children: [review])
+        let helper = WorkNode(id: "h1", kind: .subagent, parentId: "b1", title: "Code review", state: .running, step: StepBrief(kind: .read, tool: "Read", fileName: long ? "a-file-with-a-name-so-long-that-it-cannot-possibly-fit-anywhere-on-one-line.swift" : "session.swift"), contextTokens: 21_700, model: "claude-opus-5-5", children: [review])
         let forked = WorkNode(id: "h3", kind: .fork, parentId: "b1", title: "Find examples", state: .finished, contextTokens: 9_800)
         let phases = [
             PhaseGroup(title: "Search", agents: (1...8).map { record("search:\($0)", phase: "Search") }),
@@ -78,7 +80,7 @@ enum DevProjects {
             startedAt: now.addingTimeInterval(-3960),
             lastActivity: now,
             place: GitPlace(branch: "main"),
-            root: WorkNode(id: working, kind: .main, state: .running, step: StepBrief(kind: .edit, tool: "Edit", fileName: long ? "a-file-with-a-name-so-long-that-it-cannot-possibly-fit-anywhere-on-one-line.swift" : "auth.swift"), contextTokens: 84_200, model: "model-name", children: [helper, forked, flow])
+            root: WorkNode(id: working, kind: .main, state: .running, step: StepBrief(kind: .edit, tool: "Edit", fileName: long ? "a-file-with-a-name-so-long-that-it-cannot-possibly-fit-anywhere-on-one-line.swift" : "auth.swift"), contextTokens: 84_200, model: "claude-fable-5-2", children: [helper, forked, flow])
         )
     }
 
@@ -102,7 +104,7 @@ enum DevProjects {
             startedAt: now.addingTimeInterval(-4260),
             lastActivity: now.addingTimeInterval(-2520),
             place: GitPlace(branch: "main"),
-            root: WorkNode(id: troubled, kind: .main, state: .waiting, contextTokens: 52_000, model: "model-name", children: [helper, flow, partly])
+            root: WorkNode(id: troubled, kind: .main, state: .waiting, contextTokens: 52_000, model: "claude-opus-5-5", children: [helper, flow, partly])
         )
     }
 
